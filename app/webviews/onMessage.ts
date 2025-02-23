@@ -100,7 +100,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
           resType: 'resolve',
           res: {
             type: 'authCheck',
-            status,
+            status: status === null ? 'noAuth' : 'authOk',
           } as ISendPostResponseAuthCheck,
         });
       } catch (error: any) {
