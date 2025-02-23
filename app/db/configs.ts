@@ -6,9 +6,6 @@ import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { IGetConfigParam } from '../../global';
 
-/**
- * Интерфейс для конфигурации
- */
 export interface IConfigParams {
   key: string;
   value: string;

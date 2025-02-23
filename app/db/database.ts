@@ -3,10 +3,10 @@ import { appSchema, Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { Users } from './users';
 import { Configs } from './configs';
-import migrations from './migrations';
+import { migrations, schemaVersion } from './migrations';
 
 const schema = appSchema({
-  version: 3,
+  version: schemaVersion,
   tables: [Users.tableSchema, Configs.tableSchema],
 });
 
