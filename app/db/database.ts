@@ -1,21 +1,12 @@
 // database.ts
-import { appSchema, Database, tableSchema } from '@nozbe/watermelondb';
+import { appSchema, Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { Users } from './users';
+import { Configs } from './configs';
 
 const schema = appSchema({
-  version: 1,
-  tables: [
-    tableSchema({
-      name: 'users',
-      columns: [
-        { name: 'fio', type: 'string' },
-        { name: 'phone', type: 'string' },
-        { name: 'position', type: 'string' },
-        { name: 'password', type: 'string' },
-      ],
-    }),
-  ],
+  version: 2,
+  tables: [Users.tableSchema, Configs.tableSchema],
 });
 
 const adapter = new SQLiteAdapter({ schema });
@@ -25,8 +16,8 @@ const adapter = new SQLiteAdapter({ schema });
  */
 export const database = new Database({
   adapter,
-  modelClasses: [Users],
+  modelClasses: [Users, Configs],
 });
 
 // Экспортируем модель Users для использования в других файлах
-export { Users };
+export { Users, Configs };

@@ -2,7 +2,7 @@
 
 export interface ISendPostResponseAuthCheck {
   type: 'authCheck';
-  result: 'authOk' | 'noAuth';
+  status: 'authOk' | 'noAuth';
 }
 export interface ISendPostResponseRegistration {
   type: 'registration';
@@ -76,4 +76,11 @@ export type UserContext = PositionOptionValue;
 
 export interface IAuthCheck {
   context: UserContext;
+}
+
+export type IGetConfigKey = ISendPostResponseAuthCheck['type'];
+
+export interface IGetConfigParam {
+  key: IGetConfigKey;
+  value: string;
 }

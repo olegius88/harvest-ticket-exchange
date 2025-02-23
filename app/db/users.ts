@@ -2,7 +2,7 @@
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
-import { Model } from '@nozbe/watermelondb';
+import { Model, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { ICreateUserParams, PositionOptionValue } from '../../global';
 
@@ -17,6 +17,18 @@ export class Users extends Model {
   @field('position') position!: string;
   // @ts-ignore
   @field('password') password!: string;
+
+  static get tableSchema() {
+    return tableSchema({
+      name: this.table,
+      columns: [
+        { name: 'fio', type: 'string' },
+        { name: 'phone', type: 'string' },
+        { name: 'position', type: 'string' },
+        { name: 'password', type: 'string' },
+      ],
+    });
+  }
 
   /**
    * Статический метод для проверки обязательных полей.

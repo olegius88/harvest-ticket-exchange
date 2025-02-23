@@ -2,8 +2,9 @@
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
-import { Model, Q } from '@nozbe/watermelondb';
+import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
+import { IGetConfigParam } from '../../global';
 
 /**
  * Интерфейс, описывающий параметры для установки конфигурации
@@ -20,6 +21,16 @@ export class Configs extends Model {
   @field('key') key!: string;
   // @ts-ignore
   @field('value') value!: string;
+
+  static get tableSchema() {
+    return tableSchema({
+      name: this.table,
+      columns: [
+        { name: 'key', type: 'string' },
+        { name: 'value', type: 'string' },
+      ],
+    });
+  }
 
   /**
    * Статический метод для проверки обязательных полей.
@@ -68,5 +79,23 @@ export async function setConfig({ key, value }: IConfigParams): Promise<string> 
       });
       return newConfig.id;
     }
+  });
+}
+
+/**
+ * Функция getConfig ищет конфигурацию по ключу и возвращает её значение.
+ * Если конфигурация не найдена, возвращает null.
+ */
+export async function getConfig(key: IGetConfigParam['key']): Promise<string | null> {
+  return database.read(async () => {
+    const collection = database.collections.get<Model>(Configs.table);
+    const existingConfigs = (await collection
+      .query(Q.where('key', key))
+      .fetch()) as unknown as IConfigParams[];
+    if (existingConfigs.length > 0) {
+      // Возвращаем значение первой найденной записи
+      return existingConfigs[0].value;
+    }
+    return null;
   });
 }
