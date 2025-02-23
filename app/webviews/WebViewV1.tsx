@@ -13,7 +13,7 @@ import {
   ISendPostResponseAuthCheck,
   ISendPostResponseRegistration,
 } from '../../global';
-import { createUser } from '../db/createUser';
+import { user } from '../db/users';
 
 // import OneSignal from 'react-native-onesignal';
 
@@ -134,8 +134,8 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
         const createUserData = req.data as ICreateUserParams;
 
         try {
-          const userId = await createUser(createUserData);
-          console.log('onMessage|registration|createUser|userId=', userId);
+          const userId = await user(createUserData);
+          console.log('onMessage|registration|user|userId=', userId);
           //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
           sendPostResponse({
@@ -148,7 +148,7 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
             } as ISendPostResponseRegistration,
           });
         } catch (error: any) {
-          console.error('onMessage|registration|createUser|error.message=', error.message || error);
+          console.error('onMessage|registration|user|error.message=', error.message || error);
           sendPostResponse({
             reqId,
             type: 'sendPostResponse',
