@@ -1,19 +1,12 @@
-import React, { forwardRef, ReactElement, useRef, useState } from 'react';
+import React, { forwardRef, ReactElement, useState } from 'react';
 import { Platform, StatusBar } from 'react-native';
-import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
+import { WebView, WebViewNavigation } from 'react-native-webview';
 import {
   WebViewErrorEvent,
   WebViewHttpErrorEvent,
   WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
-import {
-  ICreateUserParams,
-  ISendPostMessageRequest,
-  ISendPostResponse,
-  ISendPostResponseAuthCheck,
-  ISendPostResponseRegistration,
-} from '../../global';
-import { createUser } from '../db/users';
+import { onMessage, webviewRef } from './onMessage';
 
 // import OneSignal from 'react-native-onesignal';
 
@@ -24,23 +17,12 @@ interface WebViewV1Props {
 const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactElement => {
   const [pushProblemNoty, setPushProblemNoty] = useState<boolean>(false);
   const [curUri, setCurUri] = useState<string>(url);
-  const webviewRef = useRef<WebView>(null);
 
   // Если требуется, можно через useImperativeHandle пробросить методы наружу
   // useImperativeHandle(ref, () => ({
   //   reload: () => webviewRef.current?.reload(),
   //   postMessage: (message: string) => webviewRef.current?.postMessage(message),
   // }));
-
-  const sendPostResponse = (obj: ISendPostResponse): void => {
-    console.log('sendPostResponse|obj=', obj);
-    if (!webviewRef.current) {
-      console.error('sendPostResponse|!webviewRef.current');
-      return;
-    }
-    // obj.os = Platform.OS;
-    webviewRef.current.postMessage(JSON.stringify(obj));
-  };
 
   const onError = (error: WebViewErrorEvent): void => {
     console.log('onError|error=', error);
@@ -92,89 +74,6 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
   const loadProgress = async (event: WebViewProgressEvent): Promise<void> => {
     console.log('loadProgress');
     // При необходимости можно реализовать логику отображения прогресса загрузки
-  };
-
-  const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
-    console.log('onMessage');
-
-    if (!event || !event.nativeEvent || !event.nativeEvent.data) {
-      console.log({ event });
-      console.log('nativeEvent: ', event.nativeEvent);
-      console.log('data: ', event.nativeEvent.data);
-      return;
-    }
-    const nativeEventData = event.nativeEvent.data;
-
-    let eventData: ISendPostMessageRequest;
-    try {
-      eventData = JSON.parse(nativeEventData);
-    } catch (error) {
-      console.error('onMessage|JSON.parse|error=', error);
-      console.error('onMessage|JSON.parse|nativeEventData=', nativeEventData);
-      return;
-    }
-    console.log('onMessage|eventData=', eventData);
-    if (!eventData) {
-      console.error('onMessage|eventData|!eventData|eventData=', eventData);
-      return;
-    }
-
-    const { req, reqId } = eventData;
-
-    if (!req?.type) {
-      console.error('onMessage|!req?.type|req=', req);
-      return;
-    }
-    console.log('onMessage|req?.type)=', req.type);
-
-    switch (req.type) {
-      case 'registration': {
-        console.log('onMessage|registration|req.data=', req.data);
-
-        const createUserData = req.data as ICreateUserParams;
-
-        try {
-          const userId = await createUser(createUserData);
-          console.log('onMessage|registration|user|userId=', userId);
-          //7851a25d-0ddb-4d4e-81bd-006d99036a2e
-
-          sendPostResponse({
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: {
-              type: 'registration',
-              userId,
-            } as ISendPostResponseRegistration,
-          });
-        } catch (error: any) {
-          console.error('onMessage|registration|user|error.message=', error.message || error);
-          sendPostResponse({
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            error: {
-              message: error.message || JSON.stringify(error),
-            },
-          });
-        }
-        return;
-      }
-      case 'authCheck': {
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'authCheck',
-            result: 'authOk',
-          } as ISendPostResponseAuthCheck,
-        });
-        return;
-      }
-      default:
-        console.error('onMessage|eventData|switch|default|eventData=', eventData);
-    }
   };
 
   const getHeadMarginTop = (): number => {
