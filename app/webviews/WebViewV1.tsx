@@ -7,8 +7,10 @@ import {
   WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 import {
+  ICreateUserParams,
+  ISendPostMessageRequest,
   ISendPostResponse,
-  ISendPostResponsePushToken,
+  ISendPostResponseAuthCheck,
   ISendPostResponseRegistration,
 } from '../../global';
 import { createUser } from '../db/createUser';
@@ -103,7 +105,7 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
     }
     const nativeEventData = event.nativeEvent.data;
 
-    let eventData: any;
+    let eventData: ISendPostMessageRequest;
     try {
       eventData = JSON.parse(nativeEventData);
     } catch (error) {
@@ -120,22 +122,19 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
     const { req, reqId } = eventData;
 
     if (!req?.type) {
-      console.error('onMessage|!req?.mode|req=', req);
+      console.error('onMessage|!req?.type|req=', req);
       return;
     }
-    console.log('onMessage|req?.mode=', req.mode);
+    console.log('onMessage|req?.type)=', req.type);
 
     switch (req.type) {
       case 'registration': {
         console.log('onMessage|registration|req.data=', req.data);
 
+        const createUserData = req.data as ICreateUserParams;
+
         try {
-          const userId = await createUser({
-            fio: req.data.fio,
-            phone: req.data.phone,
-            position: req.data.position,
-            password: req.data.password,
-          });
+          const userId = await createUser(createUserData);
           console.log('onMessage|registration|createUser|userId=', userId);
           //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
@@ -144,7 +143,7 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
             type: 'sendPostResponse',
             resType: 'resolve',
             res: {
-              mode: 'registration',
+              type: 'registration',
               userId,
             } as ISendPostResponseRegistration,
           });
@@ -161,16 +160,15 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
         }
         return;
       }
-      case 'getPushToken': {
+      case 'authCheck': {
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',
           resType: 'resolve',
           res: {
-            mode: 'getPushToken',
-            pushUserId: 'deviceState.userId',
-            pushToken: 'deviceState.pushToken',
-          } as ISendPostResponsePushToken,
+            type: 'authCheck',
+            result: 'authOk',
+          } as ISendPostResponseAuthCheck,
         });
         return;
       }

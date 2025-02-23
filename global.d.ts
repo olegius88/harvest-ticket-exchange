@@ -1,13 +1,22 @@
 //global.d.ts
 
-export interface ISendPostResponsePushToken {
-  mode: 'getPushToken';
-  pushUserId: string;
-  pushToken: string;
+export interface ISendPostResponseAuthCheck {
+  type: 'authCheck';
+  result: 'authOk' | 'noAuth';
 }
 export interface ISendPostResponseRegistration {
-  mode: 'registration';
+  type: 'registration';
   userId: string;
+}
+
+export interface ISendPostMessage {
+  type: 'registration' | 'login' | 'authCheck';
+  data: ILoginForm | IAuthCheck | ICreateUserParams;
+}
+
+export interface ISendPostMessageRequest {
+  req: ISendPostMessage;
+  reqId: string;
 }
 
 /**
@@ -26,7 +35,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponsePushToken | ISendPostResponseRegistration; // Обязательно при 'resolve'
+      res: ISendPostResponseAuthCheck | ISendPostResponseRegistration; // Обязательно при 'resolve'
       error?: any; // При 'resolve' не используем поле 'error'
     };
 
@@ -46,6 +55,11 @@ export interface ICreateUserParams {
   password: string;
 }
 
+// Расширяем ICreateUserParams, добавляя confirmPassword для формы регистрации
+export interface IRegistrationForm extends ICreateUserParams {
+  confirmPassword: string;
+}
+
 export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist';
 
 export interface IOption {
@@ -59,3 +73,7 @@ export interface ILoginForm {
 }
 
 export type UserContext = PositionOptionValue;
+
+export interface IAuthCheck {
+  context: UserContext;
+}
