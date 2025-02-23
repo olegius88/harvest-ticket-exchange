@@ -50,3 +50,8 @@ export interface IOption {
   value: PositionOptionValue;
   label: string;
 }
+
+export interface ILoginForm {
+  phone: string;
+  password: string;
+}
