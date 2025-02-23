@@ -1,5 +1,4 @@
 import WebViewV1 from './webviews/WebViewV1.tsx';
-import './db';
 
 export default function App() {
   const url = 'http://192.168.50.84:8771/';

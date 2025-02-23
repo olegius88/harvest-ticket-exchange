@@ -6,7 +6,12 @@ import {
   WebViewHttpErrorEvent,
   WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
-import { ISendPostResponse } from '../../global';
+import {
+  ISendPostResponse,
+  ISendPostResponsePushToken,
+  ISendPostResponseRegistration,
+} from '../../global';
+import { createUser } from '../db/createUser';
 
 // import OneSignal from 'react-native-onesignal';
 
@@ -123,22 +128,42 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
     switch (req.type) {
       case 'registration': {
         console.log('onMessage|registration|req.data=', req.data);
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            mode: 'registration',
-            userId: 'userId',
-          } as ISendPostResponseRegistration,
-        });
+
+        try {
+          const userId = await createUser({
+            fio: req.data.fio,
+            phone: req.data.phone,
+            position: req.data.position,
+            password: req.data.password,
+          });
+
+          sendPostResponse({
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: {
+              mode: 'registration',
+              userId,
+            } as ISendPostResponseRegistration,
+          });
+        } catch (error: any) {
+          console.error('onMessage|registration|createUser|error.message=', error.message || error);
+          sendPostResponse({
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'reject',
+            error: {
+              message: error.message || JSON.stringify(error),
+            },
+          });
+        }
         return;
       }
       case 'getPushToken': {
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',
-          resType: 'reject',
+          resType: 'resolve',
           res: {
             mode: 'getPushToken',
             pushUserId: 'deviceState.userId',
