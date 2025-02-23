@@ -1,9 +1,12 @@
+//onMessage.ts
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
   ICreateUserParams,
+  ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
   ISendPostResponseAuthCheck,
+  ISendPostResponseLogin,
   ISendPostResponseRegistration,
 } from '../../global';
 import { createUser } from '../db/users';
@@ -56,6 +59,38 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
   console.log('onMessage|req?.type)=', req.type);
 
   switch (req.type) {
+    case 'login': {
+      console.log('onMessage|login|req.data=', req.data);
+
+      const createUserData = req.data as ILoginUserParams;
+
+      try {
+        const userId = await createUser(createUserData);
+        console.log('onMessage|login|userId=', userId);
+        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+
+        sendPostResponse({
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type: 'login',
+            userId,
+          } as ISendPostResponseLogin,
+        });
+      } catch (error: any) {
+        console.error('onMessage|login|error.message=', error.message || error);
+        sendPostResponse({
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: {
+            message: error.message || JSON.stringify(error),
+          },
+        });
+      }
+      return;
+    }
     case 'registration': {
       console.log('onMessage|registration|req.data=', req.data);
 

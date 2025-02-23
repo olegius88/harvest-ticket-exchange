@@ -9,6 +9,11 @@ export interface ISendPostResponseRegistration {
   userId: string;
 }
 
+export interface ISendPostResponseLogin {
+  type: 'login';
+  userId: string;
+}
+
 export interface ISendPostMessage {
   type: 'registration' | 'login' | 'authCheck';
   data: ILoginForm | IAuthCheck | ICreateUserParams;
@@ -35,7 +40,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponseAuthCheck | ISendPostResponseRegistration; // Обязательно при 'resolve'
+      res: ISendPostResponseAuthCheck | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
       error?: any; // При 'resolve' не используем поле 'error'
     };
 
@@ -52,6 +57,13 @@ export interface ICreateUserParams {
   fio: string;
   phone: string;
   position: string;
+  password: string;
+}
+/**
+ * Интерфейс, описывающий параметры для авторизации пользователя
+ */
+export interface ILoginUserParams {
+  phone: string;
   password: string;
 }
 
