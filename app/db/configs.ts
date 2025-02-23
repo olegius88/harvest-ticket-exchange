@@ -7,7 +7,7 @@ import { field } from '@nozbe/watermelondb/decorators';
 import { IGetConfigParam } from '../../global';
 
 /**
- * Интерфейс, описывающий параметры для установки конфигурации
+ * Интерфейс для конфигурации
  */
 export interface IConfigParams {
   key: string;
@@ -21,6 +21,10 @@ export class Configs extends Model {
   @field('key') key!: string;
   // @ts-ignore
   @field('value') value!: string;
+  // @ts-ignore
+  @field('createdAt') createdAt!: number;
+  // @ts-ignore
+  @field('updatedAt') updatedAt!: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -28,14 +32,12 @@ export class Configs extends Model {
       columns: [
         { name: 'key', type: 'string' },
         { name: 'value', type: 'string' },
+        { name: 'createdAt', type: 'number' },
+        { name: 'updatedAt', type: 'number' },
       ],
     });
   }
 
-  /**
-   * Статический метод для проверки обязательных полей.
-   * Если какое-либо поле отсутствует, выбрасывается ошибка.
-   */
   static validateFields(fields: Partial<IConfigParams>) {
     const missingFields: string[] = [];
     if (!fields.key) missingFields.push('key');
@@ -48,34 +50,36 @@ export class Configs extends Model {
 }
 
 /**
- * Функция setConfig проверяет наличие записи конфигурации по заданному ключу.
- * Если запись существует, она обновляется, иначе создаётся новая.
+ * Функция setConfig: если запись с заданным ключом существует, обновляет её (обновляя updatedAt),
+ * иначе создаёт новую (с установкой createdAt и updatedAt).
  */
 export async function setConfig({ key, value }: IConfigParams): Promise<string> {
-  // Выполняем валидацию входных параметров через модель Configs
   Configs.validateFields({ key, value });
-
   return database.write(async () => {
     const collection = database.collections.get<Model>(Configs.table);
-    // Ищем существующую запись с указанным ключом
+    const now = Date.now();
     const existingConfigs = await collection.query(Q.where('key', key)).fetch();
 
     if (existingConfigs.length > 0) {
-      // Если запись существует, обновляем её значение
       const configToUpdate = existingConfigs[0];
       await configToUpdate.update((config) => {
         // @ts-ignore
         config.value = value;
+        // @ts-ignore
+        config.updatedAt = now;
       });
       return configToUpdate.id;
     } else {
-      // Если записи нет, создаём новую
       const newConfig = await collection.create((config) => {
         config._raw.id = uuid.v4();
         // @ts-ignore
         config.key = key;
         // @ts-ignore
         config.value = value;
+        // @ts-ignore
+        config.createdAt = now;
+        // @ts-ignore
+        config.updatedAt = now;
       });
       return newConfig.id;
     }
@@ -93,7 +97,6 @@ export async function getConfig(key: IGetConfigParam['key']): Promise<string | n
       .query(Q.where('key', key))
       .fetch()) as unknown as IConfigParams[];
     if (existingConfigs.length > 0) {
-      // Возвращаем значение первой найденной записи
       return existingConfigs[0].value;
     }
     return null;
