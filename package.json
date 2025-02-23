@@ -11,7 +11,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "react": "18.3.1"
+    "react": "18.3.1",
+    "repomix": "0.2.29 "
   },
   "devDependencies": {
     "@types/react": "19.0.10",
