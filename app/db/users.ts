@@ -100,3 +100,24 @@ export async function loginUser({ phone, password }: ILoginUserParams): Promise<
     throw new Error('User not found or invalid credentials');
   });
 }
+
+/**
+ * Функция getAllUsers получает все записи из таблицы пользователей и возвращает их
+ * в виде массива объектов типа ICreateUserParams.
+ */
+export async function getAllUsers(): Promise<ICreateUserParams[]> {
+  return database.read(async () => {
+    const collection = database.collections.get<Model>(Users.table);
+    const users = await collection.query().fetch();
+    return users.map((user) => ({
+      // @ts-ignore
+      fio: user.fio,
+      // @ts-ignore
+      phone: user.phone,
+      // @ts-ignore
+      position: user.position,
+      // @ts-ignore
+      password: user.password,
+    }));
+  });
+}
