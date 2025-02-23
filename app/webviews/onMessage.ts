@@ -9,7 +9,7 @@ import {
   ISendPostResponseLogin,
   ISendPostResponseRegistration,
 } from '../../global';
-import { createUser } from '../db/users';
+import { createUser, loginUser } from '../db/users';
 import { getConfig } from '../db/configs';
 import { useRef } from 'react';
 
@@ -65,7 +65,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
       const createUserData = req.data as ILoginUserParams;
 
       try {
-        const userId = await createUser(createUserData);
+        const userId = await loginUser(createUserData);
         console.log('onMessage|login|userId=', userId);
         //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 

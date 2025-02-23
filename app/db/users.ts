@@ -2,9 +2,9 @@
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
-import { Model, tableSchema } from '@nozbe/watermelondb';
+import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
-import { ICreateUserParams, PositionOptionValue } from '../../global';
+import { ICreateUserParams, ILoginUserParams, PositionOptionValue } from '../../global';
 
 export class Users extends Model {
   static table = 'users';
@@ -79,5 +79,24 @@ export async function createUser({
       user.password = password;
     });
     return newUser.id;
+  });
+}
+
+/**
+ * Функция loginUser ищет запись в таблице по номеру телефона и паролю (без шифрования)
+ * и возвращает userId, если пользователь найден.
+ */
+export async function loginUser({ phone, password }: ILoginUserParams): Promise<string> {
+  return database.read(async () => {
+    const collection = database.collections.get<Model>(Users.table);
+    const users = await collection
+      .query(Q.where('phone', phone), Q.where('password', password))
+      .fetch();
+
+    if (users.length > 0) {
+      // Возвращаем идентификатор первого найденного пользователя
+      return users[0].id;
+    }
+    throw new Error('User not found or invalid credentials');
   });
 }
