@@ -1,0 +1,31 @@
+{
+  "name": "TalonKombainera",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "android": "npx react-native run-android",
+    "npx-start": "npx react-native start --reset-cache",
+    "ios": "react-native run-ios",
+    "lint": "eslint .",
+    "start": "react-native start",
+    "test": "jest"
+  },
+  "dependencies": {
+    "react": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.10",
+    "@typescript-eslint/eslint-plugin": "8.24.1",
+    "@typescript-eslint/parser": "8.24.1",
+    "eslint": "9.21.0",
+    "eslint-config-prettier": "10.0.1",
+    "eslint-plugin-prettier": "5.2.3",
+    "prettier": "3.5.2",
+    "typescript": "5.7.3",
+    "typescript-eslint": "8.24.1",
+    "ts-loader": "9.5.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -6,6 +6,7 @@ import {
   WebViewHttpErrorEvent,
   WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
+import { ISendPostResponse } from '../../global';
 
 // import OneSignal from 'react-native-onesignal';
 

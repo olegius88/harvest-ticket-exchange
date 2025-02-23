@@ -4,5 +4,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false
-  }
+  },
+  "include": [
+    "../global.d.ts"
+  ],
+  "exclude": ["node_modules", "**/*.spec.ts", "./build", "./public"]
 }
