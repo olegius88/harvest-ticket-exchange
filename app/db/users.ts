@@ -44,14 +44,18 @@ export class Users extends Model {
   }
 }
 
-export async function user({ fio, phone, position, password }: ICreateUserParams): Promise<string> {
+export async function createUser({
+  fio,
+  phone,
+  position,
+  password,
+}: ICreateUserParams): Promise<string> {
   // Выполняем валидацию через модель Users
   Users.validateFields({ fio, phone, position, password });
 
   return database.write(async () => {
-    const collection = database.collections.get<Model>('users');
+    const collection = database.collections.get<Model>(Users.table);
     const newUser = await collection.create((user) => {
-      // @ts-ignore
       user._raw.id = uuid.v4();
       // @ts-ignore
       user.fio = fio;
