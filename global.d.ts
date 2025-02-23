@@ -1,3 +1,5 @@
+//global.d.ts
+
 export interface ISendPostResponsePushToken {
   mode: 'getPushToken';
   pushUserId: string;
@@ -55,3 +57,5 @@ export interface ILoginForm {
   phone: string;
   password: string;
 }
+
+export type UserContext = PositionOptionValue;
