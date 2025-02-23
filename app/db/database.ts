@@ -2,6 +2,7 @@
 import { appSchema, Database, Model, tableSchema } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { field } from '@nozbe/watermelondb/decorators';
+import { PositionOptionValue } from '../../global';
 
 // Интерфейс для удобства валидации
 interface IUserFields {
@@ -25,7 +26,8 @@ class User extends Model {
 
   /**
    * Статический метод для проверки обязательных полей.
-   * Если какое-либо поле отсутствует, выбрасывается ошибка.
+   * Если какое-либо поле отсутствует или поле position имеет недопустимое значение,
+   * выбрасывается ошибка.
    */
   static validateFields(fields: Partial<IUserFields>) {
     const missingFields: string[] = [];
@@ -39,8 +41,8 @@ class User extends Model {
     }
 
     // Проверяем, что значение position является допустимым
-    const validPositions = ['водитель', 'комбайнер', 'бункерист'];
-    if (!validPositions.includes(fields.position!)) {
+    const validPositions: PositionOptionValue[] = ['kombainer', 'voditel', 'bunkerist'];
+    if (!validPositions.includes(fields.position as PositionOptionValue)) {
       throw new Error(
         `Validation Error: Invalid value for position. Allowed values are: ${validPositions.join(', ')}`
       );

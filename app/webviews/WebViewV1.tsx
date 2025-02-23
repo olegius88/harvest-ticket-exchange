@@ -136,6 +136,8 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
             position: req.data.position,
             password: req.data.password,
           });
+          console.log('onMessage|registration|createUser|userId=', userId);
+          //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
           sendPostResponse({
             reqId,
