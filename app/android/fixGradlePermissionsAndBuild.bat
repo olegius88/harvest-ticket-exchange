@@ -1,7 +1,9 @@
 @echo off
 REM fixGradlePermissionsAndBuild.bat
-REM This script takes ownership of the .gradle folder, grants full access, deletes the folder,
-REM stops any running Gradle daemons, cleans the project, and attempts a build.
+REM !!!! внимание !!!! остановите все npm процессы с текущим проектом. иначе не сработает
+REM Этот скрипт принимает владение папкой .gradle, предоставляет полный доступ,
+REM удаляет папку, останавливает все запущенные Gradle-демоны, очищает проект и пытается собрать приложение.
+REM Дополнительная ссылка: https://chatgpt.com/c/67bc926e-5a1c-800b-aaa8-9f173cd5b685
 
 echo Stopping Gradle daemons...
 call gradlew.bat --stop
