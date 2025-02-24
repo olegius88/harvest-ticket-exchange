@@ -12,6 +12,7 @@
     "start": "cross-env API_URL=http://192.168.50.84:8771/ react-native start",
     "start-ip-94": "cross-env API_URL=http://192.168.50.94:8771/ react-native start --reset-cache",
     "test": "jest",
+    "build:android:gradle-init": "cd android && fixGradlePermissionsAndBuild.bat",
     "build:android:win": "cd android && gradlew.bat assembleRelease && explorer \"app\\build\\outputs\\apk\\release\"",
     "build:android": "cd android && ./gradlew assembleRelease"
   },
