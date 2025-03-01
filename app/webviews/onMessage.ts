@@ -5,11 +5,11 @@ import {
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
-  ISendPostResponseAuthCheck,
+  ISendPostResponseCurrentUserId,
   ISendPostResponseLogin,
   ISendPostResponseRegistration,
 } from '../../global';
-import { createUser, getAllUsers, loginUser } from '../db/users';
+import { createUser, getAllUsers, getUserById, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 
@@ -138,23 +138,26 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
       }
       return;
     }
-    case 'authCheck': {
+    case 'currentUserId': {
       try {
-        const status = await getConfig('authCheck');
-        console.log('onMessage|authCheck|status=', status);
+        const currentUserId = await getConfig('currentUserId');
+        console.log('onMessage|currentUserId=', currentUserId);
         //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+        const userData = await getUserById(currentUserId);
+        console.log('onMessage|userData=', userData);
 
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',
           resType: 'resolve',
           res: {
-            type: 'authCheck',
-            status: status === null ? 'noAuth' : 'authOk',
-          } as ISendPostResponseAuthCheck,
+            type: 'currentUserId',
+            status: currentUserId === null ? 'noAuth' : 'authOk',
+            userData,
+          } as ISendPostResponseCurrentUserId,
         });
       } catch (error: any) {
-        console.error('onMessage|authCheck|error.message=', error.message || error);
+        console.error('onMessage|currentUserId|error.message=', error.message || error);
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',

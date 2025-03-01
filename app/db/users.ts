@@ -117,12 +117,22 @@ export async function loginUser({ phone, password }: ILoginUserParams): Promise<
 export async function getAllUsers(): Promise<ICreateUserParams[]> {
   return database.read(async () => {
     const collection = database.collections.get<Model>(Users.table);
-    const users = await collection.query().fetch();
-    return users.map((user) => ({
-      fio: user.fio,
-      phone: user.phone,
-      position: user.position,
-      password: user.password,
-    }));
+    return await collection.query().fetch();
+  });
+}
+
+/**
+ * Функция getUserById получает пользователя по его ID.
+ */
+export async function getUserById(userId: string): Promise<ICreateUserParams | null> {
+  return database.read(async () => {
+    const collection = database.collections.get<Model>(Users.table);
+    const user = await collection.find(userId).catch(() => null);
+
+    if (!user) {
+      return null;
+    }
+
+    return user;
   });
 }

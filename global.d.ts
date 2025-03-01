@@ -1,8 +1,8 @@
 //global.d.ts
 
-export interface ISendPostResponseAuthCheck {
-  type: 'authCheck';
-  status: 'authOk' | 'noAuth';
+export interface ISendPostResponseCurrentUserId {
+  type: 'currentUserId';
+  status: string | null;
 }
 export interface ISendPostResponseRegistration {
   type: 'registration';
@@ -15,7 +15,7 @@ export interface ISendPostResponseLogin {
 }
 
 export interface ISendPostMessage {
-  type: 'registration' | 'login' | 'authCheck';
+  type: 'registration' | 'login' | 'currentUserId';
   data: ILoginForm | IAuthCheck | ICreateUserParams;
 }
 
@@ -40,7 +40,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponseAuthCheck | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
+      res: ISendPostResponseCurrentUserId | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
       error?: any; // При 'resolve' не используем поле 'error'
     };
 
@@ -90,7 +90,7 @@ export interface IAuthCheck {
   context: UserContext;
 }
 
-export type IGetConfigKey = ISendPostResponseAuthCheck['type'];
+export type IGetConfigKey = ISendPostResponseCurrentUserId['type'];
 
 export interface IGetConfigParam {
   key: IGetConfigKey;
