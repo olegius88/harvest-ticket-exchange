@@ -8,7 +8,7 @@ import { field } from '@nozbe/watermelondb/decorators';
 /**
  * Интерфейс для полей в таблице kombainer
  */
-export interface ICreateKombainerParams {
+export interface ICreateKombainerParams extends Model {
   combine: string; // "комбайн"
   brigade: string; // "бригада"
   culture: string; // "культура"
@@ -105,7 +105,7 @@ export async function createKombainer({
  */
 export async function getAllKombainers(): Promise<ICreateKombainerParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Kombainer.table);
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
     return await collection.query().fetch();
   });
 }
@@ -117,7 +117,7 @@ export async function getKombainerById(
   kombainerId: string
 ): Promise<ICreateKombainerParams | null> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Kombainer.table);
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
     const record = await collection.find(kombainerId).catch(() => null);
 
     if (!record) {
