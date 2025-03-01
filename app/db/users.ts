@@ -75,11 +75,11 @@ export async function createUser({
       // @ts-ignore
       user.fio = fio;
       // @ts-ignore
-      user.phone = phone;
+      user.phone = phone.trim();
       // @ts-ignore
       user.position = position;
       // @ts-ignore
-      user.password = password;
+      user.password = password.trim();
       // Устанавливаем временные метки
       // @ts-ignore
       user.createdAt = now;
@@ -97,14 +97,17 @@ export async function createUser({
 export async function loginUser({ phone, password }: ILoginUserParams): Promise<string> {
   return database.read(async () => {
     const collection = database.collections.get<Model>(Users.table);
-    const users = await collection
-      .query(Q.where('phone', phone), Q.where('password', password))
-      .fetch();
+    const users = await collection.query(Q.where('phone', phone)).fetch();
 
-    if (users.length > 0) {
-      return users[0].id;
+    if (users.length === 0) {
+      throw new Error(`Пользователь с указанным номером телефона ${phone} не найден.`);
     }
-    throw new Error('User not found or invalid credentials');
+    const userData = users[0];
+    if (userData.password != password.trim()) {
+      throw new Error(`Неверный пароль для пользователя с номером телефона ${phone}.`);
+    }
+
+    return userData.id;
   });
 }
 
