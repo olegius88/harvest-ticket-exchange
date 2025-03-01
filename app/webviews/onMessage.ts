@@ -10,7 +10,7 @@ import {
   ISendPostResponseRegistration,
 } from '../../global';
 import { createUser, getAllUsers, loginUser } from '../db/users';
-import { getConfig } from '../db/configs';
+import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 
 export const webviewRef = useRef<WebView>(null);
@@ -71,6 +71,18 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
         const userId = await loginUser(createUserData);
         console.log('onMessage|login|userId=', userId);
         //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+
+        try {
+          await setConfig({
+            key: 'currentUserId',
+            value: userId,
+          });
+        } catch (error) {
+          console.error('onMessage|login|setConfig|error=', error);
+          new Error(
+            'Внутрення ошибка при авторизации. Переустановите приложение. (все данные будут утеряны)'
+          );
+        }
 
         sendPostResponse({
           reqId,
