@@ -1,4 +1,4 @@
-// kombainers.ts
+// app/db/kombainers.ts
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
@@ -10,9 +10,9 @@ import { ICreateKombainerParams } from '../../global';
  * Интерфейс для полей в таблице kombainers
  */
 export interface ICreateKombainersParams extends Model, ICreateKombainerParams {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
+  readonly id: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
 }
 
 /**
@@ -77,7 +77,7 @@ export async function createKombainer({
   brigade,
   culture,
   field,
-}: ICreateKombainersParams): Promise<string> {
+}: ICreateKombainerParams): Promise<string> {
   // Валидация входных данных
   Kombainers.validateFields({ userId, combine, brigade, culture, field });
   return database.write(async () => {
