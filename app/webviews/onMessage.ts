@@ -1,14 +1,10 @@
 // app/webviews/onMessage.ts
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
-  IKombainerForm,
+  ICreateKombainerParams,
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
-  ISendPostResponseCreateKombainer,
-  ISendPostResponseCurrentUser,
-  ISendPostResponseLogin,
-  ISendPostResponseRegistration,
 } from '../../global';
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
@@ -52,13 +48,31 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
-  const { req, reqId } = eventData;
-
-  if (!req?.type) {
-    console.error('onMessage|!req?.type|req=', req);
+  if (!eventData?.req?.type) {
+    console.error('onMessage|!req?.type|req=', eventData?.req);
     return;
   }
-  console.log('onMessage|req?.type)=', req.type);
+
+  try {
+    const res = await _handleMessage(eventData);
+    sendPostResponse(res);
+  } catch (error) {
+    console.error('onMessage|login|error.message=', error.message || error);
+    sendPostResponse({
+      reqId: eventData.reqId,
+      type: 'sendPostResponse',
+      resType: 'reject',
+      error: {
+        message: error.message || JSON.stringify(error),
+      },
+    });
+  }
+};
+
+const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISendPostResponse> => {
+  const { req, reqId } = eventData;
+
+  console.log('_handleMessage|req?.type)=', req.type);
 
   switch (req.type) {
     case 'login': {
@@ -66,148 +80,116 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
 
       const createUserData = req.data as ILoginUserParams;
 
+      const users = await getAllUsers();
+      console.log('onMessage|login|users=', users);
+
+      const userId = await loginUser(createUserData);
+      console.log('onMessage|login|userId=', userId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+
       try {
-        const users = await getAllUsers();
-        console.log('onMessage|login|users=', users);
-
-        const userId = await loginUser(createUserData);
-        console.log('onMessage|login|userId=', userId);
-        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
-
-        try {
-          await setConfig({
-            key: 'currentUserId',
-            value: userId,
-          });
-        } catch (error) {
-          console.error('onMessage|login|setConfig|error=', error);
-          new Error(
-            'Внутрення ошибка при авторизации. Переустановите приложение. (все данные будут утеряны)'
-          );
-        }
-
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'login',
-            userId,
-          } as ISendPostResponseLogin,
+        await setConfig({
+          key: 'currentUserId',
+          value: userId,
         });
-      } catch (error: any) {
-        console.error('onMessage|login|error.message=', error.message || error);
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: {
-            message: error.message || JSON.stringify(error),
-          },
-        });
+      } catch (error) {
+        console.error('onMessage|login|setConfig|error=', error);
+        new Error(
+          'Внутрення ошибка при авторизации. Переустановите приложение. (все данные будут утеряны)'
+        );
       }
-      return;
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'login',
+          userId,
+        },
+      };
     }
     case 'registration': {
       console.log('onMessage|registration|req.data=', req.data);
 
       const createUserData = req.data as ICreateUsersParams;
 
-      try {
-        const userId = await createUser(createUserData);
-        console.log('onMessage|registration|userId=', userId);
-        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      const userId = await createUser(createUserData);
+      console.log('onMessage|registration|userId=', userId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'registration',
-            userId,
-          } as ISendPostResponseRegistration,
-        });
-      } catch (error: any) {
-        console.error('onMessage|registration|error.message=', error.message || error);
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: {
-            message: error.message || JSON.stringify(error),
-          },
-        });
-      }
-      return;
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'registration',
+          userId,
+        },
+      };
     }
     case 'createKombainer': {
       console.log('onMessage|createKombainer|req.data=', req.data);
 
-      const createUserData = req.data as IKombainerForm;
+      const createUserData = req.data as ICreateKombainerParams;
 
-      try {
-        const userId = await createKombainer({ ...createUserData });
-        console.log('onMessage|createKombainer|userId=', userId);
-        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      const userId = await createKombainer(createUserData);
+      console.log('onMessage|createKombainer|userId=', userId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'createKombainer',
-            userId,
-          } as ISendPostResponseCreateKombainer,
-        });
-      } catch (error: any) {
-        console.error('onMessage|createKombainer|error.message=', error.message || error);
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: {
-            message: error.message || JSON.stringify(error),
-          },
-        });
-      }
-      return;
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'createKombainer',
+        },
+      };
     }
     case 'currentUser': {
-      try {
-        const currentUserId = await getConfig('currentUserId');
-        console.log('onMessage|currentUserId=', currentUserId);
-        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
-        const userData = await getUserById(currentUserId);
-        console.log('onMessage|userData=', userData);
+      const currentUserId = await getConfig('currentUserId');
+      console.log('onMessage|currentUserId=', currentUserId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      const userData = await getUserById(currentUserId);
+      console.log('onMessage|userData=', userData);
 
-        const kombainerData = await getKombainerByUserId(currentUserId);
-        console.log('onMessage|kombainerData=', kombainerData);
+      const kombainerData = await getKombainerByUserId(currentUserId);
+      console.log('onMessage|kombainerData=', kombainerData);
 
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'currentUser',
-            status: currentUserId === null ? 'noAuth' : 'authOk',
-            userData,
-            kombainerData,
-          } as ISendPostResponseCurrentUser,
-        });
-      } catch (error: any) {
-        console.error('onMessage|currentUser|error.message=', error.message || error);
-        sendPostResponse({
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: {
-            message: error.message || JSON.stringify(error),
-          },
-        });
-      }
-      return;
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'currentUser',
+          status: currentUserId === null ? 'noAuth' : 'authOk',
+          userData,
+          kombainerData,
+        },
+      };
+    }
+    case 'userData': {
+      const currentUserId = await getConfig('currentUserId');
+      console.log('onMessage|userData=', currentUserId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      const userData = await getUserById(currentUserId);
+      console.log('onMessage|userData=', userData);
+
+      const kombainerData = await getKombainerByUserId(currentUserId);
+      console.log('onMessage|userData=', kombainerData);
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'userData',
+          userData,
+        },
+      };
     }
     default:
       console.error('onMessage|eventData|switch|default|eventData=', eventData);
+      throw new Error(`onMessage|eventData|switch|default|eventData=${JSON.stringify(eventData)}`);
   }
 };

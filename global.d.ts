@@ -1,5 +1,7 @@
 // /global.d.ts
 
+import { ICreateUsersParams } from './app/db/users';
+
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
   status: string | null;
@@ -12,6 +14,10 @@ export interface ISendPostResponseRegistration {
 }
 export interface ISendPostResponseCreateKombainer {
   type: 'createKombainer';
+}
+export interface ISendPostResponseUserData {
+  type: 'userData';
+  userData: ICreateUsersParams;
 }
 
 export interface ISendPostResponseLogin {
@@ -30,19 +36,21 @@ export interface ISendPostMessageCurrentUser {
   type: 'currentUser';
   data: IAuthCheck;
 }
+export interface ISendPostMessageUserData {
+  type: 'userData';
+  data: ICreateUsersParams;
+}
 export interface ISendPostMessageCreateKombainer {
   type: 'createKombainer';
   data: ICreateKombainerParams;
 }
 
-export interface ISendPostMessage
-  extends ISendPostResponseLogin,
-    ISendPostMessageRegistration,
-    ISendPostMessageLogin,
-    ISendPostMessageCurrentUser,
-    ISendPostMessageCreateKombainer {
-  //
-}
+export type ISendPostMessage =
+  | ISendPostMessageLogin
+  | ISendPostMessageRegistration
+  | ISendPostMessageCurrentUser
+  | ISendPostMessageCreateKombainer
+  | ISendPostMessageUserData;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
@@ -65,7 +73,12 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponseCurrentUser | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
+      res:
+        | ISendPostResponseCurrentUser
+        | ISendPostResponseRegistration
+        | ISendPostResponseLogin
+        | ISendPostResponseCreateKombainer
+        | ISendPostResponseUserData;
       error?: any; // При 'resolve' не используем поле 'error'
     }
   // игнор
