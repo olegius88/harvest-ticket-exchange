@@ -139,7 +139,6 @@ export async function getKombainerById(
 export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams[]> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
-    const results = await collection.query(Q.where('userId', userId)).fetch();
-    return results;
+    return await collection.query(Q.where('userId', userId)).fetch();
   });
 }

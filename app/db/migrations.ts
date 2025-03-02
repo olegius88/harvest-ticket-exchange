@@ -1,61 +1,48 @@
 // migrations.ts
-import { addColumns, schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
+import { addColumns, createTable, schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 
-const toVersion = 8;
-export const schemaVersion = toVersion;
-export const migrations = schemaMigrations({
-  migrations: [
-    {
-      toVersion,
-      steps: [
-        addColumns({
-          table: 'users',
-          columns: [
-            { name: 'createdAt', type: 'number' },
-            { name: 'updatedAt', type: 'number' },
-          ],
-        }),
-        addColumns({
-          table: 'configs',
-          columns: [
-            { name: 'createdAt', type: 'number' },
-            { name: 'updatedAt', type: 'number' },
-          ],
-        }),
+// Миграция для версии 8: добавляем столбцы createdAt и updatedAt для таблиц users и configs.
+const migrationTo8 = {
+  toVersion: 8,
+  steps: [
+    addColumns({
+      table: 'users',
+      columns: [
+        { name: 'createdAt', type: 'number' },
+        { name: 'updatedAt', type: 'number' },
       ],
-    },
+    }),
+    addColumns({
+      table: 'configs',
+      columns: [
+        { name: 'createdAt', type: 'number' },
+        { name: 'updatedAt', type: 'number' },
+      ],
+    }),
   ],
-});
+};
 
-// export async function updateTimestampsForExistingRecords(): Promise<void> {
-//   const now = Date.now();
-//
-//   // Обновляем записи в таблице Users
-//   const usersCollection = database.collections.get(Users.table);
-//   const users = await usersCollection.query().fetch();
-//   await database.write(async () => {
-//     for (const user of users) {
-//       // Если поле createdAt не установлено, обновляем запись
-//       if (!user.createdAt) {
-//         await user.update((record: any) => {
-//           record.createdAt = now;
-//           record.updatedAt = now;
-//         });
-//       }
-//     }
-//   });
-//
-//   // Обновляем записи в таблице Configs
-//   const configsCollection = database.collections.get(Configs.table);
-//   const configs = await configsCollection.query().fetch();
-//   await database.write(async () => {
-//     for (const config of configs) {
-//       if (!config.createdAt) {
-//         await config.update((record: any) => {
-//           record.createdAt = now;
-//           record.updatedAt = now;
-//         });
-//       }
-//     }
-//   });
-// }
+// Миграция для версии 9: создаём новую таблицу kombainers.
+const migrationTo9 = {
+  toVersion: 9,
+  steps: [
+    createTable({
+      name: 'kombainers',
+      columns: [
+        { name: 'userId', type: 'string' },
+        { name: 'combine', type: 'string' },
+        { name: 'brigade', type: 'string' },
+        { name: 'culture', type: 'string' },
+        { name: 'field', type: 'string' },
+        { name: 'createdAt', type: 'number' },
+        { name: 'updatedAt', type: 'number' },
+      ],
+    }),
+  ],
+};
+
+// Экспорт последней версии схемы и массива миграций.
+export const schemaVersion = 9;
+export const migrations = schemaMigrations({
+  migrations: [migrationTo8, migrationTo9],
+});
