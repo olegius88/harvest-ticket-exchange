@@ -9,6 +9,7 @@ import { field } from '@nozbe/watermelondb/decorators';
  * Интерфейс для полей в таблице kombainer
  */
 export interface ICreateKombainerParams extends Model {
+  userId: string;
   combine: string; // "комбайн"
   brigade: string; // "бригада"
   culture: string; // "культура"
@@ -23,6 +24,8 @@ export interface ICreateKombainerParams extends Model {
 export class Kombainer extends Model {
   static table = 'kombainer';
 
+  // @ts-ignore
+  @field('userId') userId!: string; // новое поле "userId"
   // @ts-ignore
   @field('combine') combine!: string; // "комбайн"
   // @ts-ignore
@@ -40,6 +43,7 @@ export class Kombainer extends Model {
     return tableSchema({
       name: this.table,
       columns: [
+        { name: 'userId', type: 'string' },
         { name: 'combine', type: 'string' },
         { name: 'brigade', type: 'string' },
         { name: 'culture', type: 'string' },
@@ -55,6 +59,7 @@ export class Kombainer extends Model {
    */
   static validateFields(fields: Partial<ICreateKombainerParams>) {
     const missingFields: string[] = [];
+    if (!fields.userId) missingFields.push('userId');
     if (!fields.combine) missingFields.push('combine');
     if (!fields.brigade) missingFields.push('brigade');
     if (!fields.culture) missingFields.push('culture');
@@ -70,19 +75,22 @@ export class Kombainer extends Model {
  * Создание записи в таблице "kombainer".
  */
 export async function createKombainer({
+  userId,
   combine,
   brigade,
   culture,
   field,
 }: ICreateKombainerParams): Promise<string> {
   // Валидация входных данных
-  Kombainer.validateFields({ combine, brigade, culture, field });
+  Kombainer.validateFields({ userId, combine, brigade, culture, field });
   return database.write(async () => {
     const collection = database.collections.get<Model>(Kombainer.table);
     const now = Date.now();
     const newKombainer = await collection.create((record) => {
       // @ts-ignore
       record._raw.id = uuid.v4();
+      // @ts-ignore
+      record.userId = userId.trim();
       // @ts-ignore
       record.combine = combine.trim();
       // @ts-ignore
