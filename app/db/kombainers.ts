@@ -136,9 +136,10 @@ export async function getKombainerById(
 /**
  * Получить все записи для конкретного userId.
  */
-export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams[]> {
+export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
-    return await collection.query(Q.where('userId', userId)).fetch();
+    const results = await collection.query(Q.where('userId', userId)).fetch();
+    return results?.length ? results[0] : null;
   });
 }
