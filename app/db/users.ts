@@ -10,9 +10,9 @@ import { ICreateUserParams, ILoginUserParams, PositionOptionValue } from '../../
  * Интерфейс для полей в таблице users
  */
 export interface ICreateUsersParams extends Model, ICreateUserParams {
-  id: string;
-  createdAt: number;
-  updatedAt: number;
+  readonly id: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
 }
 
 export class Users extends Model {
