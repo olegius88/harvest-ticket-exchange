@@ -10,6 +10,9 @@ export interface ISendPostResponseRegistration {
   type: 'registration';
   userId: string;
 }
+export interface ISendPostResponseCreateKombainer {
+  type: 'createKombainer';
+}
 
 export interface ISendPostResponseLogin {
   type: 'login';
@@ -17,8 +20,8 @@ export interface ISendPostResponseLogin {
 }
 
 export interface ISendPostMessage {
-  type: 'registration' | 'login' | 'currentUser' | 'authCheck' | 'createUser';
-  data: ILoginForm | IAuthCheck | ICreateUserParams;
+  type: 'registration' | 'login' | 'currentUser' | 'createKombainer';
+  data: ILoginForm | IAuthCheck | ICreateUserParams | ICreateKombainerParams;
 }
 
 export interface ISendPostMessageRequest {
@@ -47,7 +50,7 @@ export type ISendPostResponse =
     }
   // игнор
   | {
-      type: 'webpackOk' | 'webpackClose';
+      type: 'webpackOk' | 'webpackClose' | 'webpackErrors';
       reqId?: string;
       resType?: 'reject';
       error?: any;
@@ -110,6 +113,16 @@ export interface IOption {
 export interface ILoginForm {
   phone: string;
   password: string;
+}
+
+/**
+ * Интерфейс для формы регистрации комбайнера
+ */
+interface IKombainerForm {
+  combine: string; // "Комбайн"
+  brigade: string; // "Бригада"
+  culture: string; // "Культура"
+  field: string; // "Поле"
 }
 
 export type UserContext = PositionOptionValue;
