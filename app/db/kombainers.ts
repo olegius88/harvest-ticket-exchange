@@ -118,28 +118,45 @@ export async function getAllKombainers(): Promise<ICreateKombainersParams[]> {
 /**
  * Получить конкретную запись "kombainer" по ID.
  */
-export async function getKombainerById(
-  kombainerId: string
-): Promise<ICreateKombainersParams | null> {
+export async function getKombainerById(kombainerId: string): Promise<ICreateKombainersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const record = await collection.find(kombainerId).catch(() => null);
 
     if (!record) {
-      return null;
+      throw new Error(`Комбайнер с ID ${kombainerId} не найден.`);
     }
 
-    return record;
+    // Возвращаем чистый объект без лишних циклических ссылок и методов WatermelonDB
+    return {
+      id: record.id,
+      userId: record.userId,
+      combine: record.combine,
+      brigade: record.brigade,
+      culture: record.culture,
+      field: record.field,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    } as ICreateKombainersParams;
   });
 }
 
 /**
  * Получить все записи для конкретного userId.
  */
-export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams> {
+export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams[]> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();
-    return results?.length ? results[0] : null;
+    return results.map((record) => ({
+      id: record._raw.id,
+      userId: record.userId,
+      combine: record.combine,
+      brigade: record.brigade,
+      culture: record.culture,
+      field: record.field,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    })) as ICreateKombainersParams[];
   });
 }
