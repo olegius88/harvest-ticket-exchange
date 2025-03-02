@@ -25,15 +25,15 @@ export class Kombainer extends Model {
   static table = 'kombainer';
 
   // @ts-ignore
-  @field('userId') userId!: string; // новое поле "userId"
+  @field('userId') userId!: string;
   // @ts-ignore
-  @field('combine') combine!: string; // "комбайн"
+  @field('combine') combine!: string;
   // @ts-ignore
-  @field('brigade') brigade!: string; // "бригада"
+  @field('brigade') brigade!: string;
   // @ts-ignore
-  @field('culture') culture!: string; // "культура"
+  @field('culture') culture!: string;
   // @ts-ignore
-  @field('field') field!: string; // "поле"
+  @field('field') field!: string;
   // @ts-ignore
   @field('createdAt') createdAt!: number;
   // @ts-ignore
@@ -133,5 +133,16 @@ export async function getKombainerById(
     }
 
     return record;
+  });
+}
+
+/**
+ * Получить все записи для конкретного userId.
+ */
+export async function getKombainerByUserId(userId: string): Promise<ICreateKombainerParams[]> {
+  return database.read(async () => {
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
+    const results = await collection.query(Q.where('userId', userId)).fetch();
+    return results;
   });
 }
