@@ -1,9 +1,11 @@
 //onMessage.ts
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
+  IKombainerForm,
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
+  ISendPostResponseCreateKombainer,
   ISendPostResponseCurrentUser,
   ISendPostResponseLogin,
   ISendPostResponseRegistration,
@@ -11,7 +13,7 @@ import {
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
-import { getKombainerByUserId } from '../db/kombainers';
+import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -127,6 +129,38 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
         });
       } catch (error: any) {
         console.error('onMessage|registration|error.message=', error.message || error);
+        sendPostResponse({
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: {
+            message: error.message || JSON.stringify(error),
+          },
+        });
+      }
+      return;
+    }
+    case 'createKombainer': {
+      console.log('onMessage|createKombainer|req.data=', req.data);
+
+      const createUserData = req.data as IKombainerForm;
+
+      try {
+        const userId = await createKombainer({ ...createUserData });
+        console.log('onMessage|createKombainer|userId=', userId);
+        //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+
+        sendPostResponse({
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type: 'createKombainer',
+            userId,
+          } as ISendPostResponseCreateKombainer,
+        });
+      } catch (error: any) {
+        console.error('onMessage|createKombainer|error.message=', error.message || error);
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',
