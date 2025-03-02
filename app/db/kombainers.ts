@@ -1,28 +1,25 @@
-// kombainer.ts
+// kombainers.ts
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
+import { ICreateKombainerParams } from '../../global';
 
 /**
- * Интерфейс для полей в таблице kombainer
+ * Интерфейс для полей в таблице kombainers
  */
-export interface ICreateKombainerParams extends Model {
-  userId: string;
-  combine: string; // "комбайн"
-  brigade: string; // "бригада"
-  culture: string; // "культура"
-  field: string; // "поле"
-  createdAt?: number;
-  updatedAt?: number;
+export interface ICreateKombainersParams extends Model, ICreateKombainerParams {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /**
  * Класс Kombainer и описание схемы WatermelonDB
  */
 export class Kombainers extends Model {
-  static table = 'kombainer';
+  static table = 'kombainers';
 
   // @ts-ignore
   @field('userId') userId!: string;
@@ -57,7 +54,7 @@ export class Kombainers extends Model {
   /**
    * Проверка обязательных полей.
    */
-  static validateFields(fields: Partial<ICreateKombainerParams>) {
+  static validateFields(fields: Partial<ICreateKombainersParams>) {
     const missingFields: string[] = [];
     if (!fields.userId) missingFields.push('userId');
     if (!fields.combine) missingFields.push('combine');
@@ -80,7 +77,7 @@ export async function createKombainer({
   brigade,
   culture,
   field,
-}: ICreateKombainerParams): Promise<string> {
+}: ICreateKombainersParams): Promise<string> {
   // Валидация входных данных
   Kombainers.validateFields({ userId, combine, brigade, culture, field });
   return database.write(async () => {
@@ -111,9 +108,9 @@ export async function createKombainer({
 /**
  * Получить все записи из таблицы "kombainer".
  */
-export async function getAllKombainers(): Promise<ICreateKombainerParams[]> {
+export async function getAllKombainers(): Promise<ICreateKombainersParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
+    const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     return await collection.query().fetch();
   });
 }
@@ -123,9 +120,9 @@ export async function getAllKombainers(): Promise<ICreateKombainerParams[]> {
  */
 export async function getKombainerById(
   kombainerId: string
-): Promise<ICreateKombainerParams | null> {
+): Promise<ICreateKombainersParams | null> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
+    const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const record = await collection.find(kombainerId).catch(() => null);
 
     if (!record) {
@@ -139,9 +136,9 @@ export async function getKombainerById(
 /**
  * Получить все записи для конкретного userId.
  */
-export async function getKombainerByUserId(userId: string): Promise<ICreateKombainerParams[]> {
+export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
+    const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();
     return results;
   });

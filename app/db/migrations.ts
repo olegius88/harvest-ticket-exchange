@@ -1,7 +1,7 @@
 // migrations.ts
 import { addColumns, schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 
-const toVersion = 6;
+const toVersion = 8;
 export const schemaVersion = toVersion;
 export const migrations = schemaMigrations({
   migrations: [

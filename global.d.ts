@@ -42,6 +42,13 @@ export type ISendPostResponse =
       resType: 'resolve';
       res: ISendPostResponseCurrentUserId | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
       error?: any; // При 'resolve' не используем поле 'error'
+    }
+  // игнор
+  | {
+      type: 'webpackOk';
+      reqId?: string;
+      resType?: 'reject';
+      error?: any;
     };
 
 export interface IPostMessageCallback {
@@ -59,6 +66,25 @@ export interface ICreateUserParams {
   position: string;
   password: string;
 }
+
+/**
+ * Интерфейс для полей в таблице kombainers
+ */
+export interface ICreateKombainerParams {
+  userId: string;
+  combine: string; // "комбайн"
+  brigade: string; // "бригада"
+  culture: string; // "культура"
+  field: string; // "поле"
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface IConfigParams {
+  key: string;
+  value: string;
+}
+
 /**
  * Интерфейс, описывающий параметры для авторизации пользователя
  */

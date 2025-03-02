@@ -4,11 +4,12 @@ import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
-import { IGetConfigParam } from '../../global';
+import { IConfigParams, IGetConfigParam } from '../../global';
 
-export interface IConfigParams {
-  key: string;
-  value: string;
+export interface IConfigsParams extends Model, IConfigParams {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export class Configs extends Model {
@@ -53,7 +54,7 @@ export class Configs extends Model {
 export async function setConfig({ key, value }: IConfigParams): Promise<string> {
   Configs.validateFields({ key, value });
   return database.write(async () => {
-    const collection = database.collections.get<Model>(Configs.table);
+    const collection = database.collections.get<IConfigsParams>(Configs.table);
     const now = Date.now();
     const existingConfigs = await collection.query(Q.where('key', key)).fetch();
 
@@ -89,7 +90,7 @@ export async function setConfig({ key, value }: IConfigParams): Promise<string> 
  */
 export async function getConfig(key: IGetConfigParam['key']): Promise<string | null> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Configs.table);
+    const collection = database.collections.get<IConfigsParams>(Configs.table);
     const existingConfigs = (await collection
       .query(Q.where('key', key))
       .fetch()) as unknown as IConfigParams[];

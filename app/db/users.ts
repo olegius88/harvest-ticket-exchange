@@ -6,6 +6,15 @@ import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { ICreateUserParams, ILoginUserParams, PositionOptionValue } from '../../global';
 
+/**
+ * Интерфейс для полей в таблице users
+ */
+export interface ICreateUsersParams extends Model, ICreateUserParams {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export class Users extends Model {
   static table = 'users';
 
@@ -39,7 +48,7 @@ export class Users extends Model {
   /**
    * Проверка обязательных полей и корректности значения поля position.
    */
-  static validateFields(fields: Partial<ICreateUserParams>) {
+  static validateFields(fields: Partial<ICreateUsersParams>) {
     const missingFields: string[] = [];
     if (!fields.fio) missingFields.push('fio');
     if (!fields.phone) missingFields.push('phone');
@@ -64,11 +73,11 @@ export async function createUser({
   phone,
   position,
   password,
-}: ICreateUserParams): Promise<string> {
+}: ICreateUsersParams): Promise<string> {
   // Валидация входных данных
   Users.validateFields({ fio, phone, position, password });
   return database.write(async () => {
-    const collection = database.collections.get<Model>(Users.table);
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
     const now = Date.now();
     const newUser = await collection.create((user) => {
       user._raw.id = uuid.v4();
@@ -96,7 +105,7 @@ export async function createUser({
  */
 export async function loginUser({ phone, password }: ILoginUserParams): Promise<string> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Users.table);
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
     const users = await collection.query(Q.where('phone', phone)).fetch();
 
     if (users.length === 0) {
@@ -114,9 +123,9 @@ export async function loginUser({ phone, password }: ILoginUserParams): Promise<
 /**
  * Функция getAllUsers получает все записи из таблицы пользователей.
  */
-export async function getAllUsers(): Promise<ICreateUserParams[]> {
+export async function getAllUsers(): Promise<ICreateUsersParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Users.table);
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
     return await collection.query().fetch();
   });
 }
@@ -124,15 +133,24 @@ export async function getAllUsers(): Promise<ICreateUserParams[]> {
 /**
  * Функция getUserById получает пользователя по его ID.
  */
-export async function getUserById(userId: string): Promise<ICreateUserParams | null> {
+export async function getUserById(userId: string): Promise<ICreateUsersParams> {
   return database.read(async () => {
-    const collection = database.collections.get<Model>(Users.table);
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
     const user = await collection.find(userId).catch(() => null);
 
     if (!user) {
-      return null;
+      throw new Error(`Пользователь с ID ${userId} не найден.`);
     }
 
-    return user;
+    // Возвращаем чистый объект без циклических ссылок
+    return {
+      id: user._raw.id,
+      fio: user._raw.fio,
+      phone: user._raw.phone,
+      position: user._raw.position,
+      password: user._raw.password,
+      createdAt: user._raw.createdAt,
+      updatedAt: user._raw.updatedAt,
+    } as ICreateUsersParams;
   });
 }

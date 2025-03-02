@@ -8,7 +8,7 @@ import { Kombainers } from './kombainers';
 
 const schema = appSchema({
   version: schemaVersion,
-  tables: [Users.tableSchema, Configs.tableSchema],
+  tables: [Users.tableSchema, Configs.tableSchema, Kombainers.tableSchema],
 });
 
 const adapter = new SQLiteAdapter({ schema, migrations });
