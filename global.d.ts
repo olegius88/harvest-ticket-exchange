@@ -1,4 +1,4 @@
-//global.d.ts
+// /global.d.ts
 
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
@@ -18,10 +18,30 @@ export interface ISendPostResponseLogin {
   type: 'login';
   userId: string;
 }
+export interface ISendPostMessageRegistration {
+  type: 'registration';
+  data: ICreateUserParams;
+}
+export interface ISendPostMessageLogin {
+  type: 'login';
+  data: ILoginForm;
+}
+export interface ISendPostMessageCurrentUser {
+  type: 'currentUser';
+  data: IAuthCheck;
+}
+export interface ISendPostMessageCreateKombainer {
+  type: 'createKombainer';
+  data: ICreateKombainerParams;
+}
 
-export interface ISendPostMessage {
-  type: 'registration' | 'login' | 'currentUser' | 'createKombainer';
-  data: ILoginForm | IAuthCheck | ICreateUserParams | ICreateKombainerParams;
+export interface ISendPostMessage
+  extends ISendPostResponseLogin,
+    ISendPostMessageRegistration,
+    ISendPostMessageLogin,
+    ISendPostMessageCurrentUser,
+    ISendPostMessageCreateKombainer {
+  //
 }
 
 export interface ISendPostMessageRequest {
