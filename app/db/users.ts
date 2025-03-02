@@ -136,21 +136,21 @@ export async function getAllUsers(): Promise<ICreateUsersParams[]> {
 export async function getUserById(userId: string): Promise<ICreateUsersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateUsersParams>(Users.table);
-    const user = await collection.find(userId).catch(() => null);
+    const user = await collection.find(userId);
 
     if (!user) {
-      throw new Error(`Пользователь с ID ${userId} не найден.`);
+      throw new Error(`Пользователь с ID ${userId} не найден.`);
     }
 
     // Возвращаем чистый объект без циклических ссылок
     return {
-      id: user._raw.id,
-      fio: user._raw.fio,
-      phone: user._raw.phone,
-      position: user._raw.position,
-      password: user._raw.password,
-      createdAt: user._raw.createdAt,
-      updatedAt: user._raw.updatedAt,
+      id: user.id,
+      fio: user.fio,
+      phone: user.phone,
+      position: user.position,
+      password: user.password,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     } as ICreateUsersParams;
   });
 }

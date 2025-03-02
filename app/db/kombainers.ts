@@ -121,7 +121,7 @@ export async function getAllKombainers(): Promise<ICreateKombainersParams[]> {
 export async function getKombainerById(kombainerId: string): Promise<ICreateKombainersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
-    const record = await collection.find(kombainerId).catch(() => null);
+    const record = await collection.find(kombainerId);
 
     if (!record) {
       throw new Error(`Комбайнер с ID ${kombainerId} не найден.`);
