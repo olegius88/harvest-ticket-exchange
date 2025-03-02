@@ -21,7 +21,7 @@ export interface ICreateKombainerParams extends Model {
 /**
  * Класс Kombainer и описание схемы WatermelonDB
  */
-export class Kombainer extends Model {
+export class Kombainers extends Model {
   static table = 'kombainer';
 
   // @ts-ignore
@@ -82,9 +82,9 @@ export async function createKombainer({
   field,
 }: ICreateKombainerParams): Promise<string> {
   // Валидация входных данных
-  Kombainer.validateFields({ userId, combine, brigade, culture, field });
+  Kombainers.validateFields({ userId, combine, brigade, culture, field });
   return database.write(async () => {
-    const collection = database.collections.get<Model>(Kombainer.table);
+    const collection = database.collections.get<Model>(Kombainers.table);
     const now = Date.now();
     const newKombainer = await collection.create((record) => {
       // @ts-ignore
@@ -113,7 +113,7 @@ export async function createKombainer({
  */
 export async function getAllKombainers(): Promise<ICreateKombainerParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
     return await collection.query().fetch();
   });
 }
@@ -125,7 +125,7 @@ export async function getKombainerById(
   kombainerId: string
 ): Promise<ICreateKombainerParams | null> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
     const record = await collection.find(kombainerId).catch(() => null);
 
     if (!record) {
@@ -141,7 +141,7 @@ export async function getKombainerById(
  */
 export async function getKombainerByUserId(userId: string): Promise<ICreateKombainerParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateKombainerParams>(Kombainer.table);
+    const collection = database.collections.get<ICreateKombainerParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();
     return results;
   });
