@@ -1,7 +1,6 @@
 //onMessage.ts
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
-  ICreateUserParams,
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
@@ -9,9 +8,10 @@ import {
   ISendPostResponseLogin,
   ISendPostResponseRegistration,
 } from '../../global';
-import { createUser, getAllUsers, getUserById, loginUser } from '../db/users';
+import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
+import { getKombainerByUserId } from '../db/kombainers';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -109,7 +109,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     case 'registration': {
       console.log('onMessage|registration|req.data=', req.data);
 
-      const createUserData = req.data as ICreateUserParams;
+      const createUserData = req.data as ICreateUsersParams;
 
       try {
         const userId = await createUser(createUserData);
@@ -145,6 +145,9 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
         //7851a25d-0ddb-4d4e-81bd-006d99036a2e
         const userData = await getUserById(currentUserId);
         console.log('onMessage|userData=', userData);
+
+        const kombainerData = await getKombainerByUserId(currentUserId);
+        console.log('onMessage|kombainerData=', kombainerData);
 
         sendPostResponse({
           reqId,
