@@ -1,8 +1,10 @@
 //global.d.ts
 
-export interface ISendPostResponseCurrentUserId {
+export interface ISendPostResponseCurrentUser {
   type: 'currentUserId';
   status: string | null;
+  kombainerData: ICreateKombainersParams;
+  userData: ICreateUsersParams;
 }
 export interface ISendPostResponseRegistration {
   type: 'registration';
@@ -40,7 +42,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponseCurrentUserId | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
+      res: ISendPostResponseCurrentUser | ISendPostResponseRegistration | ISendPostResponseLogin; // Обязательно при 'resolve'
       error?: any; // При 'resolve' не используем поле 'error'
     }
   // игнор
@@ -116,7 +118,7 @@ export interface IAuthCheck {
   context: UserContext;
 }
 
-export type IGetConfigKey = ISendPostResponseCurrentUserId['type'];
+export type IGetConfigKey = ISendPostResponseCurrentUser['type'];
 
 export interface IGetConfigParam {
   key: IGetConfigKey;

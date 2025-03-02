@@ -4,7 +4,7 @@ import {
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
-  ISendPostResponseCurrentUserId,
+  ISendPostResponseCurrentUser,
   ISendPostResponseLogin,
   ISendPostResponseRegistration,
 } from '../../global';
@@ -157,7 +157,8 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
             type: 'currentUserId',
             status: currentUserId === null ? 'noAuth' : 'authOk',
             userData,
-          } as ISendPostResponseCurrentUserId,
+            kombainerData,
+          } as ISendPostResponseCurrentUser,
         });
       } catch (error: any) {
         console.error('onMessage|currentUserId|error.message=', error.message || error);
