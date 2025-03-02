@@ -1,7 +1,7 @@
 //global.d.ts
 
 export interface ISendPostResponseCurrentUser {
-  type: 'currentUserId';
+  type: 'currentUser';
   status: string | null;
   kombainerData: ICreateKombainersParams;
   userData: ICreateUsersParams;
@@ -17,7 +17,7 @@ export interface ISendPostResponseLogin {
 }
 
 export interface ISendPostMessage {
-  type: 'registration' | 'login' | 'currentUserId';
+  type: 'registration' | 'login' | 'currentUser' | 'authCheck' | 'createUser';
   data: ILoginForm | IAuthCheck | ICreateUserParams;
 }
 
@@ -47,7 +47,7 @@ export type ISendPostResponse =
     }
   // игнор
   | {
-      type: 'webpackOk';
+      type: 'webpackOk' | 'webpackClose';
       reqId?: string;
       resType?: 'reject';
       error?: any;
@@ -118,7 +118,7 @@ export interface IAuthCheck {
   context: UserContext;
 }
 
-export type IGetConfigKey = ISendPostResponseCurrentUser['type'];
+export type IGetConfigKey = 'currentUserId';
 
 export interface IGetConfigParam {
   key: IGetConfigKey;

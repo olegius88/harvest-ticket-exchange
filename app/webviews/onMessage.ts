@@ -138,7 +138,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
       }
       return;
     }
-    case 'currentUserId': {
+    case 'currentUser': {
       try {
         const currentUserId = await getConfig('currentUserId');
         console.log('onMessage|currentUserId=', currentUserId);
@@ -154,14 +154,14 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
           type: 'sendPostResponse',
           resType: 'resolve',
           res: {
-            type: 'currentUserId',
+            type: 'currentUser',
             status: currentUserId === null ? 'noAuth' : 'authOk',
             userData,
             kombainerData,
           } as ISendPostResponseCurrentUser,
         });
       } catch (error: any) {
-        console.error('onMessage|currentUserId|error.message=', error.message || error);
+        console.error('onMessage|currentUser|error.message=', error.message || error);
         sendPostResponse({
           reqId,
           type: 'sendPostResponse',
