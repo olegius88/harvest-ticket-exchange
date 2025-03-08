@@ -1,3 +1,4 @@
+// app/src/main/java/com/talonkombainera/MainActivity.kt
 package com.talonkombainera
 
 import android.os.Bundle
