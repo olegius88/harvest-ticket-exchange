@@ -83,7 +83,7 @@ export type ISendPostResponse =
     }
   // игнор
   | {
-      type: 'webpackOk' | 'webpackClose' | 'webpackErrors';
+      type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid';
       reqId?: string;
       resType?: 'reject';
       error?: any;
