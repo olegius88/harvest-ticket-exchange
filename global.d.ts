@@ -5,7 +5,7 @@ import { ICreateUsersParams } from './app/db/users';
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
   status: string | null;
-  kombainerData: ICreateKombainersParams;
+  kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
 }
 export interface ISendPostResponseRegistration {

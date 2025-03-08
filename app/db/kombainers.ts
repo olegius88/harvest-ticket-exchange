@@ -144,11 +144,11 @@ export async function getKombainerById(kombainerId: string): Promise<ICreateKomb
 /**
  * Получить все записи для конкретного userId.
  */
-export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams[]> {
+export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();
-    return results.map((record) => ({
+    const res = results.map((record) => ({
       id: record._raw.id,
       userId: record.userId,
       combine: record.combine,
@@ -158,5 +158,7 @@ export async function getKombainerByUserId(userId: string): Promise<ICreateKomba
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     })) as ICreateKombainersParams[];
+
+    return res.length > 0 ? res[0] : null;
   });
 }

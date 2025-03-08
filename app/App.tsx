@@ -1,8 +1,8 @@
-import WebViewV1 from './webviews/WebViewV1.tsx';
+import WebViewV1 from './webviews/WebViewV1';
 
 export default function App() {
   const url = process.env.API_URL;
-  // console.log('url2=', url2);
+  console.log('url=', url);
   // const url = 'http://192.168.50.84:8771/';
   // let url = 'https://example.com/?page_id=192&beta&beta2=1';
   // let url = 'https://example.com/?page_id=192';
