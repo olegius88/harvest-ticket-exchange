@@ -7,6 +7,7 @@ import com.reactnativecommunity.webview.RNCWebViewManager
 import com.reactnativecommunity.webview.RNCWebViewWrapper
 import com.google.gson.Gson
 import com.talonkombainera.maps.PushUserIdResponse
+import com.talonkombainera.maps.PushUserIdResponseNative
 
 class CustomWebViewManager : RNCWebViewManager() {
 
@@ -24,9 +25,11 @@ class CustomWebViewManager : RNCWebViewManager() {
         fun getPushUserId(reqId: String): String {
             Log.d("CustomWebViewManager", "getPushUserId вызван из JS")
 
+            val type = "pushUserId"
             val status = "MainActivity.pushUserId"
+            val native = PushUserIdResponseNative(type, status)
 
-            val response = PushUserIdResponse(status, reqId)
+            val response = PushUserIdResponse(reqId, native)
             return Gson().toJson(response)
         }
     }
