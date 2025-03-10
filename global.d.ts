@@ -1,48 +1,112 @@
-// /global.d.ts
+// Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
 
+export interface ISendPostResponseUserPushId {
+  type: 'userPushId';
+  status: string | null;
+}
+
+/**
+ * Интерфейс для ответа по запросу получения данных текущего пользователя.
+ */
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
   status: string | null;
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
 }
+
+/**
+ * Интерфейс для ответа по регистрации.
+ */
 export interface ISendPostResponseRegistration {
   type: 'registration';
   userId: string;
 }
+
+/**
+ * Интерфейс для ответа по созданию комбайнера.
+ */
 export interface ISendPostResponseCreateKombainer {
   type: 'createKombainer';
 }
+
+/**
+ * Интерфейс для ответа по запросу данных пользователя.
+ */
 export interface ISendPostResponseUserData {
   type: 'userData';
   userData: ICreateUsersParams;
 }
 
+/**
+ * Интерфейс для ответа по авторизации.
+ */
 export interface ISendPostResponseLogin {
   type: 'login';
   userId: string;
 }
+
+/**
+ * Интерфейс для ответа по созданию hotspot.
+ */
+export interface ISendPostResponseStartHotspot {
+  type: 'startHotspot';
+  ssid: string;
+  login: string;
+  password: string;
+}
+
+/**
+ * Интерфейс для запроса регистрации.
+ */
 export interface ISendPostMessageRegistration {
   type: 'registration';
   data: ICreateUserParams;
 }
+
+/**
+ * Интерфейс для запроса авторизации.
+ */
 export interface ISendPostMessageLogin {
   type: 'login';
   data: ILoginForm;
 }
+
+/**
+ * Интерфейс для запроса проверки авторизации.
+ */
 export interface ISendPostMessageCurrentUser {
   type: 'currentUser';
   data: IAuthCheck;
 }
+
+/**
+ * Интерфейс для запроса данных пользователя.
+ */
 export interface ISendPostMessageUserData {
   type: 'userData';
   data: ICreateUsersParams;
 }
+
+/**
+ * Интерфейс для запроса создания комбайнера.
+ */
 export interface ISendPostMessageCreateKombainer {
   type: 'createKombainer';
   data: ICreateKombainerParams;
+}
+
+/**
+ * Интерфейс для запроса запуска hotspot.
+ */
+export interface ISendPostMessageStartHotspot {
+  type: 'startHotspot';
+}
+
+export interface ISendPostMessageUserPushId {
+  type: 'userPushId';
 }
 
 export type ISendPostMessage =
@@ -50,16 +114,25 @@ export type ISendPostMessage =
   | ISendPostMessageRegistration
   | ISendPostMessageCurrentUser
   | ISendPostMessageCreateKombainer
-  | ISendPostMessageUserData;
+  | ISendPostMessageUserData
+  | ISendPostMessageStartHotspot
+  | ISendPostMessageUserPushId;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
   reqId: string;
 }
 
+export type ISendNativeMessage = ISendPostMessageUserPushId;
+
+export interface ISendNativeMessageRequest {
+  native: ISendNativeMessage;
+  reqId: string;
+}
+
 /**
- * Если resType === 'reject', то 'res' не нужно, но 'e' обязательно.
- * Если resType === 'resolve', то 'res' обязательно, а 'e' не нужно.
+ * Если resType === 'reject', то 'res' не нужно, но 'error' обязательно.
+ * Если resType === 'resolve', то 'res' обязательно, а 'error' не нужно.
  */
 export type ISendPostResponse =
   | {
@@ -78,10 +151,12 @@ export type ISendPostResponse =
         | ISendPostResponseRegistration
         | ISendPostResponseLogin
         | ISendPostResponseCreateKombainer
-        | ISendPostResponseUserData;
+        | ISendPostResponseUserData
+        | ISendPostResponseStartHotspot
+        | ISendPostResponseUserPushId;
       error?: any; // При 'resolve' не используем поле 'error'
     }
-  // игнор
+  // игнорируемые сообщения
   | {
       type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid';
       reqId?: string;
@@ -118,6 +193,9 @@ export interface ICreateKombainerParams {
   updatedAt?: number;
 }
 
+/**
+ * Интерфейс для конфигураций
+ */
 export interface IConfigParams {
   key: string;
   value: string;
