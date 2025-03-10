@@ -56,6 +56,25 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
+  if (eventData?.native?.type) {
+    // console.error('eventData?.native?.type|eventData=', eventData);
+    try {
+      const res = await _handleNativeMessage(eventData);
+      sendPostResponse(res);
+    } catch (error) {
+      console.error('onMessage|login|error.message=', error.message || error);
+      sendPostResponse({
+        reqId: eventData.reqId,
+        type: 'sendPostResponse',
+        resType: 'reject',
+        error: {
+          message: error.message || JSON.stringify(error),
+        },
+      });
+    }
+    return;
+  }
+
   try {
     const res = await _handleReqMessage(eventData);
     sendPostResponse(res);
@@ -72,7 +91,32 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
   }
 };
 
-const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISendPostResponse> => {
+const _handleNativeMessage = async (
+  eventData: ISendNativeMessageRequest
+): Promise<ISendPostResponse> => {
+  console.log('_handleNativeMessage|eventData=', eventData);
+  const { native, reqId } = eventData;
+
+  console.log('_handleNativeMessage|native.type=', native.type);
+
+  switch (native.type) {
+    case 'userPushId': {
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'userPushId',
+          status: '',
+        },
+      };
+    }
+  }
+};
+
+const _handleReqMessage = async (
+  eventData: ISendPostMessageRequest
+): Promise<ISendPostResponse> => {
   const { req, reqId } = eventData;
 
   console.log('_handleReqMessage|req.type=', req.type);
