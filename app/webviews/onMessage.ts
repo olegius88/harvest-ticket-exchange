@@ -149,6 +149,19 @@ const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISend
     case 'currentUser': {
       const currentUserId = await getConfig('currentUserId');
       console.log('onMessage|currentUserId=', currentUserId);
+      if (!currentUserId) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type: 'currentUser',
+            status: 'noAuth',
+            userData: null,
+            kombainerData: null,
+          },
+        };
+      }
       //7851a25d-0ddb-4d4e-81bd-006d99036a2e
       const userData = await getUserById(currentUserId);
       console.log('onMessage|userData=', userData);
@@ -162,7 +175,7 @@ const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISend
         resType: 'resolve',
         res: {
           type: 'currentUser',
-          status: currentUserId === null ? 'noAuth' : 'authOk',
+          status: 'authOk',
           userData,
           kombainerData,
         },
