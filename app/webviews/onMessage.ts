@@ -10,6 +10,7 @@ import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } f
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
+import { NotFoundError } from '../exceptions/exceptionsClasses';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -163,8 +164,15 @@ const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISend
         };
       }
       //7851a25d-0ddb-4d4e-81bd-006d99036a2e
-      const userData = await getUserById(currentUserId);
-      console.log('onMessage|userData=', userData);
+      let userData = null;
+      try {
+        userData = await getUserById(currentUserId);
+        console.log('onMessage|userData=', userData);
+      } catch (e) {
+        if (!(e instanceof NotFoundError)) {
+          throw e;
+        }
+      }
 
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('onMessage|kombainerData=', kombainerData);
@@ -175,7 +183,7 @@ const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISend
         resType: 'resolve',
         res: {
           type: 'currentUser',
-          status: 'authOk',
+          status: !userData ? 'noAuth' : 'authOk',
           userData,
           kombainerData,
         },

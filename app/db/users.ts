@@ -5,6 +5,7 @@ import { database } from './database'; // <-- импортируем из еди
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { ICreateUserParams, ILoginUserParams, PositionOptionValue } from '../../global';
+import { NotFoundError } from '../exceptions/exceptionsClasses';
 
 /**
  * Интерфейс для полей в таблице users
@@ -139,7 +140,7 @@ export async function getUserById(userId: string): Promise<ICreateUsersParams> {
     const user = await collection.find(userId);
 
     if (!user) {
-      throw new Error(`Пользователь с ID ${userId} не найден.`);
+      throw new NotFoundError(`Пользователь с ID ${userId} не найден.`);
     }
 
     // Возвращаем чистый объект без циклических ссылок
