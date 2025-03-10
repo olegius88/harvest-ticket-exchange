@@ -1,8 +1,10 @@
-// app/webviews/onMessage.ts
+// Файл: app/webviews/onMessage.ts
+
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
   ICreateKombainerParams,
   ILoginUserParams,
+  ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
 } from '../../global';
@@ -35,7 +37,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
   }
   const nativeEventData = event.nativeEvent.data;
 
-  let eventData: ISendPostMessageRequest;
+  let eventData: ISendPostMessageRequest & ISendNativeMessageRequest;
   try {
     eventData = JSON.parse(nativeEventData);
   } catch (error) {
@@ -49,13 +51,13 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
-  if (!eventData?.req?.type) {
+  if (!eventData?.req?.type && !eventData?.native?.type) {
     console.error('onMessage|!req?.type|req=', eventData?.req);
     return;
   }
 
   try {
-    const res = await _handleMessage(eventData);
+    const res = await _handleReqMessage(eventData);
     sendPostResponse(res);
   } catch (error) {
     console.error('onMessage|login|error.message=', error.message || error);
@@ -73,7 +75,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
 const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISendPostResponse> => {
   const { req, reqId } = eventData;
 
-  console.log('_handleMessage|req?.type)=', req.type);
+  console.log('_handleReqMessage|req.type=', req.type);
 
   switch (req.type) {
     case 'login': {
@@ -186,6 +188,29 @@ const _handleMessage = async (eventData: ISendPostMessageRequest): Promise<ISend
           status: !userData ? 'noAuth' : 'authOk',
           userData,
           kombainerData,
+        },
+      };
+    }
+    case 'userPushId': {
+      const callNativeBridge = `
+    if (window.NativeBridge && window.NativeBridge.getPushUserId) {
+      const userId = window.NativeBridge.getPushUserId('${reqId}');
+      window.ReactNativeWebView.postMessage(userId);
+      console.log('onMessage|userPushId|userId=', userId);
+    } else {
+      console.log('onMessage|userPushId|NativeBridge не доступен');
+      window.ReactNativeWebView.postMessage("NativeBridge не доступен");
+    }
+    true; // обязательно true для корректной работы на Android
+  `;
+      webviewRef.current.injectJavaScript(callNativeBridge);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'userPushId',
+          status: '',
         },
       };
     }
