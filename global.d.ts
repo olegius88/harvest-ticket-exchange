@@ -3,7 +3,7 @@
 import { ICreateUsersParams } from './app/db/users';
 
 export interface ISendPostResponseUserPushId {
-  type: 'userPushId';
+  type: 'pushUserId';
   status: string | null;
 }
 
@@ -106,7 +106,12 @@ export interface ISendPostMessageStartHotspot {
 }
 
 export interface ISendPostMessageUserPushId {
-  type: 'userPushId';
+  type: 'pushUserId';
+  status: string;
+}
+
+export interface IVoid {
+  type: 'void';
 }
 
 export type ISendPostMessage =
