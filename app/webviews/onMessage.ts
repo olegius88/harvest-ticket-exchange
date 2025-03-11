@@ -12,7 +12,7 @@ import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } f
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
-import { NotFoundError } from '../exceptions/exceptionsClasses';
+import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -79,6 +79,9 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     const res = await _handleReqMessage(eventData);
     sendPostResponse(res);
   } catch (error) {
+    if (error instanceof VoidAndNotError) {
+      return;
+    }
     console.error('onMessage|login|error.message=', error.message || error);
     sendPostResponse({
       reqId: eventData.reqId,
@@ -100,14 +103,14 @@ const _handleNativeMessage = async (
   console.log('_handleNativeMessage|native.type=', native.type);
 
   switch (native.type) {
-    case 'userPushId': {
+    case 'pushUserId': {
       return {
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'userPushId',
-          status: '',
+          type: 'pushUserId',
+          status: native.status,
         },
       };
     }
@@ -235,28 +238,20 @@ const _handleReqMessage = async (
         },
       };
     }
-    case 'userPushId': {
+    case 'pushUserId': {
       const callNativeBridge = `
     if (window.NativeBridge && window.NativeBridge.getPushUserId) {
       const userId = window.NativeBridge.getPushUserId('${reqId}');
       window.ReactNativeWebView.postMessage(userId);
-      console.log('onMessage|userPushId|userId=', userId);
+      console.log('onMessage|pushUserId|userId=', userId);
     } else {
-      console.log('onMessage|userPushId|NativeBridge не доступен');
+      console.log('onMessage|pushUserId|NativeBridge не доступен');
       window.ReactNativeWebView.postMessage("NativeBridge не доступен");
     }
     true; // обязательно true для корректной работы на Android
   `;
       webviewRef.current.injectJavaScript(callNativeBridge);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: {
-          type: 'userPushId',
-          status: '',
-        },
-      };
+      throw new VoidAndNotError('');
     }
     case 'userData': {
       const currentUserId = await getConfig('currentUserId');
