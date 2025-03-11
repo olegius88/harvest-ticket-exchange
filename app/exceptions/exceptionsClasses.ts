@@ -26,6 +26,12 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class VoidAndNotError extends AppError {
+  constructor(errorMsg: string) {
+    super(ErrorTypes.NotFoundError, errorMsg);
+  }
+}
+
 export class SendError extends AppError {
   constructor(errorMsg: string) {
     super(ErrorTypes.SendError, errorMsg);
