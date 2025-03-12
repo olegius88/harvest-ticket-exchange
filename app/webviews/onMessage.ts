@@ -13,6 +13,7 @@ import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
+import { isHotspotEnabled } from '../wifi/hotspot';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -238,45 +239,23 @@ const _handleReqMessage = async (
         },
       };
     }
-    case 'startHotspot': {
-      const currentUserId = await getConfig('currentUserId');
-      console.log('onMessage|currentUserId=', currentUserId);
-      if (!currentUserId) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type: 'startHotspot',
-            ssid: 'ssid',
-            login: 'login',
-            password: 'password',
-          },
-        };
-      }
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
-      let userData = null;
+    case 'isHotspotEnabled': {
+      console.log('onMessage|isHotspotEnabled=');
       try {
-        userData = await getUserById(currentUserId);
-        console.log('onMessage|userData=', userData);
-      } catch (e) {
-        if (!(e instanceof NotFoundError)) {
-          throw e;
-        }
+        const state = await isHotspotEnabled();
+        console.log('onMessage|isHotspotEnabled|state=', state);
+      } catch (error) {
+        console.error('onMessage|isHotspotEnabled|error=', error);
       }
-
-      const kombainerData = await getKombainerByUserId(currentUserId);
-      console.log('onMessage|kombainerData=', kombainerData);
-
       return {
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'currentUser',
-          status: !userData ? 'noAuth' : 'authOk',
-          userData,
-          kombainerData,
+          type: 'isHotspotEnabled',
+          ssid: 'ssid',
+          login: 'login',
+          password: 'password',
         },
       };
     }
