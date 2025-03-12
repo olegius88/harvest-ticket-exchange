@@ -7,6 +7,13 @@ export interface ISendPostResponseUserPushId {
   status: string | null;
 }
 
+export interface ISendPostResponseIsHotspotEnabled {
+  type: 'isHotspotEnabled';
+  ssid: string;
+  login: string;
+  password: string;
+}
+
 /**
  * Интерфейс для ответа по запросу получения данных текущего пользователя.
  */
@@ -109,6 +116,9 @@ export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
   status: string;
 }
+export interface ISendPostMessageIsHotspotEnabled {
+  type: 'isHotspotEnabled';
+}
 
 export interface IVoid {
   type: 'void';
@@ -121,7 +131,18 @@ export type ISendPostMessage =
   | ISendPostMessageCreateKombainer
   | ISendPostMessageUserData
   | ISendPostMessageStartHotspot
-  | ISendPostMessageUserPushId;
+  | ISendPostMessageUserPushId
+  | ISendPostMessageIsHotspotEnabled;
+
+export type ISendPostResponseRes =
+  | ISendPostResponseCurrentUser
+  | ISendPostResponseRegistration
+  | ISendPostResponseLogin
+  | ISendPostResponseCreateKombainer
+  | ISendPostResponseUserData
+  | ISendPostResponseStartHotspot
+  | ISendPostResponseUserPushId
+  | ISendPostResponseIsHotspotEnabled;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
@@ -151,14 +172,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res:
-        | ISendPostResponseCurrentUser
-        | ISendPostResponseRegistration
-        | ISendPostResponseLogin
-        | ISendPostResponseCreateKombainer
-        | ISendPostResponseUserData
-        | ISendPostResponseStartHotspot
-        | ISendPostResponseUserPushId;
+      res: ISendPostResponseRes;
       error?: any; // При 'resolve' не используем поле 'error'
     }
   // игнорируемые сообщения
