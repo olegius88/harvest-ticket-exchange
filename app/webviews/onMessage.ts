@@ -238,6 +238,48 @@ const _handleReqMessage = async (
         },
       };
     }
+    case 'startHotspot': {
+      const currentUserId = await getConfig('currentUserId');
+      console.log('onMessage|currentUserId=', currentUserId);
+      if (!currentUserId) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type: 'startHotspot',
+            ssid: 'ssid',
+            login: 'login',
+            password: 'password',
+          },
+        };
+      }
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      let userData = null;
+      try {
+        userData = await getUserById(currentUserId);
+        console.log('onMessage|userData=', userData);
+      } catch (e) {
+        if (!(e instanceof NotFoundError)) {
+          throw e;
+        }
+      }
+
+      const kombainerData = await getKombainerByUserId(currentUserId);
+      console.log('onMessage|kombainerData=', kombainerData);
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'currentUser',
+          status: !userData ? 'noAuth' : 'authOk',
+          userData,
+          kombainerData,
+        },
+      };
+    }
     case 'pushUserId': {
       const callNativeBridge = `
     if (window.NativeBridge && window.NativeBridge.getPushUserId) {
