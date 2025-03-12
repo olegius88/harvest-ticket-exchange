@@ -13,7 +13,7 @@ import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
-import { isHotspotEnabled } from '../wifi/hotspot';
+import { isHotspotEnabled, setHotspotEnabled, setHotspotDisabled } from '../wifi/hotspot';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -254,7 +254,41 @@ const _handleReqMessage = async (
         res: {
           type: 'isHotspotEnabled',
           ssid: 'ssid',
-          login: 'login',
+          password: 'password',
+        },
+      };
+    }
+    case 'setHotspotEnabled': {
+      console.log('onMessage|setHotspotEnabled=');
+      const state = await setHotspotEnabled();
+      console.log('onMessage|setHotspotEnabled|state=', state);
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'setHotspotEnabled',
+          ssid: state.ssid,
+          password: state.password,
+        },
+      };
+    }
+    case 'setHotspotDisabled': {
+      console.log('onMessage|setHotspotDisabled=');
+      try {
+        const state = await setHotspotDisabled();
+        console.log('onMessage|setHotspotDisabled|state=', state);
+      } catch (error) {
+        console.error('onMessage|setHotspotDisabled|error=', error);
+      }
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'setHotspotEnabled',
+          ssid: 'ssid',
           password: 'password',
         },
       };
