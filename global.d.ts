@@ -10,7 +10,18 @@ export interface ISendPostResponseUserPushId {
 export interface ISendPostResponseIsHotspotEnabled {
   type: 'isHotspotEnabled';
   ssid: string;
-  login: string;
+  password: string;
+}
+
+export interface ISendPostResponseSetHotspotEnabled {
+  type: 'setHotspotEnabled';
+  ssid: string;
+  password: string;
+}
+
+export interface ISendPostResponseSetHotspotDisabled {
+  type: 'setHotspotDisabled';
+  ssid: string;
   password: string;
 }
 
@@ -61,7 +72,6 @@ export interface ISendPostResponseLogin {
 export interface ISendPostResponseStartHotspot {
   type: 'startHotspot';
   ssid: string;
-  login: string;
   password: string;
 }
 
@@ -119,6 +129,12 @@ export interface ISendPostMessageUserPushId {
 export interface ISendPostMessageIsHotspotEnabled {
   type: 'isHotspotEnabled';
 }
+export interface ISendPostMessageSetHotspotEnabled {
+  type: 'setHotspotEnabled';
+}
+export interface ISendPostMessageSetHotspotDisabled {
+  type: 'setHotspotDisabled';
+}
 
 export interface IVoid {
   type: 'void';
@@ -132,7 +148,9 @@ export type ISendPostMessage =
   | ISendPostMessageUserData
   | ISendPostMessageStartHotspot
   | ISendPostMessageUserPushId
-  | ISendPostMessageIsHotspotEnabled;
+  | ISendPostMessageIsHotspotEnabled
+  | ISendPostMessageSetHotspotEnabled
+  | ISendPostMessageSetHotspotDisabled;
 
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
@@ -142,7 +160,9 @@ export type ISendPostResponseRes =
   | ISendPostResponseUserData
   | ISendPostResponseStartHotspot
   | ISendPostResponseUserPushId
-  | ISendPostResponseIsHotspotEnabled;
+  | ISendPostResponseIsHotspotEnabled
+  | ISendPostResponseSetHotspotEnabled
+  | ISendPostResponseSetHotspotDisabled;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
