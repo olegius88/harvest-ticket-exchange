@@ -9,8 +9,7 @@ export interface ISendPostResponseUserPushId {
 
 export interface ISendPostResponseIsHotspotEnabled {
   type: 'isHotspotEnabled';
-  ssid: string;
-  password: string;
+  state: boolean;
 }
 
 export interface ISendPostResponseSetHotspotEnabled {
@@ -21,8 +20,6 @@ export interface ISendPostResponseSetHotspotEnabled {
 
 export interface ISendPostResponseSetHotspotDisabled {
   type: 'setHotspotDisabled';
-  ssid: string;
-  password: string;
 }
 
 /**
@@ -197,7 +194,7 @@ export type ISendPostResponse =
     }
   // игнорируемые сообщения
   | {
-      type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid';
+      type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid' | 'webpackHot';
       reqId?: string;
       resType?: 'reject';
       error?: any;

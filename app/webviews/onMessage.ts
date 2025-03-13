@@ -13,7 +13,7 @@ import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
-import { isHotspotEnabled, setHotspotEnabled, setHotspotDisabled } from '../wifi/hotspot';
+import { isHotspotEnabled, setHotspotDisabled, setHotspotEnabled } from '../wifi/hotspot';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -124,8 +124,9 @@ const _handleReqMessage = async (
   const { req, reqId } = eventData;
 
   console.log('_handleReqMessage|req.type=', req.type);
+  const { type } = req;
 
-  switch (req.type) {
+  switch (type) {
     case 'login': {
       console.log('onMessage|login|req.data=', req.data);
 
@@ -155,7 +156,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'login',
+          type,
           userId,
         },
       };
@@ -174,7 +175,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'registration',
+          type,
           userId,
         },
       };
@@ -193,7 +194,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'createKombainer',
+          type,
         },
       };
     }
@@ -232,7 +233,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'currentUser',
+          type,
           status: !userData ? 'noAuth' : 'authOk',
           userData,
           kombainerData,
@@ -241,8 +242,9 @@ const _handleReqMessage = async (
     }
     case 'isHotspotEnabled': {
       console.log('onMessage|isHotspotEnabled=');
+      let state = false;
       try {
-        const state = await isHotspotEnabled();
+        state = await isHotspotEnabled();
         console.log('onMessage|isHotspotEnabled|state=', state);
       } catch (error) {
         console.error('onMessage|isHotspotEnabled|error=', error);
@@ -252,9 +254,8 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'isHotspotEnabled',
-          ssid: 'ssid',
-          password: 'password',
+          type,
+          state,
         },
       };
     }
@@ -268,7 +269,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'setHotspotEnabled',
+          type,
           ssid: state.ssid,
           password: state.password,
         },
@@ -276,20 +277,13 @@ const _handleReqMessage = async (
     }
     case 'setHotspotDisabled': {
       console.log('onMessage|setHotspotDisabled=');
-      try {
-        const state = await setHotspotDisabled();
-        console.log('onMessage|setHotspotDisabled|state=', state);
-      } catch (error) {
-        console.error('onMessage|setHotspotDisabled|error=', error);
-      }
+      await setHotspotDisabled();
       return {
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'setHotspotEnabled',
-          ssid: 'ssid',
-          password: 'password',
+          type,
         },
       };
     }
@@ -323,7 +317,7 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'userData',
+          type,
           userData,
         },
       };
