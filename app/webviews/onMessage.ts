@@ -14,6 +14,7 @@ import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { isHotspotEnabled, setHotspotDisabled, setHotspotEnabled } from '../wifi/hotspot';
+import { TetheringError } from '@react-native-tethering/wifi';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -63,7 +64,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
       const res = await _handleNativeMessage(eventData);
       sendPostResponse(res);
     } catch (error) {
-      console.error('onMessage|login|error.message=', error.message || error);
+      console.error('onMessage|_handleNativeMessage|error=', error.message || error);
       sendPostResponse({
         reqId: eventData.reqId,
         type: 'sendPostResponse',
@@ -83,7 +84,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     if (error instanceof VoidAndNotError) {
       return;
     }
-    console.error('onMessage|login|error.message=', error.message || error);
+    console.error('onMessage|_handleReqMessage|error=', error.message || error);
     sendPostResponse({
       reqId: eventData.reqId,
       type: 'sendPostResponse',
@@ -261,8 +262,27 @@ const _handleReqMessage = async (
     }
     case 'setHotspotEnabled': {
       console.log('onMessage|setHotspotEnabled=');
-      const state = await setHotspotEnabled();
+
+      let state;
+      try {
+        state = await setHotspotEnabled();
+      } catch (error) {
+        if (error instanceof TetheringError) {
+          console.error('onMessage|setHotspotEnabled|TetheringError|error=', error);
+        } else {
+          console.error('onMessage|setHotspotEnabled|просто|error=', error);
+          console.error('onMessage|setHotspotEnabled|просто|error=', JSON.stringify(error));
+        }
+        if (error.message === 'Caller already has an active LocalOnlyHotspot request') {
+          throw new Error('hotspot_has_active_request');
+        }
+        throw error;
+      }
       console.log('onMessage|setHotspotEnabled|state=', state);
+
+      if (!state) {
+        throw new Error('hotspot_not_enabled');
+      }
 
       return {
         reqId,

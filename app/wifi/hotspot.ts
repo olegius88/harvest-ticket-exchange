@@ -17,17 +17,7 @@ export const isHotspotEnabled = async () => {
 };
 
 export const setHotspotEnabled = async (): Promise<Network> => {
-  try {
-    const state = await HotspotManager.setLocalHotspotEnabled(true);
-    console.log('setHotspotEnabled|state=', state);
-    // ToastAndroid.show(`setHotspotEnabled state: ${state}`, ToastAndroid.SHORT);
-    return state;
-  } catch (error) {
-    // if (error instanceof TetheringError) {
-    //   ToastAndroid.show(error.message, ToastAndroid.LONG);
-    // }
-    console.error('setHotspotEnabled|error=', error);
-  }
+  return HotspotManager.setLocalHotspotEnabled(true);
 };
 
 export const setHotspotDisabled = async (): Promise<void> => {
