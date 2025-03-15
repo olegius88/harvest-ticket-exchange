@@ -9,7 +9,7 @@ export interface ISendPostResponseUserPushId {
 
 export interface ISendPostResponseIsHotspotEnabled {
   type: 'isHotspotEnabled';
-  state: boolean;
+  status: 'stopped' | 'running';
 }
 
 export interface ISendPostResponseSetHotspotEnabled {
@@ -132,6 +132,9 @@ export interface ISendPostMessageSetHotspotEnabled {
 export interface ISendPostMessageSetHotspotDisabled {
   type: 'setHotspotDisabled';
 }
+export interface ISendPostMessageSendPostResponse {
+  type: 'sendPostResponse';
+}
 
 export interface IVoid {
   type: 'void';
@@ -147,7 +150,8 @@ export type ISendPostMessage =
   | ISendPostMessageUserPushId
   | ISendPostMessageIsHotspotEnabled
   | ISendPostMessageSetHotspotEnabled
-  | ISendPostMessageSetHotspotDisabled;
+  | ISendPostMessageSetHotspotDisabled
+  | ISendPostMessageSendPostResponse;
 
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
@@ -166,7 +170,7 @@ export interface ISendPostMessageRequest {
   reqId: string;
 }
 
-export type ISendNativeMessage = ISendPostMessageUserPushId;
+export type ISendNativeMessage = ISendPostMessageUserPushId | ISendPostMessageSendPostResponse;
 
 export interface ISendNativeMessageRequest {
   native: ISendNativeMessage;
