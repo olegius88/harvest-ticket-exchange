@@ -2,6 +2,8 @@
 package com.talonkombainera
 
 import android.net.wifi.WifiManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
 import com.facebook.react.uimanager.ThemedReactContext
@@ -10,6 +12,9 @@ import com.reactnativecommunity.webview.RNCWebViewManager
 import com.reactnativecommunity.webview.RNCWebViewWrapper
 import com.talonkombainera.maps.PushUserIdResponse
 import com.talonkombainera.maps.PushUserIdResponseNative
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Кастомный менеджер WebView, который расширяет стандартный RNCWebViewManager.
@@ -32,9 +37,10 @@ class CustomWebViewManager : RNCWebViewManager() {
 
     /**
      * Класс JavaScriptBridge содержит методы, доступные для вызова из JavaScript.
-     * Здесь реализованы три метода:
+     * Здесь реализованы четыре метода:
      * 1. getPushUserId – пример вызова нативного метода, возвращающего pushUserId.
-     * 2. startHotspot – инициирует создание локального хотспота.
+     * 2. startHotspot – инициирует создание локального хотспота и возвращает результат,
+     *    когда он уже известен (успех или ошибка).
      * 3. stopHotspot – останавливает запущенный хотспот.
      * 4. getHotspotStatus – возвращает статус запущенного хотспота.
      */
@@ -60,54 +66,78 @@ class CustomWebViewManager : RNCWebViewManager() {
 
         /**
          * Метод startHotspot вызывается из JavaScript для создания локального хотспота.
-         * Устанавливается обратный вызов для получения событий, и запускается создание хотспота.
-         * Результат возвращается в виде JSON.
+         * Для того чтобы обработчик обратного вызова успел сработать, запуск хотспота
+         * производится на главном потоке, а ожидание результата происходит через CountDownLatch.
          *
-         * Внимание! Подробности (SSID, пароль, ошибки и т.п.) логируются в Logcat.
+         * Результат (успешное создание или ошибка) возвращается в виде JSON.
          */
         @JavascriptInterface
         fun startHotspot(reqId: String): String {
             Log.d("CustomWebViewManager", "startHotspot вызван из JS, reqId: $reqId")
 
-            // Устанавливаем обратный вызов для получения уведомлений о событиях хотспота
-            mainWifi.callback = object : MainWifi.MainWifiCallback {
-                override fun onHotspotStarted(
-                    ssid: String,
-                    password: String,
-                    key: ByteArray,
-                    reservation: WifiManager.LocalOnlyHotspotReservation
-                ) {
-                    Log.d("CustomWebViewManager", "startHotspot|Hotspot запущен. SSID: $ssid, Пароль: $password")
-                    // Здесь можно добавить уведомление JavaScript о запуске хотспота
-                }
+            val latch = CountDownLatch(1)
+            val result = AtomicReference<String>("")
+            val isStarted = AtomicReference(false)
 
-                override fun onHotspotFailed(reason: Int) {
-                    Log.e("CustomWebViewManager", "startHotspot|Ошибка запуска hotspot, код ошибки: $reason")
-                    // Здесь можно добавить уведомление JavaScript об ошибке запуска
-                }
+            // Запускаем код на главном потоке, чтобы не блокировать UI и дать возможность обработчику сработать
+            Handler(Looper.getMainLooper()).post {
+                mainWifi.callback = object : MainWifi.MainWifiCallback {
+                    override fun onHotspotStarted(
+                        ssid: String,
+                        password: String,
+                        key: ByteArray,
+                        reservation: WifiManager.LocalOnlyHotspotReservation
+                    ) {
+                        Log.d("CustomWebViewManager", "startHotspot|Hotspot запущен. SSID: $ssid, Пароль: $password")
+                        isStarted.set(true)
+                        val jsonResult = Gson().toJson(
+                            mapOf(
+                                "reqId" to reqId,
+                                "status" to "running",
+                                "ssid" to ssid,
+                                "password" to password
+                            )
+                        )
+                        result.set(jsonResult)
+                        latch.countDown()
+                    }
 
-                override fun onHotspotStopped() {
-                    Log.d("CustomWebViewManager", "startHotspot|Hotspot остановлен")
-                    // Здесь можно добавить уведомление JavaScript об остановке хотспота
-                }
+                    override fun onHotspotFailed(reason: Int) {
+                        Log.e("CustomWebViewManager", "startHotspot|Ошибка запуска hotspot, код ошибки: $reason")
+                        if (isStarted.get()) {
+                            Log.e("CustomWebViewManager", "startHotspot|Ошибка запуска hotspot|isStarted.get()==true")
+                            return
+                        }
+                        val jsonResult = Gson().toJson(
+                            mapOf(
+                                "reqId" to reqId,
+                                "status" to "error",
+                                "error" to reason
+                            )
+                        )
+                        result.set(jsonResult)
+                        latch.countDown()
+                    }
 
-                override fun onHotspotJoined() {
-                    Log.d("CustomWebViewManager", "startHotspot|Устройство подключилось к hotspot")
-                    // Здесь можно добавить уведомление JavaScript о подключении
-                }
+                    override fun onHotspotStopped() {
+                        Log.d("CustomWebViewManager", "startHotspot|Hotspot остановлен")
+                    }
 
-                override fun onJoinFailed(error: String) {
-                    Log.e("CustomWebViewManager", "startHotspot|Ошибка подключения к hotspot: $error")
-                    // Здесь можно добавить уведомление JavaScript об ошибке подключения
+                    override fun onHotspotJoined() {
+                        Log.d("CustomWebViewManager", "startHotspot|Устройство подключилось к hotspot")
+                    }
+
+                    override fun onJoinFailed(error: String) {
+                        Log.e("CustomWebViewManager", "startHotspot|Ошибка подключения к hotspot: $error")
+                    }
                 }
+                // Запускаем хотспот на главном потоке
+                mainWifi.startHotspot()
             }
 
-            // Запускаем хотспот
-            mainWifi.startHotspot()
-
-            // Возвращаем JSON-ответ о том, что запуск хотспота инициирован
-            val responseMap = mapOf("reqId" to reqId, "status" to "startHotspot|Hotspot запуск инициирован")
-            return Gson().toJson(responseMap)
+            // Ожидаем результат с таймаутом (например, 30 секунд)
+            latch.await(30, TimeUnit.SECONDS)
+            return result.get()
         }
 
         /**
