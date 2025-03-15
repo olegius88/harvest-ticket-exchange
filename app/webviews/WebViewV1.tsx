@@ -78,6 +78,7 @@ const WebViewV1 = forwardRef<WebView, WebViewV1Props>(({ url }, ref): ReactEleme
     // При необходимости можно реализовать логику отображения прогресса загрузки
   };
 
+  // Функция для расчёта отступа сверху (учитывая статус-бар)
   const getHeadMarginTop = (): number => {
     if (Platform.OS === 'ios') {
       if (StatusBar.currentHeight) {
