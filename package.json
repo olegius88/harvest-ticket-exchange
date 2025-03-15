@@ -10,21 +10,25 @@
     "start": "react-native start",
     "test": "jest"
   },
+  "type": "module",
   "dependencies": {
     "react": "18.3.1",
     "repomix": "0.2.29 "
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.13.10",
     "@types/react": "19.0.10",
     "@typescript-eslint/eslint-plugin": "8.24.1",
     "@typescript-eslint/parser": "8.24.1",
     "eslint": "9.21.0",
     "eslint-config-prettier": "10.0.1",
     "eslint-plugin-prettier": "5.2.3",
+    "fs-extra": "^11.3.0",
     "prettier": "3.5.2",
+    "ts-loader": "9.5.2",
     "typescript": "5.7.3",
-    "typescript-eslint": "8.24.1",
-    "ts-loader": "9.5.2"
+    "typescript-eslint": "8.24.1"
   },
   "engines": {
     "node": ">=18"
