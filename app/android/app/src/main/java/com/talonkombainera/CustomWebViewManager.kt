@@ -1,4 +1,4 @@
-// Файл: CustomWebViewManager.kt
+// java/com/talonkombainera/CustomWebViewManager.kt
 package com.talonkombainera
 
 import android.net.wifi.WifiManager

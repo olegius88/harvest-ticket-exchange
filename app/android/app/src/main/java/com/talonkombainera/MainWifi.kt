@@ -1,4 +1,4 @@
-// Файл: MainWifi.kt
+// java/com/talonkombainera/MainWifi.kt
 package com.talonkombainera
 
 // Импорт необходимых классов и пакетов

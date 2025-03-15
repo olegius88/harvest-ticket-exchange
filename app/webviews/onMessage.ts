@@ -14,7 +14,6 @@ import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { isHotspotEnabled, setHotspotDisabled, setHotspotEnabled } from '../wifi/hotspot';
-import { TetheringError } from '@react-native-tethering/wifi';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -263,37 +262,51 @@ const _handleReqMessage = async (
     case 'setHotspotEnabled': {
       console.log('onMessage|setHotspotEnabled=');
 
-      let state;
-      try {
-        state = await setHotspotEnabled();
-      } catch (error) {
-        if (error instanceof TetheringError) {
-          console.error('onMessage|setHotspotEnabled|TetheringError|error=', error);
-        } else {
-          console.error('onMessage|setHotspotEnabled|просто|error=', error);
-          console.error('onMessage|setHotspotEnabled|просто|error=', JSON.stringify(error));
-        }
-        if (error.message === 'Caller already has an active LocalOnlyHotspot request') {
-          throw new Error('hotspot_has_active_request');
-        }
-        throw error;
-      }
-      console.log('onMessage|setHotspotEnabled|state=', state);
+      const callNativeBridge = `
+    if (window.NativeBridge && window.NativeBridge.startHotspot) {
+      const userId = window.NativeBridge.startHotspot('${reqId}');
+      window.ReactNativeWebView.postMessage(userId);
+      console.log('onMessage|startHotspot|userId=', userId);
+    } else {
+      console.log('onMessage|startHotspot|NativeBridge не доступен');
+      window.ReactNativeWebView.postMessage("NativeBridge не доступен");
+    }
+    true; // обязательно true для корректной работы на Android
+  `;
+      webviewRef.current.injectJavaScript(callNativeBridge);
+      throw new VoidAndNotError('');
 
-      if (!state) {
-        throw new Error('hotspot_not_enabled');
-      }
-
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: {
-          type,
-          ssid: state.ssid,
-          password: state.password,
-        },
-      };
+      // let state;
+      // try {
+      //   state = await setHotspotEnabled();
+      // } catch (error) {
+      //   if (error instanceof TetheringError) {
+      //     console.error('onMessage|setHotspotEnabled|TetheringError|error=', error);
+      //   } else {
+      //     console.error('onMessage|setHotspotEnabled|просто|error=', error);
+      //     console.error('onMessage|setHotspotEnabled|просто|error=', JSON.stringify(error));
+      //   }
+      //   if (error.message === 'Caller already has an active LocalOnlyHotspot request') {
+      //     throw new Error('hotspot_has_active_request');
+      //   }
+      //   throw error;
+      // }
+      // console.log('onMessage|setHotspotEnabled|state=', state);
+      //
+      // if (!state) {
+      //   throw new Error('hotspot_not_enabled');
+      // }
+      //
+      // return {
+      //   reqId,
+      //   type: 'sendPostResponse',
+      //   resType: 'resolve',
+      //   res: {
+      //     type,
+      //     ssid: state.ssid,
+      //     password: state.password,
+      //   },
+      // };
     }
     case 'setHotspotDisabled': {
       console.log('onMessage|setHotspotDisabled=');
