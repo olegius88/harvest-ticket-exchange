@@ -13,6 +13,7 @@ import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
+import { PermissionsAndroid, Platform } from 'react-native';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -160,6 +161,20 @@ const _handleReqMessage = async (
         res: {
           type,
           userId,
+        },
+      };
+    }
+    case 'checkAndRequestPermissions': {
+      console.log('onMessage|checkAndRequestPermissions|req.data=');
+
+      await checkAndRequestPermissions();
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type,
         },
       };
     }
@@ -370,4 +385,27 @@ const _handleReqMessage = async (
       console.error('onMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(`onMessage|eventData|switch|default|eventData=${JSON.stringify(eventData)}`);
   }
+};
+
+/**
+ * Проверка и запрос необходимых разрешений для работы с Wi‑Fi.
+ * Если платформа не Android, возвращается true.
+ */
+const checkAndRequestPermissions = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android') {
+    // Для не Android платформ разрешения не требуются
+    return true;
+  }
+  const permissions = [
+    PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+  ];
+  const granted = await PermissionsAndroid.requestMultiple(permissions);
+  // Проверяем, что все разрешения предоставлены
+  const allGranted = permissions.every(
+    (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
+  );
+  console.log('onMessage|checkAndRequestPermissions|allGranted=', allGranted);
+  return allGranted;
 };

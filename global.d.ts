@@ -22,6 +22,10 @@ export interface ISendPostResponseSetHotspotDisabled {
   type: 'setHotspotDisabled';
 }
 
+export interface ISendPostResponseCheckAndRequestPermissions {
+  type: 'checkAndRequestPermissions';
+}
+
 /**
  * Интерфейс для ответа по запросу получения данных текущего пользователя.
  */
@@ -123,6 +127,9 @@ export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
   status: string;
 }
+export interface ISendPostMessageCheckAndRequestPermissions {
+  type: 'checkAndRequestPermissions';
+}
 export interface ISendPostMessageIsHotspotEnabled {
   type: 'isHotspotEnabled';
 }
@@ -151,7 +158,8 @@ export type ISendPostMessage =
   | ISendPostMessageIsHotspotEnabled
   | ISendPostMessageSetHotspotEnabled
   | ISendPostMessageSetHotspotDisabled
-  | ISendPostMessageSendPostResponse;
+  | ISendPostMessageSendPostResponse
+  | ISendPostMessageCheckAndRequestPermissions;
 
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
@@ -163,7 +171,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseUserPushId
   | ISendPostResponseIsHotspotEnabled
   | ISendPostResponseSetHotspotEnabled
-  | ISendPostResponseSetHotspotDisabled;
+  | ISendPostResponseSetHotspotDisabled
+  | ISendPostResponseCheckAndRequestPermissions;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
