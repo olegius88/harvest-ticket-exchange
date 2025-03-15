@@ -13,7 +13,6 @@ import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
 import { createKombainer, getKombainerByUserId } from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
-import { isHotspotEnabled, setHotspotDisabled, setHotspotEnabled } from '../wifi/hotspot';
 
 export const webviewRef = useRef<WebView>(null);
 
@@ -53,7 +52,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
   }
 
   if (!eventData?.req?.type && !eventData?.native?.type) {
-    console.error('onMessage|!req?.type|req=', eventData?.req);
+    console.error('onMessage|!req?.type|req=', JSON.stringify(eventData));
     return;
   }
 
@@ -104,6 +103,9 @@ const _handleNativeMessage = async (
   console.log('_handleNativeMessage|native.type=', native.type);
 
   switch (native.type) {
+    case 'sendPostResponse': {
+      return eventData.native as unknown as ISendPostResponse;
+    }
     case 'pushUserId': {
       return {
         reqId,
@@ -244,9 +246,17 @@ const _handleReqMessage = async (
       console.log('onMessage|isHotspotEnabled=');
       const callNativeBridge = `
     if (window.NativeBridge && window.NativeBridge.getHotspotStatus) {
-      const userId = window.NativeBridge.getHotspotStatus('${reqId}');
-      window.ReactNativeWebView.postMessage(userId);
-      console.log('onMessage|getHotspotStatus|userId=', userId);
+      const statusRes = window.NativeBridge.getHotspotStatus('${reqId}');
+      window.ReactNativeWebView.postMessage(JSON.stringify({native:{
+         reqId: '${reqId}',
+         type: 'sendPostResponse',
+         resType: 'resolve',
+         res: {
+           type: 'isHotspotEnabled',
+           state: JSON.parse(statusRes).status,
+        },
+      }}));
+      console.log('onMessage|getHotspotStatus|statusRes=', statusRes);
     } else {
       console.log('onMessage|getHotspotStatus|NativeBridge не доступен');
       window.ReactNativeWebView.postMessage("NativeBridge не доступен");
@@ -255,31 +265,38 @@ const _handleReqMessage = async (
   `;
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
-      // let state = false;
-      // try {
-      //   state = await isHotspotEnabled();
-      //   console.log('onMessage|isHotspotEnabled|state=', state);
-      // } catch (error) {
-      //   console.error('onMessage|isHotspotEnabled|error=', error);
-      // }
-      // return {
-      //   reqId,
-      //   type: 'sendPostResponse',
-      //   resType: 'resolve',
-      //   res: {
-      //     type,
-      //     state,
-      //   },
-      // };
     }
     case 'setHotspotEnabled': {
       console.log('onMessage|setHotspotEnabled=');
 
       const callNativeBridge = `
     if (window.NativeBridge && window.NativeBridge.startHotspot) {
-      const userId = window.NativeBridge.startHotspot('${reqId}');
-      window.ReactNativeWebView.postMessage(userId);
-      console.log('onMessage|startHotspot|userId=', userId);
+      const startRes = JSON.parse(window.NativeBridge.startHotspot('${reqId}'));
+      console.log('onMessage|startHotspot|startRes=', startRes);
+      if (startRes.status === 'error') {
+        window.ReactNativeWebView.postMessage(JSON.stringify({native:{
+           reqId: '${reqId}',
+           type: 'sendPostResponse',
+           resType: 'reject',
+           res: {
+             type: 'setHotspotEnabled',
+             status: startRes.status,
+             error: startRes.error,
+          },
+        }}));
+      } else {
+        window.ReactNativeWebView.postMessage(JSON.stringify({native:{
+           reqId: '${reqId}',
+           type: 'sendPostResponse',
+           resType: 'resolve',
+           res: {
+             type: 'setHotspotEnabled',
+             status: startRes.status,
+             ssid: startRes.ssid,
+             password: startRes.password,
+          },
+        }}));
+      }
     } else {
       console.log('onMessage|startHotspot|NativeBridge не доступен');
       window.ReactNativeWebView.postMessage("NativeBridge не доступен");
@@ -288,47 +305,23 @@ const _handleReqMessage = async (
   `;
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
-
-      // let state;
-      // try {
-      //   state = await setHotspotEnabled();
-      // } catch (error) {
-      //   if (error instanceof TetheringError) {
-      //     console.error('onMessage|setHotspotEnabled|TetheringError|error=', error);
-      //   } else {
-      //     console.error('onMessage|setHotspotEnabled|просто|error=', error);
-      //     console.error('onMessage|setHotspotEnabled|просто|error=', JSON.stringify(error));
-      //   }
-      //   if (error.message === 'Caller already has an active LocalOnlyHotspot request') {
-      //     throw new Error('hotspot_has_active_request');
-      //   }
-      //   throw error;
-      // }
-      // console.log('onMessage|setHotspotEnabled|state=', state);
-      //
-      // if (!state) {
-      //   throw new Error('hotspot_not_enabled');
-      // }
-      //
-      // return {
-      //   reqId,
-      //   type: 'sendPostResponse',
-      //   resType: 'resolve',
-      //   res: {
-      //     type,
-      //     ssid: state.ssid,
-      //     password: state.password,
-      //   },
-      // };
     }
     case 'setHotspotDisabled': {
       console.log('onMessage|setHotspotDisabled=');
 
       const callNativeBridge = `
     if (window.NativeBridge && window.NativeBridge.stopHotspot) {
-      const userId = window.NativeBridge.stopHotspot('${reqId}');
-      window.ReactNativeWebView.postMessage(userId);
-      console.log('onMessage|stopHotspot|userId=', userId);
+      const stopRes = window.NativeBridge.stopHotspot('${reqId}');
+      window.ReactNativeWebView.postMessage(JSON.stringify({native:{
+        reqId: '${reqId}',
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type: 'setHotspotDisabled',
+          state: JSON.parse(stopRes).status,
+        },
+      }}));
+      console.log('onMessage|stopHotspot|stopRes=', stopRes);
     } else {
       console.log('onMessage|stopHotspot|NativeBridge не доступен');
       window.ReactNativeWebView.postMessage("NativeBridge не доступен");
@@ -337,15 +330,6 @@ const _handleReqMessage = async (
   `;
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
-      // await setHotspotDisabled();
-      // return {
-      //   reqId,
-      //   type: 'sendPostResponse',
-      //   resType: 'resolve',
-      //   res: {
-      //     type,
-      //   },
-      // };
     }
     case 'pushUserId': {
       const callNativeBridge = `
