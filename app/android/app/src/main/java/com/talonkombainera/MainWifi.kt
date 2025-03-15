@@ -34,9 +34,9 @@ class MainWifi(private val context: Context) {
         /**
          * Вызывается при успешном запуске локального хотспота.
          *
-         * @param ssid       Имя (SSID) запущенного хотспота.
-         * @param password   Пароль запущенного хотспота.
-         * @param key        Ключ, сгенерированный на основе пароля с использованием SHA-256.
+         * @param ssid        Имя (SSID) запущенного хотспота.
+         * @param password    Пароль запущенного хотспота.
+         * @param key         Ключ, сгенерированный на основе пароля с использованием SHA-256.
          * @param reservation Объект-резервация запущенного хотспота.
          */
         fun onHotspotStarted(ssid: String, password: String, key: ByteArray, reservation: WifiManager.LocalOnlyHotspotReservation)
@@ -183,6 +183,15 @@ class MainWifi(private val context: Context) {
         hotspotReservation?.close()
         hotspotReservation = null
         callback?.onHotspotStopped()
+    }
+
+    /**
+     * Метод для получения статуса хотспота.
+     *
+     * @return "running", если хотспот запущен, иначе "stopped".
+     */
+    fun getHotspotStatus(): String {
+        return if (hotspotReservation != null) "running" else "stopped"
     }
 
     /**
