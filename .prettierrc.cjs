@@ -1,4 +1,4 @@
-// .prettierrc.js
+// .prettierrc.cjs
 module.exports = {
     singleQuote: true,
     arrowParens: 'always',
