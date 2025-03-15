@@ -24,6 +24,7 @@
     "@react-native-tethering/wifi": "^1.0.0",
     "@types/uuid": "10.0.0",
     "react-native": "0.78.0",
+    "react-native-fs": "^2.20.0",
     "react-native-get-random-values": "^1.11.0",
     "react-native-sqlite-storage": "6.0.1",
     "react-native-uuid": "^2.0.3",
