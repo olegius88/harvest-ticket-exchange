@@ -106,6 +106,11 @@ export interface ISendPostResponseStartHotspot {
   password: string;
 }
 
+export interface ISendPostResponseOpenQRScanner {
+  type: 'openQRScanner';
+  status: string;
+}
+
 /**
  * Интерфейс для запроса регистрации.
  */
@@ -171,6 +176,10 @@ export interface ISendPostMessageStartHotspot {
   type: 'startHotspot';
 }
 
+export interface ISendPostMessageOpenQRScanner {
+  type: 'openQRScanner';
+}
+
 export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
   status: string;
@@ -203,6 +212,7 @@ export type ISendPostMessage =
   | ISendPostMessageEditKombainer
   | ISendPostMessageUserData
   | ISendPostMessageStartHotspot
+  | ISendPostMessageOpenQRScanner
   | ISendPostMessageUserPushId
   | ISendPostMessageIsHotspotEnabled
   | ISendPostMessageSetHotspotEnabled
@@ -220,6 +230,7 @@ export type ISendPostResponseRes =
   | ISendPostResponseEditKombainer
   | ISendPostResponseUserData
   | ISendPostResponseStartHotspot
+  | ISendPostResponseOpenQRScanner
   | ISendPostResponseUserPushId
   | ISendPostResponseIsHotspotEnabled
   | ISendPostResponseSetHotspotEnabled

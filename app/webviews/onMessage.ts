@@ -11,7 +11,7 @@
 
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { useRef } from 'react';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import {
   ICreateKombainerParams,
   ICreateVoditelParams,
@@ -102,8 +102,9 @@ const _handleReqMessage = async (
 ): Promise<ISendPostResponse> => {
   const { req, reqId } = eventData;
   console.log('_handleReqMessage|req.type=', req.type);
+  const type = req.type;
 
-  switch (req.type) {
+  switch (type) {
     case 'login': {
       const loginData = req.data as ILoginUserParams;
       console.log('login|req.data=', loginData);
@@ -121,7 +122,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'login', userId },
+        res: { type, userId },
       };
     }
     case 'checkAndRequestPermissions': {
@@ -142,7 +143,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'registration', userId },
+        res: { type, userId },
       };
     }
     case 'createKombainer': {
@@ -154,7 +155,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'createKombainer' },
+        res: { type },
       };
     }
     case 'editKombainer': {
@@ -173,7 +174,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'editKombainer' },
+        res: { type },
       };
     }
     case 'createVoditel': {
@@ -185,7 +186,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'createVoditel' },
+        res: { type },
       };
     }
     case 'editVoditel': {
@@ -199,7 +200,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'editVoditel' },
+        res: { type },
       };
     }
     case 'currentUser': {
@@ -211,7 +212,7 @@ const _handleReqMessage = async (
           type: 'sendPostResponse',
           resType: 'resolve',
           res: {
-            type: 'currentUser',
+            type,
             status: 'noAuth',
             userData: null,
             kombainerData: null,
@@ -235,12 +236,24 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
-          type: 'currentUser',
+          type,
           status: userData ? 'authOk' : 'noAuth',
           userData,
           kombainerData,
           voditelData,
         },
+      };
+    }
+    // Новый кейс для открытия сканера QR
+    case 'openQRScanner': {
+      console.log('openQRScanner|req.data=', req);
+      // Отправляем событие, которое можно отловить в главном компоненте приложения для навигации на экран сканера QR
+      DeviceEventEmitter.emit('openQRScanner');
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, status: 'scannerOpened' },
       };
     }
     case 'isHotspotEnabled': {
@@ -346,7 +359,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'userData', userData },
+        res: { type, userData },
       };
     }
     default:
