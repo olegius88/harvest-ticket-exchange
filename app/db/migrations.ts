@@ -1,22 +1,22 @@
-// migrations.ts
+// app/db/migrations.ts
 import { addColumns, createTable, schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 
-// Миграция для версии 8: добавляем столбцы createdAt и updatedAt для таблиц users и configs.
+// Миграция для версии 8: добавляем столбцы created_at и updated_at для таблиц users и configs.
 const migrationTo8 = {
   toVersion: 8,
   steps: [
     addColumns({
       table: 'users',
       columns: [
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
     addColumns({
       table: 'configs',
       columns: [
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
   ],
@@ -34,8 +34,8 @@ const migrationTo9 = {
         { name: 'brigade', type: 'string' },
         { name: 'culture', type: 'string' },
         { name: 'field', type: 'string' },
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     }),
   ],
