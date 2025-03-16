@@ -1,19 +1,37 @@
 // app/App.tsx
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import WebViewV1 from './webviews/WebViewV1';
+import { Routes } from './Routes';
+import { StyleSheet } from 'react-native';
 
-export default function App() {
-  // const url = process.env.API_URL;
+const Stack = createNativeStackNavigator<Routes>();
+
+export default function App(): React.ReactElement {
+  // Определение URL: сначала пытаемся взять из переменной окружения, если её нет – используем локальный файл
   const url = process.env.API_URL || 'file:///android_asset/web/index.html';
-  // const url = 'http://192.168.50.84:8771/';
-  // let url = 'https://example.com/?page_id=192&beta&beta2=1';
-  // let url = 'https://example.com/?page_id=192';
-  // if (Platform.OS === 'ios') {
-  //   url = `${url}&ios_app=2`;
-  // } else if (Platform.OS === 'android') {
-  //   url = `${url}&android_app=2`;
-  // }
-  console.log('process.env.API_URL=',  process.env.API_URL);
+  console.log('process.env.API_URL=', process.env.API_URL);
   console.log('url=', url);
-  return <WebViewV1 url={url} />;
+
+  return (
+    <NavigationContainer>
+      <GestureHandlerRootView style={styles.root}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="WebViewScreen">{() => <WebViewV1 url={url} />}</Stack.Screen>
+        </Stack.Navigator>
+      </GestureHandlerRootView>
+    </NavigationContainer>
+  );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
