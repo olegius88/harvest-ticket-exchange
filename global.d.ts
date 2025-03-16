@@ -1,4 +1,4 @@
-// Файл: /global.d.ts
+// /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
 
@@ -49,6 +49,13 @@ export interface ISendPostResponseRegistration {
  */
 export interface ISendPostResponseCreateKombainer {
   type: 'createKombainer';
+}
+
+/**
+ * Интерфейс для ответа по редактирования комбайнера.
+ */
+export interface ISendPostResponseEditKombainer {
+  type: 'editKombainer';
 }
 
 /**
@@ -117,6 +124,14 @@ export interface ISendPostMessageCreateKombainer {
 }
 
 /**
+ * Интерфейс для запроса редактирования комбайнера.
+ */
+export interface ISendPostMessageEditKombainer {
+  type: 'editKombainer';
+  data: IEditKombainerParams;
+}
+
+/**
  * Интерфейс для запроса запуска hotspot.
  */
 export interface ISendPostMessageStartHotspot {
@@ -152,6 +167,7 @@ export type ISendPostMessage =
   | ISendPostMessageRegistration
   | ISendPostMessageCurrentUser
   | ISendPostMessageCreateKombainer
+  | ISendPostMessageEditKombainer
   | ISendPostMessageUserData
   | ISendPostMessageStartHotspot
   | ISendPostMessageUserPushId
@@ -166,6 +182,7 @@ export type ISendPostResponseRes =
   | ISendPostResponseRegistration
   | ISendPostResponseLogin
   | ISendPostResponseCreateKombainer
+  | ISendPostResponseEditKombainer
   | ISendPostResponseUserData
   | ISendPostResponseStartHotspot
   | ISendPostResponseUserPushId
@@ -233,6 +250,19 @@ export interface ICreateUserParams {
  * Интерфейс для полей в таблице kombainers
  */
 export interface ICreateKombainerParams {
+  userId: string;
+  combine: string; // "комбайн"
+  brigade: string; // "бригада"
+  culture: string; // "культура"
+  field: string; // "поле"
+  createdAt?: number;
+  updatedAt?: number;
+}
+/**
+ * Интерфейс для полей в таблице kombainers
+ */
+export interface IEditKombainerParams {
+  kombainerId: string;
   userId: string;
   combine: string; // "комбайн"
   brigade: string; // "бригада"
