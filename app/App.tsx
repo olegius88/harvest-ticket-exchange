@@ -24,6 +24,7 @@ export default function App(): React.ReactElement {
           }}
         >
           <Stack.Screen name="WebViewScreen">{() => <WebViewV1 url={url} />}</Stack.Screen>
+          {/*<Stack.Screen name="CodeScannerPage" component={CodeScannerPage} />*/}
         </Stack.Navigator>
       </GestureHandlerRootView>
     </NavigationContainer>
