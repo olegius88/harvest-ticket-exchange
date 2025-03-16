@@ -12,7 +12,12 @@ import {
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
 import { useRef } from 'react';
-import { createKombainer, getKombainerByUserId } from '../db/kombainers';
+import {
+  createKombainer,
+  editKombainer,
+  getKombainerById,
+  getKombainerByUserId,
+} from '../db/kombainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { PermissionsAndroid, Platform } from 'react-native';
 
@@ -59,7 +64,6 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
   }
 
   if (eventData?.native?.type) {
-    // console.error('eventData?.native?.type|eventData=', eventData);
     try {
       const res = await _handleNativeMessage(eventData);
       sendPostResponse(res);
@@ -84,7 +88,7 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     if (error instanceof VoidAndNotError) {
       return;
     }
-    console.error('onMessage|_handleReqMessage|error=', error.message || error);
+    console.error('onMessage|_handleReqMessage|error=', error);
     sendPostResponse({
       reqId: eventData.reqId,
       type: 'sendPostResponse',
@@ -141,7 +145,6 @@ const _handleReqMessage = async (
 
       const userId = await loginUser(createUserData);
       console.log('onMessage|login|userId=', userId);
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
       try {
         await setConfig({
@@ -186,7 +189,6 @@ const _handleReqMessage = async (
 
       const userId = await createUser(createUserData);
       console.log('onMessage|registration|userId=', userId);
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
       return {
         reqId,
@@ -201,11 +203,10 @@ const _handleReqMessage = async (
     case 'createKombainer': {
       console.log('onMessage|createKombainer|req.data=', req.data);
 
-      const createUserData = req.data as ICreateKombainerParams;
+      const createKombainerData = req.data as ICreateKombainerParams;
 
-      const userId = await createKombainer(createUserData);
+      const userId = await createKombainer(createKombainerData);
       console.log('onMessage|createKombainer|userId=', userId);
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
       return {
         reqId,
@@ -219,11 +220,23 @@ const _handleReqMessage = async (
     case 'editKombainer': {
       console.log('onMessage|editKombainer|req.data=', req.data);
 
-      const createUserData = req.data as IEditKombainerParams;
+      const editKombainerData = req.data as IEditKombainerParams;
 
-      const userId = await editKombainer(createUserData);
-      console.log('onMessage|editKombainer|userId=', userId);
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+      try {
+        const kombainerData = await getKombainerById(editKombainerData.kombainerId);
+        console.log('onMessage|editKombainer|kombainerData=', kombainerData);
+      } catch (e) {
+        console.error('onMessage|editKombainer|e=', e);
+        throw e;
+      }
+
+      try {
+        const updatedId = await editKombainer(editKombainerData);
+        console.log('onMessage|editKombainer|updatedId=', updatedId);
+      } catch (e) {
+        console.error('onMessage|editKombainer|e=', e);
+        throw e;
+      }
 
       return {
         reqId,
@@ -250,7 +263,6 @@ const _handleReqMessage = async (
           },
         };
       }
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
       let userData = null;
       try {
         userData = await getUserById(currentUserId);
@@ -383,12 +395,11 @@ const _handleReqMessage = async (
     case 'userData': {
       const currentUserId = await getConfig('currentUserId');
       console.log('onMessage|userData=', currentUserId);
-      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
       const userData = await getUserById(currentUserId);
       console.log('onMessage|userData=', userData);
 
       const kombainerData = await getKombainerByUserId(currentUserId);
-      console.log('onMessage|userData=', kombainerData);
+      console.log('onMessage|kombainerData=', kombainerData);
 
       return {
         reqId,
@@ -412,7 +423,6 @@ const _handleReqMessage = async (
  */
 const checkAndRequestPermissions = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') {
-    // Для не Android платформ разрешения не требуются
     return true;
   }
   const permissions = [
@@ -421,7 +431,6 @@ const checkAndRequestPermissions = async (): Promise<boolean> => {
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
   ];
   const granted = await PermissionsAndroid.requestMultiple(permissions);
-  // Проверяем, что все разрешения предоставлены
   const allGranted = permissions.every(
     (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
   );
