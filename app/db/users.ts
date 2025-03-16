@@ -1,4 +1,4 @@
-// users.ts
+// app/db/users.ts
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
