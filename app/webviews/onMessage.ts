@@ -3,6 +3,7 @@
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import {
   ICreateKombainerParams,
+  IEditKombainerParams,
   ILoginUserParams,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
@@ -204,6 +205,24 @@ const _handleReqMessage = async (
 
       const userId = await createKombainer(createUserData);
       console.log('onMessage|createKombainer|userId=', userId);
+      //7851a25d-0ddb-4d4e-81bd-006d99036a2e
+
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type,
+        },
+      };
+    }
+    case 'editKombainer': {
+      console.log('onMessage|editKombainer|req.data=', req.data);
+
+      const createUserData = req.data as IEditKombainerParams;
+
+      const userId = await editKombainer(createUserData);
+      console.log('onMessage|editKombainer|userId=', userId);
       //7851a25d-0ddb-4d4e-81bd-006d99036a2e
 
       return {
