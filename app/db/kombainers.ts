@@ -1,40 +1,34 @@
-// app/db/kombainers.ts
+// Файл: app/db/kombainers.ts
+
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
-import { ICreateKombainerParams } from '../../global';
+import { ICreateKombainerParams, IEditKombainerParams } from '../../global';
 
 /**
  * Интерфейс для полей в таблице kombainers
  */
 export interface ICreateKombainersParams extends Model, ICreateKombainerParams {
   readonly id: string;
-  readonly createdAt: number;
-  readonly updatedAt: number;
+  created_at: number;
+  updated_at: number;
 }
 
 /**
- * Класс Kombainer и описание схемы WatermelonDB
+ * Класс Kombainers и описание схемы WatermelonDB
  */
 export class Kombainers extends Model {
   static table = 'kombainers';
 
-  // @ts-ignore
-  @field('userId') userId!: string;
-  // @ts-ignore
-  @field('combine') combine!: string;
-  // @ts-ignore
-  @field('brigade') brigade!: string;
-  // @ts-ignore
-  @field('culture') culture!: string;
-  // @ts-ignore
-  @field('field') field!: string;
-  // @ts-ignore
-  @field('createdAt') createdAt!: number;
-  // @ts-ignore
-  @field('updatedAt') updatedAt!: number;
+  @field('userId') userId: string;
+  @field('combine') combine: string;
+  @field('brigade') brigade: string;
+  @field('culture') culture: string;
+  @field('field') field: string;
+  @field('created_at') created_at: number;
+  @field('updated_at') updated_at: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -45,8 +39,8 @@ export class Kombainers extends Model {
         { name: 'brigade', type: 'string' },
         { name: 'culture', type: 'string' },
         { name: 'field', type: 'string' },
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     });
   }
@@ -54,7 +48,7 @@ export class Kombainers extends Model {
   /**
    * Проверка обязательных полей.
    */
-  static validateFields(fields: Partial<ICreateKombainersParams>) {
+  static validateFields(fields: Partial<ICreateKombainerParams>) {
     const missingFields: string[] = [];
     if (!fields.userId) missingFields.push('userId');
     if (!fields.combine) missingFields.push('combine');
@@ -81,25 +75,17 @@ export async function createKombainer({
   // Валидация входных данных
   Kombainers.validateFields({ userId, combine, brigade, culture, field });
   return database.write(async () => {
-    const collection = database.collections.get<Model>(Kombainers.table);
+    const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const now = Date.now();
     const newKombainer = await collection.create((record) => {
-      // @ts-ignore
       record._raw.id = uuid.v4();
-      // @ts-ignore
       record.userId = userId.trim();
-      // @ts-ignore
       record.combine = combine.trim();
-      // @ts-ignore
       record.brigade = brigade.trim();
-      // @ts-ignore
       record.culture = culture.trim();
-      // @ts-ignore
       record.field = field.trim();
-      // @ts-ignore
-      record.createdAt = now;
-      // @ts-ignore
-      record.updatedAt = now;
+      record.created_at = now;
+      record.updated_at = now;
     });
     return newKombainer.id;
   });
@@ -135,30 +121,57 @@ export async function getKombainerById(kombainerId: string): Promise<ICreateKomb
       brigade: record.brigade,
       culture: record.culture,
       field: record.field,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
     } as ICreateKombainersParams;
   });
 }
 
 /**
- * Получить все записи для конкретного userId.
+ * Получить запись для конкретного userId.
  */
 export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();
     const res = results.map((record) => ({
-      id: record._raw.id,
+      id: record.id,
       userId: record.userId,
       combine: record.combine,
       brigade: record.brigade,
       culture: record.culture,
       field: record.field,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
     })) as ICreateKombainersParams[];
 
     return res.length > 0 ? res[0] : null;
+  });
+}
+
+/**
+ * Обновление данных комбайнера через вызов метода updateField.
+ */
+export async function editKombainer({
+  kombainerId,
+  userId,
+  combine,
+  brigade,
+  culture,
+  field,
+}: IEditKombainerParams): Promise<string> {
+  return database.write(async () => {
+    const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
+    const record = await collection.find(kombainerId);
+    const now = Date.now();
+    await record.update((r) => {
+      r.userId = userId.trim();
+      r.combine = combine.trim();
+      r.brigade = brigade.trim();
+      r.culture = culture.trim();
+      r.field = field.trim();
+      r.updated_at = now;
+    });
+    return record.id;
   });
 }
