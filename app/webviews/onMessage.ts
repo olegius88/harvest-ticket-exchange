@@ -14,7 +14,9 @@ import { useRef } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
 import {
   ICreateKombainerParams,
+  ICreateVoditelParams,
   IEditKombainerParams,
+  IEditVoditelParams,
   ILoginUserParams,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
@@ -28,6 +30,7 @@ import {
   getKombainerById,
   getKombainerByUserId,
 } from '../db/kombainers';
+import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 
 // Ссылка на WebView
@@ -157,7 +160,6 @@ const _handleReqMessage = async (
     case 'editKombainer': {
       const editData = req.data as IEditKombainerParams;
       console.log('editKombainer|req.data=', editData);
-      // Логирование для отладки
       try {
         const kombData = await getKombainerById(editData.kombainerId);
         console.log('editKombainer|kombainerData=', kombData);
@@ -174,6 +176,32 @@ const _handleReqMessage = async (
         res: { type: 'editKombainer' },
       };
     }
+    case 'createVoditel': {
+      const voditelData = req.data as ICreateVoditelParams;
+      console.log('createVoditel|req.data=', voditelData);
+      const userId = await createVoditel(voditelData);
+      console.log('createVoditel|userId=', userId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type: 'createVoditel' },
+      };
+    }
+    case 'editVoditel': {
+      const editData = req.data as IEditVoditelParams;
+      console.log('editVoditel|req.data=', editData);
+      const voditelRecord = await getVoditelByUserId(editData.userId);
+      console.log('editVoditel|voditelData=', voditelRecord);
+      const updatedId = await editVoditel(editData);
+      console.log('editVoditel|updatedId=', updatedId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type: 'editVoditel' },
+      };
+    }
     case 'currentUser': {
       const currentUserId = await getConfig('currentUserId');
       console.log('currentUser|currentUserId=', currentUserId);
@@ -182,7 +210,13 @@ const _handleReqMessage = async (
           reqId,
           type: 'sendPostResponse',
           resType: 'resolve',
-          res: { type: 'currentUser', status: 'noAuth', userData: null, kombainerData: null },
+          res: {
+            type: 'currentUser',
+            status: 'noAuth',
+            userData: null,
+            kombainerData: null,
+            voditelData: null,
+          },
         };
       }
       let userData = null;
@@ -194,6 +228,8 @@ const _handleReqMessage = async (
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('currentUser|kombainerData=', kombainerData);
+      const voditelData = await getVoditelByUserId(currentUserId);
+      console.log('currentUser|voditelData=', voditelData);
       return {
         reqId,
         type: 'sendPostResponse',
@@ -203,6 +239,7 @@ const _handleReqMessage = async (
           status: userData ? 'authOk' : 'noAuth',
           userData,
           kombainerData,
+          voditelData,
         },
       };
     }
@@ -346,7 +383,6 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
-  // Если присутствует native сообщение, обрабатываем его отдельно
   if (eventData?.native?.type) {
     try {
       const res = await _handleNativeMessage(eventData);
@@ -363,7 +399,6 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
-  // Обработка обычного запроса
   try {
     const res = await _handleReqMessage(eventData);
     sendPostResponse(res);
