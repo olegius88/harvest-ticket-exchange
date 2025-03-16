@@ -1,4 +1,4 @@
-// database.ts
+// app/db/database.ts
 import { appSchema, Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { Users } from './users';

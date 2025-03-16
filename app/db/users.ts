@@ -1,7 +1,7 @@
 // app/db/users.ts
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
-import { database } from './database'; // <-- импортируем из единственного источника
+import { database } from './database';
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { ICreateUserParams, ILoginUserParams, PositionOptionValue } from '../../global';
@@ -13,24 +13,24 @@ import { NotFoundError } from '../exceptions/exceptionsClasses';
 export interface ICreateUsersParams extends Model, ICreateUserParams {
   readonly id: string;
   readonly createdAt: number;
-  readonly updatedAt: number;
+  updatedAt: number;
 }
 
 export class Users extends Model {
   static table = 'users';
 
   // @ts-ignore
-  @field('fio') fio!: string;
+  @field('fio') fio: string;
   // @ts-ignore
-  @field('phone') phone!: string;
+  @field('phone') phone: string;
   // @ts-ignore
-  @field('position') position!: string;
+  @field('position') position: string;
   // @ts-ignore
-  @field('password') password!: string;
+  @field('password') password: string;
   // @ts-ignore
-  @field('createdAt') createdAt!: number;
+  @field('createdAt') createdAt: number;
   // @ts-ignore
-  @field('updatedAt') updatedAt!: number;
+  @field('updatedAt') updatedAt: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -153,5 +153,23 @@ export async function getUserById(userId: string): Promise<ICreateUsersParams> {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     } as ICreateUsersParams;
+  });
+}
+
+/**
+ * Функция editUserFio обновляет поле "fio" (ФИО пользователя) для указанного пользователя.
+ * @param userId - ID пользователя, ФИО которого нужно обновить.
+ * @param newFio - Новое значение ФИО.
+ * @returns Promise с ID пользователя после обновления.
+ */
+export async function editUserFio(userId: string, newFio: string): Promise<string> {
+  return database.write(async () => {
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
+    const user = await collection.find(userId);
+    await user.update((u) => {
+      u.fio = newFio.trim();
+      u.updatedAt = Date.now();
+    });
+    return user.id;
   });
 }
