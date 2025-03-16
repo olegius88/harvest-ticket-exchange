@@ -12,25 +12,19 @@ import { NotFoundError } from '../exceptions/exceptionsClasses';
  */
 export interface ICreateUsersParams extends Model, ICreateUserParams {
   readonly id: string;
-  readonly createdAt: number;
-  updatedAt: number;
+  created_at: number;
+  updated_at: number;
 }
 
 export class Users extends Model {
   static table = 'users';
 
-  // @ts-ignore
-  @field('fio') fio: string;
-  // @ts-ignore
-  @field('phone') phone: string;
-  // @ts-ignore
-  @field('position') position: string;
-  // @ts-ignore
-  @field('password') password: string;
-  // @ts-ignore
-  @field('createdAt') createdAt: number;
-  // @ts-ignore
-  @field('updatedAt') updatedAt: number;
+  @field('fio') fio!: string;
+  @field('phone') phone!: string;
+  @field('position') position!: string;
+  @field('password') password!: string;
+  @field('created_at') created_at!: number;
+  @field('updated_at') updated_at!: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -40,8 +34,8 @@ export class Users extends Model {
         { name: 'phone', type: 'string' },
         { name: 'position', type: 'string' },
         { name: 'password', type: 'string' },
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     });
   }
@@ -82,19 +76,13 @@ export async function createUser({
     const now = Date.now();
     const newUser = await collection.create((user) => {
       user._raw.id = uuid.v4();
-      // @ts-ignore
       user.fio = fio;
-      // @ts-ignore
       user.phone = phone.trim();
-      // @ts-ignore
       user.position = position;
-      // @ts-ignore
       user.password = password.trim();
       // Устанавливаем временные метки
-      // @ts-ignore
-      user.createdAt = now;
-      // @ts-ignore
-      user.updatedAt = now;
+      user.created_at = now;
+      user.updated_at = now;
     });
     return newUser.id;
   });
@@ -150,8 +138,8 @@ export async function getUserById(userId: string): Promise<ICreateUsersParams> {
       phone: user.phone,
       position: user.position,
       password: user.password,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     } as ICreateUsersParams;
   });
 }
@@ -168,7 +156,7 @@ export async function editUserFio(userId: string, newFio: string): Promise<strin
     const user = await collection.find(userId);
     await user.update((u) => {
       u.fio = newFio.trim();
-      u.updatedAt = Date.now();
+      u.updated_at = Date.now();
     });
     return user.id;
   });
