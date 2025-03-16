@@ -1,4 +1,4 @@
-// app/db/migrations.ts
+// Файл: app/db/migrations.ts
 import { addColumns, createTable, schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 
 // Миграция для версии 8: добавляем столбцы created_at и updated_at для таблиц users и configs.
@@ -41,8 +41,23 @@ const migrationTo9 = {
   ],
 };
 
-// Экспорт последней версии схемы и массива миграций.
-export const schemaVersion = 9;
+// Миграция для версии 10: создаём новую таблицу водителей (voditeli).
+const migrationTo10 = {
+  toVersion: 10,
+  steps: [
+    createTable({
+      name: 'voditeli',
+      columns: [
+        { name: 'userId', type: 'string' },
+        { name: 'transport', type: 'string' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+  ],
+};
+
+export const schemaVersion = 10;
 export const migrations = schemaMigrations({
-  migrations: [migrationTo8, migrationTo9],
+  migrations: [migrationTo8, migrationTo9, migrationTo10],
 });

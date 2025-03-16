@@ -26,14 +26,37 @@ export interface ISendPostResponseCheckAndRequestPermissions {
   type: 'checkAndRequestPermissions';
 }
 
-/**
- * Интерфейс для ответа по запросу получения данных текущего пользователя.
- */
+// Интерфейсы для водителя
+export interface ICreateVoditelParams {
+  id?: string;
+  userId: string;
+  transport: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface IEditVoditelParams {
+  voditelId: string;
+  userId: string;
+  transport: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
   status: string | null;
-  kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
+  kombainerData: ICreateKombainerParams | null;
+  voditelData: ICreateVoditelParams | null;
+}
+
+// Интерфейсы ответов для создания и редактирования водителя
+export interface ISendPostResponseCreateVoditel {
+  type: 'createVoditel';
+}
+export interface ISendPostResponseEditVoditel {
+  type: 'editVoditel';
 }
 
 /**
@@ -123,12 +146,22 @@ export interface ISendPostMessageCreateKombainer {
   data: ICreateKombainerParams;
 }
 
+export interface ISendPostMessageCreateVoditel {
+  type: 'createVoditel';
+  data: ICreateVoditelParams;
+}
+
 /**
  * Интерфейс для запроса редактирования комбайнера.
  */
 export interface ISendPostMessageEditKombainer {
   type: 'editKombainer';
   data: IEditKombainerParams;
+}
+
+export interface ISendPostMessageEditVoditel {
+  type: 'editVoditel';
+  data: IEditVoditelParams;
 }
 
 /**
@@ -175,7 +208,9 @@ export type ISendPostMessage =
   | ISendPostMessageSetHotspotEnabled
   | ISendPostMessageSetHotspotDisabled
   | ISendPostMessageSendPostResponse
-  | ISendPostMessageCheckAndRequestPermissions;
+  | ISendPostMessageCheckAndRequestPermissions
+  | ISendPostMessageCreateVoditel
+  | ISendPostMessageEditVoditel;
 
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
@@ -189,7 +224,9 @@ export type ISendPostResponseRes =
   | ISendPostResponseIsHotspotEnabled
   | ISendPostResponseSetHotspotEnabled
   | ISendPostResponseSetHotspotDisabled
-  | ISendPostResponseCheckAndRequestPermissions;
+  | ISendPostResponseCheckAndRequestPermissions
+  | ISendPostResponseCreateVoditel
+  | ISendPostResponseEditVoditel;
 
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
