@@ -1,4 +1,4 @@
-// configs.ts
+// app/db/configs.ts
 import 'react-native-get-random-values';
 import uuid from 'react-native-uuid';
 import { database } from './database'; // <-- импортируем из единственного источника
@@ -8,21 +8,17 @@ import { IConfigParams, IGetConfigParam } from '../../global';
 
 export interface IConfigsParams extends Model, IConfigParams {
   id: string;
-  createdAt: number;
-  updatedAt: number;
+  created_at: number;
+  updated_at: number;
 }
 
 export class Configs extends Model {
   static table = 'configs';
 
-  // @ts-ignore
   @field('key') key!: string;
-  // @ts-ignore
   @field('value') value!: string;
-  // @ts-ignore
-  @field('createdAt') createdAt!: number;
-  // @ts-ignore
-  @field('updatedAt') updatedAt!: number;
+  @field('created_at') created_at!: number;
+  @field('updated_at') updated_at!: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -30,8 +26,8 @@ export class Configs extends Model {
       columns: [
         { name: 'key', type: 'string' },
         { name: 'value', type: 'string' },
-        { name: 'createdAt', type: 'number' },
-        { name: 'updatedAt', type: 'number' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
       ],
     });
   }
@@ -48,8 +44,8 @@ export class Configs extends Model {
 }
 
 /**
- * Функция setConfig: если запись с заданным ключом существует, обновляет её (обновляя updatedAt),
- * иначе создаёт новую (с установкой createdAt и updatedAt).
+ * Функция setConfig: если запись с заданным ключом существует, обновляет её (обновляя updated_at),
+ * иначе создаёт новую (с установкой created_at и updated_at).
  */
 export async function setConfig({ key, value }: IConfigParams): Promise<string> {
   Configs.validateFields({ key, value });
@@ -61,23 +57,17 @@ export async function setConfig({ key, value }: IConfigParams): Promise<string> 
     if (existingConfigs.length > 0) {
       const configToUpdate = existingConfigs[0];
       await configToUpdate.update((config) => {
-        // @ts-ignore
         config.value = value;
-        // @ts-ignore
-        config.updatedAt = now;
+        config.updated_at = now;
       });
       return configToUpdate.id;
     } else {
       const newConfig = await collection.create((config) => {
         config._raw.id = uuid.v4();
-        // @ts-ignore
         config.key = key;
-        // @ts-ignore
         config.value = value;
-        // @ts-ignore
-        config.createdAt = now;
-        // @ts-ignore
-        config.updatedAt = now;
+        config.created_at = now;
+        config.updated_at = now;
       });
       return newConfig.id;
     }
