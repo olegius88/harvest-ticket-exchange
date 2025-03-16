@@ -1,4 +1,4 @@
-// /global.d.ts
+// Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
 
@@ -250,14 +250,17 @@ export interface ICreateUserParams {
  * Интерфейс для полей в таблице kombainers
  */
 export interface ICreateKombainerParams {
+  // Добавлено свойство id, которое присутствует у записей из БД
+  id?: string;
   userId: string;
   combine: string; // "комбайн"
   brigade: string; // "бригада"
   culture: string; // "культура"
   field: string; // "поле"
-  createdAt?: number;
-  updatedAt?: number;
+  created_at?: number;
+  updated_at?: number;
 }
+
 /**
  * Интерфейс для полей в таблице kombainers
  */
@@ -268,8 +271,8 @@ export interface IEditKombainerParams {
   brigade: string; // "бригада"
   culture: string; // "культура"
   field: string; // "поле"
-  createdAt?: number;
-  updatedAt?: number;
+  created_at?: number;
+  updated_at?: number;
 }
 
 /**
