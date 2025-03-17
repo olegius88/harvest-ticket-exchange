@@ -75,7 +75,7 @@ export interface ISendPostResponseCreateKombainer {
 }
 
 /**
- * Интерфейс для ответа по редактирования комбайнера.
+ * Интерфейс для ответа по редактированию комбайнера.
  */
 export interface ISendPostResponseEditKombainer {
   type: 'editKombainer';
@@ -106,6 +106,9 @@ export interface ISendPostResponseStartHotspot {
   password: string;
 }
 
+/**
+ * Интерфейс для ответа по открытию сканера QR.
+ */
 export interface ISendPostResponseOpenQRScanner {
   type: 'openQRScanner';
   status: string;
@@ -176,6 +179,9 @@ export interface ISendPostMessageStartHotspot {
   type: 'startHotspot';
 }
 
+/**
+ * Интерфейс для запроса открытия сканера QR.
+ */
 export interface ISendPostMessageOpenQRScanner {
   type: 'openQRScanner';
 }
@@ -184,18 +190,23 @@ export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
   status: string;
 }
+
 export interface ISendPostMessageCheckAndRequestPermissions {
   type: 'checkPermissionsHotspot';
 }
+
 export interface ISendPostMessageIsHotspotEnabled {
   type: 'isHotspotEnabled';
 }
+
 export interface ISendPostMessageSetHotspotEnabled {
   type: 'setHotspotEnabled';
 }
+
 export interface ISendPostMessageSetHotspotDisabled {
   type: 'setHotspotDisabled';
 }
+
 export interface ISendPostMessageSendPostResponse {
   type: 'sendPostResponse';
 }
@@ -252,8 +263,8 @@ export interface ISendNativeMessageRequest {
 }
 
 /**
- * Если resType === 'reject', то 'res' не нужно, но 'error' обязательно.
- * Если resType === 'resolve', то 'res' обязательно, а 'error' не нужно.
+ * Если resType === 'reject', то поле res не используется, а error обязательно.
+ * Если resType === 'resolve', то поле res обязательно, а error не используется.
  */
 export type ISendPostResponse =
   | {
@@ -285,7 +296,7 @@ export interface IPostMessageCallback {
 }
 
 /**
- * Интерфейс, описывающий параметры для создания пользователя
+ * Интерфейс, описывающий параметры для создания пользователя.
  */
 export interface ICreateUserParams {
   fio: string;
@@ -295,22 +306,21 @@ export interface ICreateUserParams {
 }
 
 /**
- * Интерфейс для полей в таблице kombainers
+ * Интерфейс для полей в таблице kombainers.
  */
 export interface ICreateKombainerParams {
-  // Добавлено свойство id, которое присутствует у записей из БД
   id?: string;
   userId: string;
-  combine: string; // "комбайн"
-  brigade: string; // "бригада"
-  culture: string; // "культура"
-  field: string; // "поле"
+  combine: string;
+  brigade: string;
+  culture: string;
+  field: string;
   created_at?: number;
   updated_at?: number;
 }
 
 /**
- * Интерфейс для полей в таблице kombainers
+ * Интерфейс для полей в таблице kombainers.
  */
 export interface IEditKombainerParams {
   kombainerId: string;
@@ -324,7 +334,7 @@ export interface IEditKombainerParams {
 }
 
 /**
- * Интерфейс для конфигураций
+ * Интерфейс для конфигураций.
  */
 export interface IConfigParams {
   key: string;
@@ -332,14 +342,13 @@ export interface IConfigParams {
 }
 
 /**
- * Интерфейс, описывающий параметры для авторизации пользователя
+ * Интерфейс, описывающий параметры для авторизации пользователя.
  */
 export interface ILoginUserParams {
   phone: string;
   password: string;
 }
 
-// Расширяем ICreateUserParams, добавляя confirmPassword для формы регистрации
 export interface IRegistrationForm extends ICreateUserParams {
   confirmPassword: string;
 }
@@ -356,9 +365,6 @@ export interface ILoginForm {
   password: string;
 }
 
-/**
- * Интерфейс для формы регистрации комбайнера
- */
 interface IKombainerForm {
   combine: string; // "Комбайн"
   brigade: string; // "Бригада"
