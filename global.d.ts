@@ -23,7 +23,7 @@ export interface ISendPostResponseSetHotspotDisabled {
 }
 
 export interface ISendPostResponseCheckAndRequestPermissions {
-  type: 'checkAndRequestPermissions';
+  type: 'checkPermissionsHotspot';
 }
 
 // Интерфейсы для водителя
@@ -185,7 +185,7 @@ export interface ISendPostMessageUserPushId {
   status: string;
 }
 export interface ISendPostMessageCheckAndRequestPermissions {
-  type: 'checkAndRequestPermissions';
+  type: 'checkPermissionsHotspot';
 }
 export interface ISendPostMessageIsHotspotEnabled {
   type: 'isHotspotEnabled';
