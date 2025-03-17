@@ -51,7 +51,7 @@ const sendPostResponse = (obj: ISendPostResponse): void => {
 /**
  * Проверка и запрос разрешений для работы с Wi-Fi (для Android).
  */
-const checkAndRequestPermissions = async (): Promise<boolean> => {
+const checkPermissionsHotspot = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return true;
   const permissions = [
     PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
@@ -62,7 +62,7 @@ const checkAndRequestPermissions = async (): Promise<boolean> => {
   const allGranted = permissions.every(
     (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
   );
-  console.log('checkAndRequestPermissions|allGranted=', allGranted);
+  console.log('checkPermissionsHotspot|allGranted=', allGranted);
   return allGranted;
 };
 
@@ -125,13 +125,13 @@ const _handleReqMessage = async (
         res: { type, userId },
       };
     }
-    case 'checkAndRequestPermissions': {
-      await checkAndRequestPermissions();
+    case 'checkPermissionsHotspot': {
+      await checkPermissionsHotspot();
       return {
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type: 'checkAndRequestPermissions' },
+        res: { type: 'checkPermissionsHotspot' },
       };
     }
     case 'registration': {
