@@ -14,6 +14,7 @@ import IonIcon from 'react-native-vector-icons/Ionicons';
 import type { Routes } from './Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
+import ScanningOverlay from './views/ScanningOverlay';
 
 /**
  * Функция отображения алерта с отсканированным значением.
@@ -85,8 +86,8 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
       <StatusBarBlurBackground />
 
-      {/* Оверлей для сканирования: рамка для выравнивания QR/штрих-кода */}
-      <View style={styles.scannerFrame} />
+      {/* Наш кастомный оверлей для сканирования */}
+      <ScanningOverlay />
 
       <View style={styles.rightButtonRow}>
         <PressableOpacity
@@ -110,17 +111,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
-  },
-  // Оверлей-рамка для сканирования (QR/Barcode)
-  scannerFrame: {
-    position: 'absolute',
-    top: '40%', // Позиция рамки от верхней части экрана
-    alignSelf: 'center',
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: 'white',
-    borderRadius: 10,
   },
   button: {
     marginBottom: CONTENT_SPACING,
