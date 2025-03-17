@@ -67,6 +67,23 @@ const checkPermissionsHotspot = async (): Promise<boolean> => {
 };
 
 /**
+ * Проверка и запрос разрешений для работы с камерой и записи аудио (для Android).
+ */
+const checkCameraAudioPermissions = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android') return true;
+  const permissions = [
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+  ];
+  const granted = await PermissionsAndroid.requestMultiple(permissions);
+  const allGranted = permissions.every(
+    (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
+  );
+  console.log('checkCameraAudioPermissions|allGranted=', allGranted);
+  return allGranted;
+};
+
+/**
  * Обработчик нативных сообщений.
  */
 const _handleNativeMessage = async (
@@ -247,6 +264,16 @@ const _handleReqMessage = async (
     // Новый кейс для открытия сканера QR
     case 'openQRScanner': {
       console.log('openQRScanner|req.data=', req);
+      const hasCameraAudioPermissions = await checkCameraAudioPermissions();
+      if (!hasCameraAudioPermissions) {
+        console.error('openQRScanner|Нет разрешений для камеры и аудио');
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: 'Нет разрешений для камеры и аудио' },
+        };
+      }
       // Отправляем событие, которое можно отловить в главном компоненте приложения для навигации на экран сканера QR
       DeviceEventEmitter.emit('openQRScanner');
       return {
