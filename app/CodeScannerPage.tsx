@@ -1,3 +1,5 @@
+// app/CodeScannerPage.tsx
+
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { AlertButton } from 'react-native';
@@ -13,6 +15,9 @@ import type { Routes } from './Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 
+/**
+ * Функция отображения алерта с отсканированным значением.
+ */
 const showCodeAlert = (value: string, onDismissed: () => void): void => {
   const buttons: AlertButton[] = [
     {
@@ -35,18 +40,18 @@ const showCodeAlert = (value: string, onDismissed: () => void): void => {
 
 type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
 export function CodeScannerPage({ navigation }: Props): React.ReactElement {
-  // 1. Use a simple default back camera
+  // 1. Используем заднюю камеру
   const device = useCameraDevice('back');
 
-  // 2. Only activate Camera when the app is focused and this screen is currently opened
+  // 2. Камера активна только если экран в фокусе и приложение на переднем плане
   const isFocused = useIsFocused();
   const isForeground = useIsForeground();
   const isActive = isFocused && isForeground;
 
-  // 3. (Optional) enable a torch setting
+  // 3. (Опционально) включение фонарика
   const [torch, setTorch] = useState(false);
 
-  // 4. On code scanned, we show an aler to the user
+  // 4. Обработка отсканированных кодов
   const isShowingAlert = useRef(false);
   const onCodeScanned = useCallback((codes: Code[]) => {
     console.log(`Scanned ${codes.length} codes:`, codes);
@@ -59,7 +64,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
     isShowingAlert.current = true;
   }, []);
 
-  // 5. Initialize the Code Scanner to scan QR codes and Barcodes
+  // 5. Инициализация сканера с поддержкой QR и штрих-кодов (ean-13)
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13'],
     onCodeScanned: onCodeScanned,
@@ -80,6 +85,9 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
       <StatusBarBlurBackground />
 
+      {/* Оверлей для сканирования: рамка для выравнивания QR/штрих-кода */}
+      <View style={styles.scannerFrame} />
+
       <View style={styles.rightButtonRow}>
         <PressableOpacity
           style={styles.button}
@@ -90,7 +98,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         </PressableOpacity>
       </View>
 
-      {/* Back Button */}
+      {/* Кнопка "Назад" */}
       <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
         <IonIcon name="chevron-back" color="white" size={35} />
       </PressableOpacity>
@@ -102,6 +110,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+  },
+  // Оверлей-рамка для сканирования (QR/Barcode)
+  scannerFrame: {
+    position: 'absolute',
+    top: '40%', // Позиция рамки от верхней части экрана
+    alignSelf: 'center',
+    width: 250,
+    height: 250,
+    borderWidth: 2,
+    borderColor: 'white',
+    borderRadius: 10,
   },
   button: {
     marginBottom: CONTENT_SPACING,
