@@ -86,7 +86,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
       <StatusBarBlurBackground />
 
-      {/* Наш кастомный оверлей для сканирования */}
+      {/* Оверлей для сканирования */}
       <ScanningOverlay />
 
       <View style={styles.rightButtonRow}>
