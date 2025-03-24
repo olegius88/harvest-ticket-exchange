@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import type { AlertButton } from 'react-native';
-import { Alert, Linking, NativeModules, StyleSheet, View } from 'react-native';
+import { Alert, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from './Constants';
@@ -36,75 +35,56 @@ const parseWifiCredentials = (value: string): { ssid: string; password: string }
   return ssid && password ? { ssid, password } : null;
 };
 
-/**
- * Функция отображения алерта с отсканированным значением.
- */
-const showCodeAlert = (value: string, onDismissed: () => void): void => {
-  const buttons: AlertButton[] = [
-    {
-      text: 'Close',
-      style: 'cancel',
-      onPress: onDismissed,
-    },
-    ...(value.startsWith('http')
-      ? [
-          {
-            text: 'Open URL',
-            onPress: () => {
-              Linking.openURL(value);
-              onDismissed();
-            },
-          },
-        ]
-      : []),
-  ];
-  Alert.alert('Scanned Code', value, buttons);
-};
-
 type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
 export function CodeScannerPage({ navigation }: Props): React.ReactElement {
-  // 1. Используем заднюю камеру
+  // Используем заднюю камеру
   const device = useCameraDevice('back');
 
-  // 2. Камера активна только если экран в фокусе и приложение на переднем плане
+  // Камера активна только если экран в фокусе и приложение на переднем плане
   const isFocused = useIsFocused();
   const isForeground = useIsForeground();
   const isActive = isFocused && isForeground;
 
-  // 3. (Опционально) включение фонарика
+  // Включение фонарика
   const [torch, setTorch] = useState(false);
 
-  // 4. Обработка отсканированных кодов
-  const isShowingAlert = useRef(false);
-  const onCodeScanned = useCallback((codes: Code[]) => {
-    console.log(`Scanned ${codes.length} codes:`, codes);
-    const value = codes[0]?.value;
-    if (!value) return;
-    if (isShowingAlert.current) return;
+  // Флаг, чтобы предотвратить повторное срабатывание
+  const isProcessing = useRef(false);
 
-    // Попытка распарсить Wi‑Fi данные
-    const credentials = parseWifiCredentials(value);
-    if (credentials) {
-      const { ssid, password } = credentials;
-      console.log('Parsed Wi-Fi credentials:', ssid, password);
-      // Вызываем нативный метод joinHotspot
-      MainWifiModule.joinHotspot(ssid, password)
-        .then((res: any) => {
-          Alert.alert('Hotspot', `Подключено к сети ${ssid}`);
-        })
-        .catch((err: any) => {
-          Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
-        });
-    } else {
-      // Если не Wi‑Fi данные – показываем стандартный алерт
-      showCodeAlert(value, () => {
-        isShowingAlert.current = false;
-      });
-    }
-    isShowingAlert.current = true;
-  }, []);
+  const onCodeScanned = useCallback(
+    (codes: Code[]) => {
+      const value = codes[0]?.value;
+      if (!value || isProcessing.current) return;
 
-  // 5. Инициализация сканера с поддержкой QR и штрих‑кодов (ean‑13)
+      const credentials = parseWifiCredentials(value);
+      if (credentials) {
+        const { ssid, password } = credentials;
+        console.log('Parsed Wi-Fi credentials:', ssid, password);
+        isProcessing.current = true;
+        MainWifiModule.joinHotspot(ssid, password)
+          .then((res: any) => {
+            // Alert.alert('Hotspot', `Подключено к сети ${ssid}`, [
+            //   {
+            //     text: 'OK',
+            //     onPress: () => {
+            //       // Перенаправляем на главный экран и отключаем камеру
+            //       navigation.navigate('');
+            //     },
+            //   },
+            // ]);
+          })
+          .catch((err: any) => {
+            Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
+            // Разрешаем повторное сканирование
+            isProcessing.current = false;
+          });
+      }
+      // Если QR-код не содержит Wi‑Fi данные, ничего не делаем.
+    },
+    [navigation]
+  );
+
+  // Инициализация сканера с поддержкой QR и штрих‑кодов (ean‑13)
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13'],
     onCodeScanned,
@@ -122,12 +102,9 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           enableZoomGesture={true}
         />
       )}
-
       <StatusBarBlurBackground />
-
-      {/* Наш кастомный оверлей для сканирования */}
+      {/* Оверлей для сканирования */}
       <ScanningOverlay />
-
       <View style={styles.rightButtonRow}>
         <PressableOpacity
           style={styles.button}
@@ -137,7 +114,6 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
         </PressableOpacity>
       </View>
-
       {/* Кнопка "Назад" */}
       <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
         <IonIcon name="chevron-back" color="white" size={35} />
