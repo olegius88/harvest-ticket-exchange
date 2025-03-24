@@ -20,6 +20,7 @@ class MainApplication : Application(), ReactApplication {
                 PackageList(this).packages.apply {
                     // Добавьте ваш кастомный пакет сюда:
                     add(CustomWebViewPackage())
+                    add(MainPackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"
