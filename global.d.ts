@@ -2,31 +2,48 @@
 
 import { ICreateUsersParams } from './app/db/users';
 
+/**
+ * Интерфейс для ответа с pushUserId.
+ */
 export interface ISendPostResponseUserPushId {
   type: 'pushUserId';
   status: string | null;
 }
 
+/**
+ * Интерфейс для ответа на запрос isHotspotEnabled.
+ */
 export interface ISendPostResponseIsHotspotEnabled {
   type: 'isHotspotEnabled';
   status: 'stopped' | 'running';
 }
 
+/**
+ * Интерфейс для ответа на запрос setHotspotEnabled.
+ */
 export interface ISendPostResponseSetHotspotEnabled {
   type: 'setHotspotEnabled';
   ssid: string;
   password: string;
 }
 
+/**
+ * Интерфейс для ответа на запрос setHotspotDisabled.
+ */
 export interface ISendPostResponseSetHotspotDisabled {
   type: 'setHotspotDisabled';
 }
 
+/**
+ * Интерфейс для ответа на запрос проверки разрешений для hotspot.
+ */
 export interface ISendPostResponseCheckAndRequestPermissions {
   type: 'checkPermissionsHotspot';
 }
 
-// Интерфейсы для водителя
+/**
+ * Интерфейсы для водителя.
+ */
 export interface ICreateVoditelParams {
   id?: string;
   userId: string;
@@ -43,6 +60,9 @@ export interface IEditVoditelParams {
   updated_at?: number;
 }
 
+/**
+ * Интерфейс для ответа currentUser.
+ */
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
   status: string | null;
@@ -60,7 +80,7 @@ export interface ISendPostResponseEditVoditel {
 }
 
 /**
- * Интерфейс для ответа по регистрации.
+ * Интерфейс для ответа регистрации.
  */
 export interface ISendPostResponseRegistration {
   type: 'registration';
@@ -68,21 +88,21 @@ export interface ISendPostResponseRegistration {
 }
 
 /**
- * Интерфейс для ответа по созданию комбайнера.
+ * Интерфейс для ответа создания комбайнера.
  */
 export interface ISendPostResponseCreateKombainer {
   type: 'createKombainer';
 }
 
 /**
- * Интерфейс для ответа по редактированию комбайнера.
+ * Интерфейс для ответа редактирования комбайнера.
  */
 export interface ISendPostResponseEditKombainer {
   type: 'editKombainer';
 }
 
 /**
- * Интерфейс для ответа по запросу данных пользователя.
+ * Интерфейс для ответа данных пользователя.
  */
 export interface ISendPostResponseUserData {
   type: 'userData';
@@ -90,7 +110,7 @@ export interface ISendPostResponseUserData {
 }
 
 /**
- * Интерфейс для ответа по авторизации.
+ * Интерфейс для ответа при авторизации.
  */
 export interface ISendPostResponseLogin {
   type: 'login';
@@ -98,7 +118,7 @@ export interface ISendPostResponseLogin {
 }
 
 /**
- * Интерфейс для ответа по созданию hotspot.
+ * Интерфейс для ответа запуска hotspot.
  */
 export interface ISendPostResponseStartHotspot {
   type: 'startHotspot';
@@ -107,7 +127,7 @@ export interface ISendPostResponseStartHotspot {
 }
 
 /**
- * Интерфейс для ответа по открытию сканера QR.
+ * Интерфейс для ответа открытия QR-сканера.
  */
 export interface ISendPostResponseOpenQRScanner {
   type: 'openQRScanner';
@@ -154,11 +174,13 @@ export interface ISendPostMessageCreateKombainer {
   data: ICreateKombainerParams;
 }
 
+/**
+ * Интерфейс для запроса создания водителя.
+ */
 export interface ISendPostMessageCreateVoditel {
   type: 'createVoditel';
   data: ICreateVoditelParams;
 }
-
 /**
  * Интерфейс для запроса редактирования комбайнера.
  */
@@ -167,6 +189,9 @@ export interface ISendPostMessageEditKombainer {
   data: IEditKombainerParams;
 }
 
+/**
+ * Интерфейс для запроса редактирования водителя.
+ */
 export interface ISendPostMessageEditVoditel {
   type: 'editVoditel';
   data: IEditVoditelParams;
@@ -180,17 +205,23 @@ export interface ISendPostMessageStartHotspot {
 }
 
 /**
- * Интерфейс для запроса открытия сканера QR.
+ * Интерфейс для запроса открытия QR-сканера.
  */
 export interface ISendPostMessageOpenQRScanner {
   type: 'openQRScanner';
 }
 
+/**
+ * Интерфейс для запроса pushUserId.
+ */
 export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
   status: string;
 }
 
+/**
+ * Интерфейс для запроса проверки разрешений для hotspot.
+ */
 export interface ISendPostMessageCheckAndRequestPermissions {
   type: 'checkPermissionsHotspot';
 }
@@ -215,6 +246,26 @@ export interface IVoid {
   type: 'void';
 }
 
+/**
+ * Интерфейс для запроса присоединения к hotspot.
+ */
+export interface ISendPostMessageJoinHotspot {
+  type: 'joinHotspot';
+  data: {
+    ssid: string;
+    password: string;
+  };
+}
+
+/**
+ * Интерфейс для ответа на запрос joinHotspot.
+ */
+export interface ISendPostResponseJoinHotspot {
+  type: 'joinHotspot';
+  status: string;
+}
+
+// Объединенный тип запросов
 export type ISendPostMessage =
   | ISendPostMessageLogin
   | ISendPostMessageRegistration
@@ -228,11 +279,12 @@ export type ISendPostMessage =
   | ISendPostMessageIsHotspotEnabled
   | ISendPostMessageSetHotspotEnabled
   | ISendPostMessageSetHotspotDisabled
-  | ISendPostMessageSendPostResponse
   | ISendPostMessageCheckAndRequestPermissions
   | ISendPostMessageCreateVoditel
-  | ISendPostMessageEditVoditel;
+  | ISendPostMessageEditVoditel
+  | ISendPostMessageJoinHotspot;
 
+// Объединенный тип ответов
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
   | ISendPostResponseRegistration
@@ -248,13 +300,16 @@ export type ISendPostResponseRes =
   | ISendPostResponseSetHotspotDisabled
   | ISendPostResponseCheckAndRequestPermissions
   | ISendPostResponseCreateVoditel
-  | ISendPostResponseEditVoditel;
+  | ISendPostResponseEditVoditel
+  | ISendPostResponseJoinHotspot;
 
+// Интерфейс запроса с идентификатором
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
   reqId: string;
 }
 
+// Интерфейс для нативного сообщения (если оно используется)
 export type ISendNativeMessage = ISendPostMessageUserPushId | ISendPostMessageSendPostResponse;
 
 export interface ISendNativeMessageRequest {
@@ -281,7 +336,7 @@ export type ISendPostResponse =
       res: ISendPostResponseRes;
       error?: any; // При 'resolve' не используем поле 'error'
     }
-  // игнорируемые сообщения
+  // Игнорируемые сообщения
   | {
       type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid' | 'webpackHot';
       reqId?: string;
