@@ -261,7 +261,7 @@ const _handleReqMessage = async (
         },
       };
     }
-    // Новый кейс для открытия сканера QR
+    // открытие сканера QR
     case 'openQRScanner': {
       console.log('openQRScanner|req.data=', req);
       const hasCameraAudioPermissions = await checkCameraAudioPermissions();
@@ -369,6 +369,37 @@ const _handleReqMessage = async (
         } else {
           console.log('pushUserId|NativeBridge не доступен');
           window.ReactNativeWebView.postMessage("NativeBridge не доступен");
+        }
+        true;
+      `;
+      webviewRef.current.injectJavaScript(callNativeBridge);
+      throw new VoidAndNotError('');
+    }
+    // присоединение к существующему хотспоту
+    case 'joinHotspot': {
+      const { ssid, password } = req.data as { ssid: string; password: string };
+      const callNativeBridge = `
+        if (window.NativeBridge && window.NativeBridge.joinHotspot) {
+          window.NativeBridge.joinHotspot('${ssid}', '${password}');
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            native: {
+              reqId: '${reqId}',
+              type: 'sendPostResponse',
+              resType: 'resolve',
+              res: { type: 'joinHotspot', status: 'joining' }
+            }
+          }));
+          console.log('joinHotspot|NativeBridge.joinHotspot вызван с ssid: ${ssid} и password: ${password}');
+        } else {
+          console.log('joinHotspot|NativeBridge не доступен');
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            native: {
+              reqId: '${reqId}',
+              type: 'sendPostResponse',
+              resType: 'reject',
+              res: { type: 'joinHotspot', error: 'NativeBridge.joinHotspot not available' }
+            }
+          }));
         }
         true;
       `;
