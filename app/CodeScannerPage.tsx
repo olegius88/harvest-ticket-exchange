@@ -1,9 +1,7 @@
-// app/CodeScannerPage.tsx
-
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { AlertButton } from 'react-native';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from './Constants';
@@ -15,6 +13,8 @@ import type { Routes } from './Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from './views/ScanningOverlay';
+
+const { MainWifiModule } = NativeModules;
 
 /**
  * Функция отображения алерта с отсканированным значением.
@@ -57,12 +57,33 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   const onCodeScanned = useCallback((codes: Code[]) => {
     console.log(`Scanned ${codes.length} codes:`, codes);
     const value = codes[0]?.value;
-    if (value == null) return;
-    if (isShowingAlert.current) return;
-    showCodeAlert(value, () => {
-      isShowingAlert.current = false;
-    });
-    isShowingAlert.current = true;
+    if (!value) return;
+
+    // Если QR-код содержит Wi‑Fi данные, парсим и вызываем joinHotspot
+    if (value.startsWith('WIFI:')) {
+      // Пример формата: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;;"
+      const wifiData = value.substring(5); // удаляем префикс "WIFI:"
+      const parts = wifiData.split(';');
+      let ssid = '';
+      let password = '';
+      for (const part of parts) {
+        if (part.startsWith('S:')) {
+          ssid = part.substring(2);
+        } else if (part.startsWith('P:')) {
+          password = part.substring(2);
+        }
+      }
+      console.log('Parsed Wi-Fi credentials:', ssid, password);
+      // Вызов нативного метода для подключения к hotspot
+      MainWifiModule.joinHotspot(ssid, password);
+      Alert.alert('Подключение', `Подключение к сети ${ssid}`);
+    } else {
+      if (isShowingAlert.current) return;
+      showCodeAlert(value, () => {
+        isShowingAlert.current = false;
+      });
+      isShowingAlert.current = true;
+    }
   }, []);
 
   // 5. Инициализация сканера с поддержкой QR и штрих-кодов (ean-13)
