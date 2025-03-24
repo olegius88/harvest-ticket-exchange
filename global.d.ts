@@ -181,6 +181,7 @@ export interface ISendPostMessageCreateVoditel {
   type: 'createVoditel';
   data: ICreateVoditelParams;
 }
+
 /**
  * Интерфейс для запроса редактирования комбайнера.
  */
@@ -265,7 +266,9 @@ export interface ISendPostResponseJoinHotspot {
   status: string;
 }
 
-// Объединенный тип запросов
+/**
+ * Объединённый тип запросов.
+ */
 export type ISendPostMessage =
   | ISendPostMessageLogin
   | ISendPostMessageRegistration
@@ -284,7 +287,9 @@ export type ISendPostMessage =
   | ISendPostMessageEditVoditel
   | ISendPostMessageJoinHotspot;
 
-// Объединенный тип ответов
+/**
+ * Объединённый тип ответов.
+ */
 export type ISendPostResponseRes =
   | ISendPostResponseCurrentUser
   | ISendPostResponseRegistration
@@ -303,13 +308,17 @@ export type ISendPostResponseRes =
   | ISendPostResponseEditVoditel
   | ISendPostResponseJoinHotspot;
 
-// Интерфейс запроса с идентификатором
+/**
+ * Интерфейс запроса с идентификатором.
+ */
 export interface ISendPostMessageRequest {
   req: ISendPostMessage;
   reqId: string;
 }
 
-// Интерфейс для нативного сообщения (если оно используется)
+/**
+ * Интерфейс для нативного сообщения (если используется).
+ */
 export type ISendNativeMessage = ISendPostMessageUserPushId | ISendPostMessageSendPostResponse;
 
 export interface ISendNativeMessageRequest {
@@ -318,6 +327,7 @@ export interface ISendNativeMessageRequest {
 }
 
 /**
+ * Тип ответа для postMessage.
  * Если resType === 'reject', то поле res не используется, а error обязательно.
  * Если resType === 'resolve', то поле res обязательно, а error не используется.
  */
@@ -344,6 +354,9 @@ export type ISendPostResponse =
       error?: any;
     };
 
+/**
+ * Интерфейс обратного вызова для postMessage.
+ */
 export interface IPostMessageCallback {
   resolve: (value: unknown) => void;
   reject: (reason?: any) => void;
@@ -351,7 +364,7 @@ export interface IPostMessageCallback {
 }
 
 /**
- * Интерфейс, описывающий параметры для создания пользователя.
+ * Интерфейс для создания пользователя.
  */
 export interface ICreateUserParams {
   fio: string;
@@ -361,7 +374,7 @@ export interface ICreateUserParams {
 }
 
 /**
- * Интерфейс для полей в таблице kombainers.
+ * Интерфейс для полей таблицы kombainers.
  */
 export interface ICreateKombainerParams {
   id?: string;
@@ -375,7 +388,7 @@ export interface ICreateKombainerParams {
 }
 
 /**
- * Интерфейс для полей в таблице kombainers.
+ * Интерфейс для редактирования комбайнера.
  */
 export interface IEditKombainerParams {
   kombainerId: string;
@@ -397,7 +410,7 @@ export interface IConfigParams {
 }
 
 /**
- * Интерфейс, описывающий параметры для авторизации пользователя.
+ * Интерфейс для авторизации пользователя.
  */
 export interface ILoginUserParams {
   phone: string;
