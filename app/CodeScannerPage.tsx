@@ -14,7 +14,27 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from './views/ScanningOverlay';
 
-const { MainWifiModule } = NativeModules;
+const { MainWifiModule } = NativeModules; // Получаем нативный модуль
+
+/**
+ * Функция для парсинга Wi‑Fi строки.
+ * Ожидается формат: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;;"
+ */
+const parseWifiCredentials = (value: string): { ssid: string; password: string } | null => {
+  if (!value.startsWith('WIFI:')) return null;
+  const wifiData = value.slice(5); // удаляем префикс "WIFI:"
+  const parts = wifiData.split(';');
+  let ssid = '';
+  let password = '';
+  for (const part of parts) {
+    if (part.startsWith('S:')) {
+      ssid = part.substring(2);
+    } else if (part.startsWith('P:')) {
+      password = part.substring(2);
+    }
+  }
+  return ssid && password ? { ssid, password } : null;
+};
 
 /**
  * Функция отображения алерта с отсканированным значением.
@@ -26,16 +46,18 @@ const showCodeAlert = (value: string, onDismissed: () => void): void => {
       style: 'cancel',
       onPress: onDismissed,
     },
+    ...(value.startsWith('http')
+      ? [
+          {
+            text: 'Open URL',
+            onPress: () => {
+              Linking.openURL(value);
+              onDismissed();
+            },
+          },
+        ]
+      : []),
   ];
-  if (value.startsWith('http')) {
-    buttons.push({
-      text: 'Open URL',
-      onPress: () => {
-        Linking.openURL(value);
-        onDismissed();
-      },
-    });
-  }
   Alert.alert('Scanned Code', value, buttons);
 };
 
@@ -58,43 +80,39 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
     console.log(`Scanned ${codes.length} codes:`, codes);
     const value = codes[0]?.value;
     if (!value) return;
+    if (isShowingAlert.current) return;
 
-    // Если QR-код содержит Wi‑Fi данные, парсим и вызываем joinHotspot
-    if (value.startsWith('WIFI:')) {
-      // Пример формата: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;;"
-      const wifiData = value.substring(5); // удаляем префикс "WIFI:"
-      const parts = wifiData.split(';');
-      let ssid = '';
-      let password = '';
-      for (const part of parts) {
-        if (part.startsWith('S:')) {
-          ssid = part.substring(2);
-        } else if (part.startsWith('P:')) {
-          password = part.substring(2);
-        }
-      }
+    // Попытка распарсить Wi‑Fi данные
+    const credentials = parseWifiCredentials(value);
+    if (credentials) {
+      const { ssid, password } = credentials;
       console.log('Parsed Wi-Fi credentials:', ssid, password);
-      // Вызов нативного метода для подключения к hotspot
-      MainWifiModule.joinHotspot(ssid, password);
-      Alert.alert('Подключение', `Подключение к сети ${ssid}`);
+      // Вызываем нативный метод joinHotspot
+      MainWifiModule.joinHotspot(ssid, password)
+        .then((res: any) => {
+          Alert.alert('Hotspot', `Подключено к сети ${ssid}`);
+        })
+        .catch((err: any) => {
+          Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
+        });
     } else {
-      if (isShowingAlert.current) return;
+      // Если не Wi‑Fi данные – показываем стандартный алерт
       showCodeAlert(value, () => {
         isShowingAlert.current = false;
       });
-      isShowingAlert.current = true;
     }
+    isShowingAlert.current = true;
   }, []);
 
-  // 5. Инициализация сканера с поддержкой QR и штрих-кодов (ean-13)
+  // 5. Инициализация сканера с поддержкой QR и штрих‑кодов (ean‑13)
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13'],
-    onCodeScanned: onCodeScanned,
+    onCodeScanned,
   });
 
   return (
     <View style={styles.container}>
-      {device != null && (
+      {device && (
         <Camera
           style={StyleSheet.absoluteFill}
           device={device}
@@ -107,7 +125,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
       <StatusBarBlurBackground />
 
-      {/* Оверлей для сканирования */}
+      {/* Наш кастомный оверлей для сканирования */}
       <ScanningOverlay />
 
       <View style={styles.rightButtonRow}>
