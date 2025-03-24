@@ -130,7 +130,7 @@ export interface ISendPostResponseStartHotspot {
  * Интерфейс для ответа открытия QR-сканера.
  */
 export interface ISendPostResponseOpenQRScanner {
-  type: 'openQRScanner';
+  type: 'openCodeScannerPage';
   status: string;
 }
 
@@ -209,7 +209,7 @@ export interface ISendPostMessageStartHotspot {
  * Интерфейс для запроса открытия QR-сканера.
  */
 export interface ISendPostMessageOpenQRScanner {
-  type: 'openQRScanner';
+  type: 'openCodeScannerPage';
 }
 
 /**

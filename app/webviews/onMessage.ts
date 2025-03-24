@@ -262,11 +262,11 @@ const _handleReqMessage = async (
       };
     }
     // открытие сканера QR
-    case 'openQRScanner': {
-      console.log('openQRScanner|req.data=', req);
+    case 'openCodeScannerPage': {
+      console.log('openCodeScannerPage|req.data=', req);
       const hasCameraAudioPermissions = await checkCameraAudioPermissions();
       if (!hasCameraAudioPermissions) {
-        console.error('openQRScanner|Нет разрешений для камеры и аудио');
+        console.error('openCodeScannerPage|Нет разрешений для камеры и аудио');
         return {
           reqId,
           type: 'sendPostResponse',
@@ -275,7 +275,7 @@ const _handleReqMessage = async (
         };
       }
       // Отправляем событие, которое можно отловить в главном компоненте приложения для навигации на экран сканера QR
-      DeviceEventEmitter.emit('openQRScanner');
+      DeviceEventEmitter.emit('openCodeScannerPage');
       return {
         reqId,
         type: 'sendPostResponse',
