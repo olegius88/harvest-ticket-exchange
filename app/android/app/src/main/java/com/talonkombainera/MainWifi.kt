@@ -1,7 +1,6 @@
 // java/com/talonkombainera/MainWifi.kt
 package com.talonkombainera
 
-// Импорт необходимых классов и пакетов
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -73,7 +72,7 @@ class MainWifi(private val context: Context) {
     // Системный менеджер Wi‑Fi
     private val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-    // Handler для выполнения обратных вызовов на основном потоке
+    // Handler для выполнения обратного вызовов на основном потоке
     private val handler = Handler(Looper.getMainLooper())
 
     // Объект-резервация для запущенного локального хотспота (если таковой имеется)
@@ -165,7 +164,6 @@ class MainWifi(private val context: Context) {
             callback?.onHotspotFailed(-2)
             return
         }
-
         try {
             // Запускаем локальный хотспот с использованием нашего callback и Handler'а
             wifiManager.startLocalOnlyHotspot(localOnlyHotspotCallback, handler)
@@ -195,35 +193,14 @@ class MainWifi(private val context: Context) {
     }
 
     /**
-     * Внутренний класс обратного вызова для подключения к Wi‑Fi сети (хотспоту).
-     * Он уведомляет о том, что сеть стала доступной, либо сообщает об ошибке подключения.
-     */
-    private inner class WifiJoinCallback : ConnectivityManager.NetworkCallback() {
-        // Метод вызывается, когда устройство успешно подключилось к сети
-        override fun onAvailable(network: Network) {
-            super.onAvailable(network)
-            // Уведомляем через callback, что устройство присоединилось к сети
-            callback?.onHotspotJoined()
-            // После успешного подключения отменяем регистрацию обратного вызова
-            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            connectivityManager.unregisterNetworkCallback(this)
-        }
-
-        // Метод вызывается, если подключение к сети теряется
-        override fun onLost(network: Network) {
-            super.onLost(network)
-            callback?.onJoinFailed("Соединение потеряно")
-        }
-    }
-
-    /**
      * Метод для подключения к существующему хотспоту по заданным SSID и паролю.
+     * Этот метод будет вызываться из WebView через onMessage.ts.
      *
      * @param ssid     Имя (SSID) сети, к которой необходимо подключиться.
      * @param password Пароль сети.
      *
      * Для подключения используется WifiNetworkSpecifier и NetworkRequest.
-     * Обратите внимание, что в данном случае сеть запрашивается без доступа к интернету.
+     * Сеть запрашивается без доступа к интернету.
      */
     fun joinHotspot(ssid: String, password: String) {
         // Создаем объект спецификатора сети с указанными SSID и паролем (WPA2)
@@ -231,18 +208,29 @@ class MainWifi(private val context: Context) {
             .setSsid(ssid)
             .setWpa2Passphrase(password)
             .build()
-
         // Формируем запрос на подключение к Wi‑Fi сети
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) // Исключаем возможность доступа в интернет
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) // Без доступа в интернет
             .setNetworkSpecifier(specifier)
             .build()
-
         // Получаем ConnectivityManager для выполнения запроса
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-        // Регистрируем запрос на подключение с использованием нашего обратного вызова
-        connectivityManager.requestNetwork(request, WifiJoinCallback(), handler)
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        // Регистрируем запрос с использованием внутреннего обратного вызова
+        connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
+            // Метод вызывается, когда устройство успешно подключилось к сети
+            override fun onAvailable(network: Network) {
+                super.onAvailable(network)
+                callback?.onHotspotJoined()
+                // После успешного подключения отменяем регистрацию обратного вызова
+                connectivityManager.unregisterNetworkCallback(this)
+            }
+            // Метод вызывается, если подключение к сети теряется
+            override fun onLost(network: Network) {
+                super.onLost(network)
+                callback?.onJoinFailed("Соединение потеряно")
+            }
+        }, handler)
     }
 }
