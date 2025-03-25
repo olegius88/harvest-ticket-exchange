@@ -59,19 +59,12 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
       const credentials = parseWifiCredentials(value);
       if (credentials) {
         const { ssid, password } = credentials;
-        console.log('Parsed Wi-Fi credentials:', ssid, password);
+        console.log('Parsed Wi‑Fi credentials:', ssid, password);
         isProcessing.current = true;
         MainWifiModule.joinHotspot(ssid, password)
           .then((res: any) => {
-            // Alert.alert('Hotspot', `Подключено к сети ${ssid}`, [
-            //   {
-            //     text: 'OK',
-            //     onPress: () => {
-            //       // Перенаправляем на главный экран и отключаем камеру
-            //       navigation.navigate('');
-            //     },
-            //   },
-            // ]);
+            // Если подключение успешно, переходим на WebViewScreen (главный экран)
+            navigation.navigate('WebViewScreen');
           })
           .catch((err: any) => {
             Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
@@ -79,7 +72,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
             isProcessing.current = false;
           });
       }
-      // Если QR-код не содержит Wi‑Fi данные, ничего не делаем.
+      // Если QR-код не содержит Wi‑Fi данные – ничего не делаем
     },
     [navigation]
   );
@@ -102,9 +95,12 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           enableZoomGesture={true}
         />
       )}
+
       <StatusBarBlurBackground />
+
       {/* Оверлей для сканирования */}
       <ScanningOverlay />
+
       <View style={styles.rightButtonRow}>
         <PressableOpacity
           style={styles.button}
@@ -114,6 +110,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
         </PressableOpacity>
       </View>
+
       {/* Кнопка "Назад" */}
       <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
         <IonIcon name="chevron-back" color="white" size={35} />
