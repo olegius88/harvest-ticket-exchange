@@ -63,16 +63,20 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         isProcessing.current = true;
         MainWifiModule.joinHotspot(ssid, password)
           .then((res: any) => {
-            // Если подключение успешно, переходим на WebViewScreen (главный экран)
-            navigation.navigate('WebViewScreen');
+            // Если подключение успешно, сбрасываем стек и открываем WebViewScreen
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'WebViewScreen' }],
+            });
           })
           .catch((err: any) => {
             Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
             // Разрешаем повторное сканирование
             isProcessing.current = false;
           });
+      } else {
+        Alert.alert('Ошибка считывания QR-кода');
       }
-      // Если QR-код не содержит Wi‑Fi данные – ничего не делаем
     },
     [navigation]
   );
@@ -95,12 +99,9 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           enableZoomGesture={true}
         />
       )}
-
       <StatusBarBlurBackground />
-
       {/* Оверлей для сканирования */}
       <ScanningOverlay />
-
       <View style={styles.rightButtonRow}>
         <PressableOpacity
           style={styles.button}
@@ -110,7 +111,6 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
         </PressableOpacity>
       </View>
-
       {/* Кнопка "Назад" */}
       <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
         <IonIcon name="chevron-back" color="white" size={35} />
