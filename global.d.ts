@@ -65,10 +65,18 @@ export interface IEditVoditelParams {
  */
 export interface ISendPostResponseCurrentUser {
   type: 'currentUser';
-  status: string | null;
+  status: 'authOk' | 'noAuth' | 'noUser';
   userData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams | null;
   voditelData: ICreateVoditelParams | null;
+}
+
+/**
+ * Интерфейс для ответа currentUser.
+ */
+export interface ISendPostResponseNeedRedirect {
+  type: 'needRedirect';
+  path: string;
 }
 
 // Интерфейсы ответов для создания и редактирования водителя
@@ -156,6 +164,10 @@ export interface ISendPostMessageLogin {
 export interface ISendPostMessageCurrentUser {
   type: 'currentUser';
   data: IAuthCheck;
+}
+
+export interface ISendPostMessageNeedRedirect {
+  type: 'needRedirect';
 }
 
 /**
@@ -285,7 +297,8 @@ export type ISendPostMessage =
   | ISendPostMessageCheckAndRequestPermissions
   | ISendPostMessageCreateVoditel
   | ISendPostMessageEditVoditel
-  | ISendPostMessageJoinHotspot;
+  | ISendPostMessageJoinHotspot
+  | ISendPostMessageNeedRedirect;
 
 /**
  * Объединённый тип ответов.
@@ -306,7 +319,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseCheckAndRequestPermissions
   | ISendPostResponseCreateVoditel
   | ISendPostResponseEditVoditel
-  | ISendPostResponseJoinHotspot;
+  | ISendPostResponseJoinHotspot
+  | ISendPostResponseNeedRedirect;
 
 /**
  * Интерфейс запроса с идентификатором.
@@ -451,4 +465,29 @@ export type IGetConfigKey = 'currentUserId';
 export interface IGetConfigParam {
   key: IGetConfigKey;
   value: string;
+}
+
+// Строго задаём страницы для каждой роли
+export interface KombainerRoutes {
+  index: string;
+  create_ticket: string;
+  ticket_detail: string;
+  qr_code: string;
+}
+
+export interface VoditelRoutes {
+  index: string;
+  create_trip: string;
+  qr_scanner: string;
+}
+
+export interface BunkeristRoutes {
+  index: string;
+  create_ticket: string;
+}
+
+export interface RolesRoutesMap {
+  kombainer: KombainerRoutes;
+  voditel: VoditelRoutes;
+  bunkerist: BunkeristRoutes;
 }
