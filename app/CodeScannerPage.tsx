@@ -12,6 +12,7 @@ import type { Routes } from './Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from './views/ScanningOverlay';
+import { setNeedRedirect } from './webviews/onMessage';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -64,6 +65,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         MainWifiModule.joinHotspot(ssid, password)
           .then((res: any) => {
             // Если подключение успешно, сбрасываем стек и открываем WebViewScreen
+            setNeedRedirect('/voditel/crete-ticket');
             navigation.reset({
               index: 0,
               routes: [{ name: 'WebViewScreen' }],

@@ -33,6 +33,12 @@ import {
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 
+export let needRedirect: string;
+export const setNeedRedirect = (data: string): void => {
+  console.log('setNeedRedirect|data=', data);
+  needRedirect = data;
+};
+
 // Ссылка на WebView
 export const webviewRef = useRef<WebView>(null);
 
@@ -218,6 +224,19 @@ const _handleReqMessage = async (
         type: 'sendPostResponse',
         resType: 'resolve',
         res: { type },
+      };
+    }
+    case 'needRedirect': {
+      const path = needRedirect;
+      needRedirect = null;
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: {
+          type,
+          path,
+        },
       };
     }
     case 'currentUser': {
