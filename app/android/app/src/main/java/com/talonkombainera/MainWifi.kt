@@ -2,6 +2,7 @@
 package com.talonkombainera
 
 import android.Manifest
+import android.app.AlertDialog // импорт для отображения AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -14,17 +15,34 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.ServerSocket
+import java.net.Socket
 import java.security.MessageDigest
+import android.util.Log
+
+// Константы и глобальные переменные
+val zero = ByteArray(8) // представляет 64-битное число 0
+val one = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 1) // представляет 64-битное число 1
+const val chunkSize = 5_000_000
+const val PORT = 3290
 
 /**
  * Класс MainWifi предоставляет функциональность для управления локальным Wi‑Fi хотспотом,
  * а также для подключения к существующим хотспотам.
  *
  * Для уведомления о событиях (запуск, ошибка, остановка, подключение) используется интерфейс
- * обратного вызова MainWifiCallback. Данный класс не зависит от AppCompatActivity и может быть
- * легко интегрирован в любой проект.
+ * обратного вызова MainWifiCallback.
  */
 class MainWifi(private val context: Context) {
+
+    lateinit var server: ServerSocket // TCP listener, используемый для освобождения порта при ошибках или завершении передачи
+    lateinit var client: Socket // TCP сокет
+    lateinit var inputStream: InputStream // входящий поток от сокета
+    lateinit var outputStream: OutputStream // исходящий поток к сокету
 
     /**
      * Интерфейс для обратного вызова событий, связанных с работой хотспота.
@@ -38,13 +56,17 @@ class MainWifi(private val context: Context) {
          * @param key         Ключ, сгенерированный на основе пароля с использованием SHA-256.
          * @param reservation Объект-резервация запущенного хотспота.
          */
-        fun onHotspotStarted(ssid: String, password: String, key: ByteArray, reservation: WifiManager.LocalOnlyHotspotReservation)
+        fun onHotspotStarted(
+            ssid: String,
+            password: String,
+            key: ByteArray,
+            reservation: WifiManager.LocalOnlyHotspotReservation
+        )
 
         /**
          * Вызывается, если запуск хотспота завершился ошибкой.
          *
-         * @param reason Код ошибки (можно использовать отрицательные значения для обозначения
-         *               собственных ошибок, например: -2 – отсутствует разрешение, -3 – исключение).
+         * @param reason Код ошибки (например: -2 – отсутствует разрешение, -3 – исключение).
          */
         fun onHotspotFailed(reason: Int)
 
@@ -72,32 +94,28 @@ class MainWifi(private val context: Context) {
     // Системный менеджер Wi‑Fi
     private val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-    // Handler для выполнения обратного вызовов на основном потоке
+    // Handler для выполнения обратного вызова на главном потоке
     private val handler = Handler(Looper.getMainLooper())
 
-    // Объект-резервация для запущенного локального хотспота (если таковой имеется)
+    // Объект-резервация для запущенного локального хотспота (если имеется)
     private var hotspotReservation: WifiManager.LocalOnlyHotspotReservation? = null
 
     /**
      * Внутренний объект обратного вызова для локального хотспота.
-     * Он обрабатывает события успешного старта, ошибки и остановки хотспота.
+     * Обрабатывает события успешного старта, ошибки и остановки хотспота.
      */
     private val localOnlyHotspotCallback = object : WifiManager.LocalOnlyHotspotCallback() {
-        // Метод вызывается, если запуск хотспота завершился неудачно.
         override fun onFailed(reason: Int) {
             super.onFailed(reason)
-            // Уведомляем через callback об ошибке запуска хотспота.
             callback?.onHotspotFailed(reason)
         }
 
-        // Метод вызывается при успешном запуске хотспота.
         override fun onStarted(reservation: WifiManager.LocalOnlyHotspotReservation?) {
             super.onStarted(reservation)
             if (reservation == null) {
                 callback?.onHotspotFailed(-1) // -1 означает неизвестную ошибку
                 return
             }
-            // Сохраняем полученную резервацию
             hotspotReservation = reservation
 
             // Получаем конфигурацию запущенного хотспота: SSID и пароль
@@ -122,15 +140,14 @@ class MainWifi(private val context: Context) {
                 config.passphrase?.let { password = it }
             }
 
-            // Удаляем возможные кавычки из SSID
+            // Удаляем кавычки из SSID
             ssid = ssid.replace("\"", "")
 
-            // Генерируем ключ из пароля с помощью алгоритма SHA-256
+            // Генерируем ключ с помощью SHA-256
             val hasher = MessageDigest.getInstance("SHA-256")
             hasher.update(password.toByteArray())
             val key = hasher.digest()
 
-            // Уведомляем через callback, что хотспот успешно запущен
             callback?.onHotspotStarted(ssid, password, key, reservation)
         }
 
@@ -174,18 +191,19 @@ class MainWifi(private val context: Context) {
     }
 
     /**
-     * Метод для остановки ранее запущенного локального хотспота.
-     * Если хотспот активен, он будет закрыт, а callback уведомит об остановке.
+     * Метод для остановки запущенного локального хотспота.
+     * Теперь при остановке хотспота также вызывается метод stopTCP() для остановки TCP-сервера.
      */
     fun stopHotspot() {
         hotspotReservation?.close()
         hotspotReservation = null
+        // Останавливаем TCP-сервер при остановке хотспота
+        stopTCP()
         callback?.onHotspotStopped()
     }
 
     /**
      * Метод для получения статуса хотспота.
-     *
      * @return "running", если хотспот запущен, иначе "stopped".
      */
     fun getHotspotStatus(): String {
@@ -194,43 +212,82 @@ class MainWifi(private val context: Context) {
 
     /**
      * Метод для подключения к существующему хотспоту по заданным SSID и паролю.
-     * Этот метод будет вызываться из WebView через onMessage.ts.
-     *
-     * @param ssid     Имя (SSID) сети, к которой необходимо подключиться.
-     * @param password Пароль сети.
-     *
-     * Для подключения используется WifiNetworkSpecifier и NetworkRequest.
      * Сеть запрашивается без доступа к интернету.
      */
     fun joinHotspot(ssid: String, password: String) {
-        // Создаем объект спецификатора сети с указанными SSID и паролем (WPA2)
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
             .setWpa2Passphrase(password)
             .build()
-        // Формируем запрос на подключение к Wi‑Fi сети
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) // Без доступа в интернет
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .setNetworkSpecifier(specifier)
             .build()
-        // Получаем ConnectivityManager для выполнения запроса
         val connectivityManager =
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        // Регистрируем запрос с использованием внутреннего обратного вызова
         connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
-            // Метод вызывается, когда устройство успешно подключилось к сети
             override fun onAvailable(network: Network) {
                 super.onAvailable(network)
                 callback?.onHotspotJoined()
-                // После успешного подключения отменяем регистрацию обратного вызова
                 connectivityManager.unregisterNetworkCallback(this)
             }
-            // Метод вызывается, если подключение к сети теряется
             override fun onLost(network: Network) {
                 super.onLost(network)
                 callback?.onJoinFailed("Соединение потеряно")
             }
         }, handler)
+    }
+
+    /**
+     * Метод для запуска TCP-сервера.
+     * После успешного запуска TCP-сервера выводится AlertDialog на главном потоке.
+     */
+    suspend fun startTCP() {
+        Log.d("startTCP", "init")
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d("startTCP", "init 2")
+                server = ServerSocket(PORT)
+                client = server.accept()
+                Log.d("startTCP", "init 3")
+                client.sendBufferSize = chunkSize * 2
+                client.receiveBufferSize = chunkSize * 2
+                inputStream = client.getInputStream()
+                outputStream = client.getOutputStream()
+                Log.d("startTCP", "init 4")
+                // После успешного запуска TCP-сервера, выводим алерт на главном потоке
+                withContext(Dispatchers.Main) {
+                    AlertDialog.Builder(context)
+                        .setTitle("Успех")
+                        .setMessage("TCP-сервер успешно запущен")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                Log.e("startTCP", "error|message="+e.message)
+                // Здесь можно добавить обработку исключений, например, логирование ошибки
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Метод для остановки TCP-сервера.
+     * Закрывает клиентский сокет и ServerSocket, если они инициализированы.
+     */
+    fun stopTCP() {
+        Log.d("stopTCP", "init")
+        try {
+            if (this::client.isInitialized && !client.isClosed) {
+                client.close()
+            }
+            if (this::server.isInitialized && !server.isClosed) {
+                server.close()
+            }
+        } catch (e: Exception) {
+            Log.e("stopTCP", "error|message="+e.message)
+            e.printStackTrace()
+        }
     }
 }

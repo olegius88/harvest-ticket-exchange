@@ -1,3 +1,4 @@
+// java/com/talonkombainera/MainApplication.kt
 package com.talonkombainera
 
 import android.app.Application

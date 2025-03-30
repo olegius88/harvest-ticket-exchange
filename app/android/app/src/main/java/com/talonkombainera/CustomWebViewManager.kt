@@ -12,6 +12,8 @@ import com.reactnativecommunity.webview.RNCWebViewManager
 import com.reactnativecommunity.webview.RNCWebViewWrapper
 import com.talonkombainera.maps.PushUserIdResponse
 import com.talonkombainera.maps.PushUserIdResponseNative
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -89,6 +91,12 @@ class CustomWebViewManager : RNCWebViewManager() {
                         reservation: WifiManager.LocalOnlyHotspotReservation
                     ) {
                         Log.d("CustomWebViewManager", "startHotspot|Hotspot запущен. SSID: $ssid, Пароль: $password")
+
+                        // Запускаем TCP-сервер внутри корутины, так как startTCP является suspend-функцией
+                        GlobalScope.launch {
+                            mainWifi.startTCP()
+                        }
+
                         isStarted.set(true)
                         val jsonResult = Gson().toJson(
                             mapOf(
@@ -121,6 +129,9 @@ class CustomWebViewManager : RNCWebViewManager() {
 
                     override fun onHotspotStopped() {
                         Log.d("CustomWebViewManager", "startHotspot|Hotspot остановлен")
+                        GlobalScope.launch {
+                            mainWifi.stopTCP()
+                        }
                     }
 
                     override fun onHotspotJoined() {
