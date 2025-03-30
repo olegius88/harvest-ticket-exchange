@@ -12,6 +12,7 @@
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { useRef } from 'react';
 import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
+import KeepAwake from 'react-native-keep-awake';
 import {
   ICreateKombainerParams,
   ICreateVoditelParams,
@@ -439,6 +440,27 @@ const _handleReqMessage = async (
         res: { type, userData },
       };
     }
+    case 'enableKeepAwake': {
+      console.log('enableKeepAwake|активация удержания экрана');
+      KeepAwake.activate();
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type: 'enableKeepAwake' },
+      };
+    }
+    case 'disableKeepAwake': {
+      console.log('disableKeepAwake|деактивация удержания экрана');
+      KeepAwake.deactivate();
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type: 'disableKeepAwake' },
+      };
+    }
+
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(

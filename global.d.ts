@@ -278,6 +278,22 @@ export interface ISendPostResponseJoinHotspot {
   status: string;
 }
 
+export interface ISendPostMessageEnableKeepAwake {
+  type: 'enableKeepAwake';
+}
+
+export interface ISendPostMessageDisableKeepAwake {
+  type: 'disableKeepAwake';
+}
+
+export interface ISendPostResponseEnableKeepAwake {
+  type: 'enableKeepAwake';
+}
+
+export interface ISendPostResponseDisableKeepAwake {
+  type: 'disableKeepAwake';
+}
+
 /**
  * Объединённый тип запросов.
  */
@@ -298,7 +314,9 @@ export type ISendPostMessage =
   | ISendPostMessageCreateVoditel
   | ISendPostMessageEditVoditel
   | ISendPostMessageJoinHotspot
-  | ISendPostMessageNeedRedirect;
+  | ISendPostMessageNeedRedirect
+  | ISendPostMessageEnableKeepAwake
+  | ISendPostMessageDisableKeepAwake;
 
 /**
  * Объединённый тип ответов.
@@ -320,7 +338,9 @@ export type ISendPostResponseRes =
   | ISendPostResponseCreateVoditel
   | ISendPostResponseEditVoditel
   | ISendPostResponseJoinHotspot
-  | ISendPostResponseNeedRedirect;
+  | ISendPostResponseNeedRedirect
+  | ISendPostResponseEnableKeepAwake
+  | ISendPostResponseDisableKeepAwake;
 
 /**
  * Интерфейс запроса с идентификатором.
