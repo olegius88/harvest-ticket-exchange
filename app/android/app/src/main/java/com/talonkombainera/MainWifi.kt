@@ -247,6 +247,13 @@ class MainWifi(private val context: Context) {
         Log.d("startTCP", "init")
         withContext(Dispatchers.IO) {
             try {
+                withContext(Dispatchers.Main) {
+                    AlertDialog.Builder(context)
+                        .setTitle("startTCP")
+                        .setMessage("startTCP")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
                 Log.d("startTCP", "init 2")
                 server = ServerSocket(PORT)
                 client = server.accept()
