@@ -244,39 +244,39 @@ class MainWifi(private val context: Context) {
      * После успешного запуска TCP-сервера выводится AlertDialog на главном потоке.
      */
     suspend fun startTCP() {
-        Log.d("startTCP", "init")
-        withContext(Dispatchers.IO) {
-            try {
-                withContext(Dispatchers.Main) {
-                    AlertDialog.Builder(context)
-                        .setTitle("startTCP")
-                        .setMessage("startTCP")
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-                Log.d("startTCP", "init 2")
-                server = ServerSocket(PORT)
-                client = server.accept()
-                Log.d("startTCP", "init 3")
-                client.sendBufferSize = chunkSize * 2
-                client.receiveBufferSize = chunkSize * 2
-                inputStream = client.getInputStream()
-                outputStream = client.getOutputStream()
-                Log.d("startTCP", "init 4")
-                // После успешного запуска TCP-сервера, выводим алерт на главном потоке
-                withContext(Dispatchers.Main) {
-                    AlertDialog.Builder(context)
-                        .setTitle("Успех")
-                        .setMessage("TCP-сервер успешно запущен")
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            } catch (e: Exception) {
-                Log.e("startTCP", "error|message="+e.message)
-                // Здесь можно добавить обработку исключений, например, логирование ошибки
-                e.printStackTrace()
-            }
-        }
+//        Log.d("startTCP", "init")
+//        withContext(Dispatchers.IO) {
+//            try {
+//                withContext(Dispatchers.Main) {
+//                    AlertDialog.Builder(context)
+//                        .setTitle("startTCP")
+//                        .setMessage("startTCP")
+//                        .setPositiveButton("OK", null)
+//                        .show()
+//                }
+//                Log.d("startTCP", "init 2")
+//                server = ServerSocket(PORT)
+//                client = server.accept()
+//                Log.d("startTCP", "init 3")
+//                client.sendBufferSize = chunkSize * 2
+//                client.receiveBufferSize = chunkSize * 2
+//                inputStream = client.getInputStream()
+//                outputStream = client.getOutputStream()
+//                Log.d("startTCP", "init 4")
+//                // После успешного запуска TCP-сервера, выводим алерт на главном потоке
+//                withContext(Dispatchers.Main) {
+//                    AlertDialog.Builder(context)
+//                        .setTitle("Успех")
+//                        .setMessage("TCP-сервер успешно запущен")
+//                        .setPositiveButton("OK", null)
+//                        .show()
+//                }
+//            } catch (e: Exception) {
+//                Log.e("startTCP", "error|message="+e.message)
+//                // Здесь можно добавить обработку исключений, например, логирование ошибки
+//                e.printStackTrace()
+//            }
+//        }
     }
 
     /**
