@@ -33,6 +33,7 @@ import {
 } from '../db/kombainers';
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
+import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
 
 export let needRedirect: string;
 export const setNeedRedirect = (data: string): void => {
@@ -459,6 +460,43 @@ const _handleReqMessage = async (
         resType: 'resolve',
         res: { type: 'disableKeepAwake' },
       };
+    }
+    case 'startTcpServer': {
+      try {
+        const message = await startTcpServer();
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'startTcpServer', message },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
+
+    case 'stopTcpServer': {
+      try {
+        const message = await stopTcpServer();
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'stopTcpServer', message },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
     }
 
     default:

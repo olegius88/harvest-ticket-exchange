@@ -295,6 +295,36 @@ export interface ISendPostResponseDisableKeepAwake {
 }
 
 /**
+ * Интерфейс для запроса запуска TCP-сервера.
+ */
+export interface ISendPostMessageStartTcpServer {
+  type: 'startTcpServer';
+}
+
+/**
+ * Интерфейс для ответа запуска TCP-сервера.
+ */
+export interface ISendPostResponseStartTcpServer {
+  type: 'startTcpServer';
+  message: string;
+}
+
+/**
+ * Интерфейс для запроса остановки TCP-сервера.
+ */
+export interface ISendPostMessageStopTcpServer {
+  type: 'stopTcpServer';
+}
+
+/**
+ * Интерфейс для ответа остановки TCP-сервера.
+ */
+export interface ISendPostResponseStopTcpServer {
+  type: 'stopTcpServer';
+  message: string;
+}
+
+/**
  * Объединённый тип запросов.
  */
 export type ISendPostMessage =
@@ -316,7 +346,9 @@ export type ISendPostMessage =
   | ISendPostMessageJoinHotspot
   | ISendPostMessageNeedRedirect
   | ISendPostMessageEnableKeepAwake
-  | ISendPostMessageDisableKeepAwake;
+  | ISendPostMessageDisableKeepAwake
+  | ISendPostMessageStartTcpServer
+  | ISendPostMessageStopTcpServer;
 
 /**
  * Объединённый тип ответов.
@@ -340,7 +372,9 @@ export type ISendPostResponseRes =
   | ISendPostResponseJoinHotspot
   | ISendPostResponseNeedRedirect
   | ISendPostResponseEnableKeepAwake
-  | ISendPostResponseDisableKeepAwake;
+  | ISendPostResponseDisableKeepAwake
+  | ISendPostResponseStartTcpServer
+  | ISendPostResponseStopTcpServer;
 
 /**
  * Интерфейс запроса с идентификатором.
