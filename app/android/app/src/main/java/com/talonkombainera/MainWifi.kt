@@ -2,7 +2,7 @@
 package com.talonkombainera
 
 import android.Manifest
-import android.app.AlertDialog // импорт для отображения AlertDialog
+import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -78,7 +78,7 @@ class MainWifi(private val context: Context) {
         /**
          * Вызывается, когда устройство успешно подключилось к хотспоту.
          */
-        fun onHotspotJoined()
+        fun onHotspotJoined(ipAddress: String)
 
         /**
          * Вызывается, если подключение к хотспоту завершилось неудачно.
@@ -215,25 +215,32 @@ class MainWifi(private val context: Context) {
      * Сеть запрашивается без доступа к интернету.
      */
     fun joinHotspot(ssid: String, password: String) {
+        Log.d("joinHotspot", "ssid="+ssid)
+        Log.d("joinHotspot", "password="+password)
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
             .setWpa2Passphrase(password)
             .build()
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+//            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .setNetworkSpecifier(specifier)
             .build()
-        val connectivityManager =
-            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 super.onAvailable(network)
-                callback?.onHotspotJoined()
+                Log.d("joinHotspot", "onAvailable")
+                // Получаем IP-адрес после успешного подключения
+                val linkProperties = connectivityManager.getLinkProperties(network)
+                val ipAddress = linkProperties?.linkAddresses?.firstOrNull()?.address?.hostAddress ?: "N/A"
+                Log.d("joinHotspot", "ipAddress="+ipAddress)
+                callback?.onHotspotJoined(ipAddress)
                 connectivityManager.unregisterNetworkCallback(this)
             }
             override fun onLost(network: Network) {
                 super.onLost(network)
+                Log.d("joinHotspot", "onLost")
                 callback?.onJoinFailed("Соединение потеряно")
             }
         }, handler)

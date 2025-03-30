@@ -134,8 +134,9 @@ class CustomWebViewManager : RNCWebViewManager() {
                         }
                     }
 
-                    override fun onHotspotJoined() {
-                        Log.d("CustomWebViewManager", "startHotspot|Устройство подключилось к hotspot")
+                    override fun onHotspotJoined(ipAddress: String) {
+                        Log.d("CustomWebViewManager|joinHotspot", "startHotspot|Устройство подключилось к hotspot")
+                        Log.d("CustomWebViewManager|joinHotspot", "ipAddress:" + ipAddress)
                     }
 
                     override fun onJoinFailed(error: String) {
