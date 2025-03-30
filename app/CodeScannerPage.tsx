@@ -1,6 +1,8 @@
+// app/CodeScannerPage.tsx
+
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, NativeModules, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from './Constants';
@@ -49,8 +51,10 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   // Включение фонарика
   const [torch, setTorch] = useState(false);
 
-  // Флаг, чтобы предотвратить повторное срабатывание
+  // Флаг для предотвращения повторного срабатывания
+  // Используем useRef для хранения флага, а state для управления UI
   const isProcessing = useRef(false);
+  const [processing, setProcessing] = useState(false);
 
   const onCodeScanned = useCallback(
     (codes: Code[]) => {
@@ -62,9 +66,12 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         const { ssid, password } = credentials;
         console.log('Parsed Wi‑Fi credentials:', ssid, password);
         isProcessing.current = true;
+        setProcessing(true);
         MainWifiModule.joinHotspot(ssid, password)
           .then((res: any) => {
-            // Если подключение успешно, сбрасываем стек и открываем WebViewScreen
+            console.log('joinHotspot|res=', res);
+            // Если подключение успешно, возвращается IP-адрес
+            // Можно, например, сохранить его или передать в другой модуль
             setNeedRedirect('/voditel/crete-ticket');
             navigation.reset({
               index: 0,
@@ -73,8 +80,8 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
           })
           .catch((err: any) => {
             Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
-            // Разрешаем повторное сканирование
             isProcessing.current = false;
+            setProcessing(false);
           });
       } else {
         Alert.alert('Ошибка считывания QR-кода');
@@ -117,6 +124,11 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
       <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
         <IonIcon name="chevron-back" color="white" size={35} />
       </PressableOpacity>
+      {processing && (
+        <View style={styles.preloaderContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
     </View>
   );
 }
@@ -144,5 +156,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: SAFE_AREA_PADDING.paddingLeft,
     top: SAFE_AREA_PADDING.paddingTop,
+  },
+  preloaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });
