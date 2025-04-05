@@ -6,8 +6,11 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
+import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
@@ -23,6 +26,10 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity.CONNECTIVITY_SERVICE
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import java.net.Inet4Address
 
 // Константы и глобальные переменные
 val zero = ByteArray(8) // представляет 64-битное число 0
@@ -43,6 +50,7 @@ class MainWifi(private val context: Context) {
     lateinit var client: Socket // TCP сокет
     lateinit var inputStream: InputStream // входящий поток от сокета
     lateinit var outputStream: OutputStream // исходящий поток к сокету
+    var peerIP: Inet4Address? = null
 
     /**
      * Интерфейс для обратного вызова событий, связанных с работой хотспота.
@@ -78,7 +86,7 @@ class MainWifi(private val context: Context) {
         /**
          * Вызывается, когда устройство успешно подключилось к хотспоту.
          */
-        fun onHotspotJoined(ipAddress: String)
+        fun onHotspotJoined(ipAddress: String?)
 
         /**
          * Вызывается, если подключение к хотспоту завершилось неудачно.
@@ -215,35 +223,111 @@ class MainWifi(private val context: Context) {
      * Сеть запрашивается без доступа к интернету.
      */
     fun joinHotspot(ssid: String, password: String) {
-        Log.d("joinHotspot", "ssid="+ssid)
-        Log.d("joinHotspot", "password="+password)
+        val callback = this.NetworkCallback()
+
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(ssid)
             .setWpa2Passphrase(password)
             .build()
         val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-//            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addTransportType(TRANSPORT_WIFI)
+            .removeCapability(NET_CAPABILITY_INTERNET)
             .setNetworkSpecifier(specifier)
             .build()
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                super.onAvailable(network)
-                Log.d("joinHotspot", "onAvailable")
-                // Получаем IP-адрес после успешного подключения
-                val linkProperties = connectivityManager.getLinkProperties(network)
-                val ipAddress = linkProperties?.linkAddresses?.firstOrNull()?.address?.hostAddress ?: "N/A"
-                Log.d("joinHotspot", "ipAddress="+ipAddress)
+        val connectivityManager =
+            context.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        callback.connectivityManager = connectivityManager
+        peerIP = null // we check this in NetworkCallback so that we only start the transfer once per joinHotspot invocation
+        connectivityManager.requestNetwork(request, callback)
+    }
+
+    // used when we join a hotspot
+    inner class NetworkCallback : ConnectivityManager.NetworkCallback() {
+        lateinit var connectivityManager: ConnectivityManager
+        override fun onAvailable(network: Network) {
+            super.onAvailable(network)
+            connectivityManager.bindProcessToNetwork(network)
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            connectivityManager.bindProcessToNetwork(null)
+        }
+
+        override fun onUnavailable() {
+            super.onUnavailable()
+            connectivityManager.bindProcessToNetwork(null)
+        }
+
+        // this is our findGateway(), so after we get the gateway/dhcp server ip we're ready to confirm mode and launch transfer
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            super.onLinkPropertiesChanged(network, linkProperties)
+
+            // Получение IP-адреса хоста (шлюза)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                linkProperties.dhcpServerAddress?.let {
+                    if (it is Inet4Address) {
+                        peerIP = it
+                    }
+                }
+            } else {
+                for (route in linkProperties.routes) {
+                    if (route.isDefaultRoute && route.gateway is Inet4Address) {
+                        peerIP = route.gateway as Inet4Address
+                        break
+                    }
+                }
+            }
+
+            if (peerIP != null) {
+                val ipAddress = peerIP!!.hostAddress
+                Log.d("MainWifi", "peerIP resolved: $ipAddress")
                 callback?.onHotspotJoined(ipAddress)
-                connectivityManager.unregisterNetworkCallback(this)
+            } else {
+                Log.e("MainWifi", "Не удалось определить IP-адрес хоста")
+                callback?.onJoinFailed("Не удалось определить IP-адрес хоста")
             }
-            override fun onLost(network: Network) {
-                super.onLost(network)
-                Log.d("joinHotspot", "onLost")
-                callback?.onJoinFailed("Соединение потеряно")
-            }
-        }, handler)
+        }
+    }
+
+    /**
+     * Метод для подключения к существующему хотспоту по заданным SSID и паролю.
+     * Сеть запрашивается без доступа к интернету.
+     */
+    fun joinHotspo22222t(ssid: String, password: String) {
+//        Log.d("joinHotspot", "ssid="+ssid)
+//        Log.d("joinHotspot", "password="+password)
+//        val specifier = WifiNetworkSpecifier.Builder()
+//            .setSsid(ssid)
+//            .setWpa2Passphrase(password)
+//            .build()
+//        val request = NetworkRequest.Builder()
+//            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+////            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+//            .setNetworkSpecifier(specifier)
+//            .build()
+//        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+//        connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
+//            override fun onAvailable(network: Network) {
+//                super.onAvailable(network)
+//                Log.d("joinHotspot", "onAvailable")
+//                // Получаем IP-адрес после успешного подключения
+//                val linkProperties = connectivityManager.getLinkProperties(network)
+//                val ipAddress = linkProperties?.linkAddresses
+//                    ?.map { it.address }
+//                    ?.filterIsInstance<Inet4Address>()
+//                    ?.firstOrNull()
+//                    ?.hostAddress ?: "N/A"
+//                Log.d("joinHotspot", "ipAddress="+ipAddress)
+//                callback?.onHotspotJoined(ipAddress)
+//                connectivityManager.unregisterNetworkCallback(this)
+//            }
+//            override fun onLost(network: Network) {
+//                super.onLost(network)
+//                Log.d("joinHotspot", "onLost")
+//                callback?.onJoinFailed("Соединение потеряно")
+//            }
+//        }, handler)
     }
 
     /**
