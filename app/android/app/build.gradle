@@ -106,11 +106,17 @@ android {
         }
     }
 
-    // Автоматически генерируем строку app_name с версией, указанной в versionName
     applicationVariants.all { variant ->
-        // Прописываем значение строки для имени приложения: "Talon Kombainera vX.X"
-        variant.resValue "string", "app_name", "Talon Kombainera v${variant.versionName}"
+        variant.outputs.all { output ->
+            def appName = "TalonKombainera"
+            def version = variant.versionName
+            def buildType = variant.buildType.name
+            def newApkName = "${appName}-${buildType}-v${version}.apk"
+
+            outputFileName = newApkName
+        }
     }
+
 }
 
 dependencies {
