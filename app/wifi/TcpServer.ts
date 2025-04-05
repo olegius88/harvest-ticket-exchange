@@ -22,10 +22,25 @@ export const startTcpServer = (): Promise<string> => {
       console.log('server|Клиент подключился к TCP-серверу');
       ToastAndroid.show(`server|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
 
+      // Обработка полученных данных от клиента
       // @ts-ignore
       socket.on('data', (data) => {
-        console.log('server|socket|on|data=', data.toString());
+        const dataString = data.toString();
+        console.log('server|socket|on|data=', dataString);
         ToastAndroid.show(`server|socket|on|data`, ToastAndroid.SHORT);
+        let message = null;
+        try {
+          message = JSON.parse(dataString);
+        } catch (error) {
+          console.error('server|Ошибка парсинга JSON:', error);
+        }
+        // Если получено тестовое сообщение, отправляем ответ "ok"
+        if (message && message.test === 'test') {
+          const response = JSON.stringify({ response: 'ok' });
+          socket.write(response, 'utf8');
+          console.log('server|Отправлено:', response);
+          ToastAndroid.show(`server|Отправлено: ${response}`, ToastAndroid.SHORT);
+        }
       });
 
       // @ts-ignore
