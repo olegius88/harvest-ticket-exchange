@@ -15,6 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from './views/ScanningOverlay';
 import { setNeedRedirect } from './webviews/onMessage';
+import { JoinHotspotResponse } from '../global';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -68,11 +69,22 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         isProcessing.current = true;
         setProcessing(true);
         MainWifiModule.joinHotspot(ssid, password)
-          .then((res: any) => {
-            console.log('joinHotspot|res=', res);
+          .then((joinDataRes: string) => {
+            console.log('joinHotspot|joinDataRes=', joinDataRes);
+            let joinData: JoinHotspotResponse;
+            try {
+              joinData = JSON.parse(joinDataRes);
+            } catch (e) {
+              console.error('JSON.parse error|e=', e);
+              console.error('JSON.parse error|e|joinDataRes=', joinDataRes);
+              Alert.alert('Ошибка joinDataRes');
+              return;
+            }
+            console.log('joinData=', joinData);
+
             // Если подключение успешно, возвращается IP-адрес
             // Можно, например, сохранить его или передать в другой модуль
-            setNeedRedirect('/voditel/crete-ticket');
+            setNeedRedirect('/voditel/crete-ticket', joinData);
             navigation.reset({
               index: 0,
               routes: [{ name: 'WebViewScreen' }],
@@ -99,6 +111,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   return (
     <View style={styles.container}>
       {device && (
+        // @ts-ignore
         <Camera
           style={StyleSheet.absoluteFill}
           device={device}
