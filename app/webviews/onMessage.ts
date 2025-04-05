@@ -34,11 +34,14 @@ import {
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
+import { connectToTcpServer } from '../wifi/TcpClient';
 
 export let needRedirect: string;
-export const setNeedRedirect = (data: string): void => {
+export let needRedirectPayload: any;
+export const setNeedRedirect = (data: string, payload?: any): void => {
   console.log('setNeedRedirect|data=', data);
   needRedirect = data;
+  needRedirectPayload = payload;
 };
 
 // Ссылка на WebView
@@ -230,7 +233,9 @@ const _handleReqMessage = async (
     }
     case 'needRedirect': {
       const path = needRedirect;
+      const payload = needRedirectPayload;
       needRedirect = null;
+      needRedirectPayload = null;
       return {
         reqId,
         type: 'sendPostResponse',
@@ -238,6 +243,7 @@ const _handleReqMessage = async (
         res: {
           type,
           path,
+          payload,
         },
       };
     }
@@ -488,6 +494,26 @@ const _handleReqMessage = async (
           type: 'sendPostResponse',
           resType: 'resolve',
           res: { type: 'stopTcpServer', message },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
+
+    case 'connectToTcpServer': {
+      try {
+        const message = await connectToTcpServer({ ip: req.ip });
+        console.log('connectToTcpServer|message=', message);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'connectToTcpServer', message },
         };
       } catch (error) {
         return {
