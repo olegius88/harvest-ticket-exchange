@@ -1,4 +1,4 @@
-// app/wifi/TcpServer.ts
+// Файл: app/wifi/TcpServer.ts
 import TcpSocket from 'react-native-tcp-socket';
 import Server from 'react-native-tcp-socket/lib/types/Server';
 import { ToastAndroid } from 'react-native';
@@ -13,8 +13,8 @@ export const startTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (server) {
       // Если сервер уже запущен, возвращаем сообщение
-      resolve('server|TCP-сервер уже запущен');
       ToastAndroid.show(`server|TCP-сервер уже запущен`, ToastAndroid.SHORT);
+      resolve('server|TCP-сервер уже запущен');
       return;
     }
 
@@ -25,21 +25,18 @@ export const startTcpServer = (): Promise<string> => {
       // @ts-ignore
       socket.on('data', (data) => {
         console.log('server|socket|on|data=', data.toString());
-
         ToastAndroid.show(`server|socket|on|data`, ToastAndroid.SHORT);
       });
 
       // @ts-ignore
       socket.on('error', (error) => {
         console.error('server|socket|on|error=', error);
-
         ToastAndroid.show(`server|socket|on|error`, ToastAndroid.SHORT);
       });
 
       // @ts-ignore
       socket.on('close', () => {
         console.log('server|socket|close');
-
         ToastAndroid.show(`server|socket|close`, ToastAndroid.SHORT);
       });
     });
@@ -52,8 +49,12 @@ export const startTcpServer = (): Promise<string> => {
     });
 
     server.listen({ port: 3290, host: '0.0.0.0', reuseAddress: true }, () => {
-      console.log('server|TCP-сервер запущен на порту 3290');
-      ToastAndroid.show(`server|TCP-сервер успешно запущен`, ToastAndroid.SHORT);
+      const address = server.address();
+      console.log('server|TCP-сервер запущен на порту 3290', address);
+      ToastAndroid.show(
+        `server|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
+        ToastAndroid.SHORT
+      );
       resolve('server|TCP-сервер успешно запущен');
     });
   });
@@ -66,13 +67,15 @@ export const startTcpServer = (): Promise<string> => {
 export const stopTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!server) {
-      resolve('TCP-сервер не запущен');
+      ToastAndroid.show(`stopTcpServer|TCP-сервер не запущен`, ToastAndroid.SHORT);
+      resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
     server.close(() => {
-      console.log('TCP-сервер остановлен');
+      console.log('stopTcpServer|TCP-сервер остановлен');
       server = null;
-      resolve('TCP-сервер остановлен');
+      ToastAndroid.show(`stopTcpServer|TCP-сервер остановлен`, ToastAndroid.SHORT);
+      resolve('stopTcpServer|TCP-сервер остановлен');
     });
   });
 };
