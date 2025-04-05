@@ -77,6 +77,7 @@ export interface ISendPostResponseCurrentUser {
 export interface ISendPostResponseNeedRedirect {
   type: 'needRedirect';
   path: string;
+  payload?: JoinHotspotResponse;
 }
 
 // Интерфейсы ответов для создания и редактирования водителя
@@ -325,6 +326,22 @@ export interface ISendPostResponseStopTcpServer {
 }
 
 /**
+ * Интерфейс для запроса подключения к TCP-серверу.
+ */
+export interface ISendPostMessageConnectToTcpServer {
+  type: 'connectToTcpServer';
+  ip: string;
+}
+
+/**
+ * Интерфейс для ответа подключения к TCP-серверу.
+ */
+export interface ISendPostResponseConnectToTcpServer {
+  type: 'connectToTcpServer';
+  message: string;
+}
+
+/**
  * Объединённый тип запросов.
  */
 export type ISendPostMessage =
@@ -348,7 +365,8 @@ export type ISendPostMessage =
   | ISendPostMessageEnableKeepAwake
   | ISendPostMessageDisableKeepAwake
   | ISendPostMessageStartTcpServer
-  | ISendPostMessageStopTcpServer;
+  | ISendPostMessageStopTcpServer
+  | ISendPostMessageConnectToTcpServer;
 
 /**
  * Объединённый тип ответов.
@@ -374,7 +392,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseEnableKeepAwake
   | ISendPostResponseDisableKeepAwake
   | ISendPostResponseStartTcpServer
-  | ISendPostResponseStopTcpServer;
+  | ISendPostResponseStopTcpServer
+  | ISendPostResponseConnectToTcpServer; // Добавлено новое сообщение
 
 /**
  * Интерфейс запроса с идентификатором.
@@ -544,4 +563,8 @@ export interface RolesRoutesMap {
   kombainer: KombainerRoutes;
   voditel: VoditelRoutes;
   bunkerist: BunkeristRoutes;
+}
+
+export interface JoinHotspotResponse {
+  ip: string;
 }
