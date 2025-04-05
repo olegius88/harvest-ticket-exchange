@@ -6,6 +6,8 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.talonkombainera.maps.JoinHotspotResponseNative
+import com.google.gson.Gson
 
 class MainWifiModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     override fun getName(): String {
@@ -40,8 +42,10 @@ class MainWifiModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
 
                 override fun onHotspotJoined(ipAddress: String) {
                     Log.d("MainWifiModule", "onHotspotJoined: ipAddress=$ipAddress")
+
                     // При успешном подключении возвращаем IP-адрес в promise.resolve
-                    promise.resolve(ipAddress)
+                    val response = JoinHotspotResponseNative(ipAddress)
+                    promise.resolve( Gson().toJson(response))
                 }
 
                 override fun onJoinFailed(error: String) {
