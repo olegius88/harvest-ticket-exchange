@@ -40,10 +40,15 @@ class MainWifiModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
                     Log.d("MainWifiModule", "onHotspotStopped")
                 }
 
-                override fun onHotspotJoined(ipAddress: String) {
+                override fun onHotspotJoined(ipAddress: String?) {
                     Log.d("MainWifiModule", "onHotspotJoined: ipAddress=$ipAddress")
 
                     // При успешном подключении возвращаем IP-адрес в promise.resolve
+                    if (ipAddress == null) {
+                        val response = JoinHotspotResponseNative("")
+                        promise.resolve( Gson().toJson(response))
+                        return
+                    }
                     val response = JoinHotspotResponseNative(ipAddress)
                     promise.resolve( Gson().toJson(response))
                 }
