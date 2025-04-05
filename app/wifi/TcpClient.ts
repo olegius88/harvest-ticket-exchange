@@ -7,29 +7,18 @@ let client: TcpSocket.Socket | null = null;
 
 /**
  * Функция для подключения к TCP-серверу.
- * При обнаружении IPv6-адреса, адрес оборачивается в квадратные скобки.
  * Возвращает Promise, который резолвится сообщением об успешном подключении
  * или отклоняется при возникновении ошибки.
- *
- * @param params - Объект с полем ip, содержащим IP-адрес сервера.
  */
-export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string> => {
+export const connectToTcpServer = ({ ip: host }): Promise<string> => {
   console.log('connectToTcpServer|host=', host);
-
-  // Если host содержит ":", предполагается IPv6-адрес. Оборачиваем в квадратные скобки, если ещё не обернут.
-  let formattedHost = host;
-  if (host.includes(':') && !host.startsWith('[') && !host.endsWith(']')) {
-    formattedHost = `[${host}]`;
-  }
-
   return new Promise((resolve, reject) => {
     if (client) {
-      ToastAndroid.show(`TCP клиент уже подключен`, ToastAndroid.SHORT);
       resolve('TCP клиент уже подключен');
+      ToastAndroid.show(`TCP клиент уже подключен`, ToastAndroid.SHORT);
       return;
     }
-
-    client = TcpSocket.createConnection({ port: 3290, host: formattedHost }, () => {
+    client = TcpSocket.createConnection({ port: 3290, host }, () => {
       console.log('TCP клиент подключился к серверу');
       ToastAndroid.show(`TCP клиент успешно подключился`, ToastAndroid.SHORT);
       resolve('TCP клиент успешно подключился');
