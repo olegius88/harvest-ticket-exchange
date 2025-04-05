@@ -1,5 +1,4 @@
 // Файл: app/wifi/TcpClient.ts
-
 import TcpSocket from 'react-native-tcp-socket';
 import { ToastAndroid } from 'react-native';
 
@@ -21,7 +20,32 @@ export const connectToTcpServer = ({ ip: host }): Promise<string> => {
     client = TcpSocket.createConnection({ port: 3290, host }, () => {
       console.log('TCP клиент подключился к серверу');
       ToastAndroid.show(`TCP клиент успешно подключился`, ToastAndroid.SHORT);
+
+      // Отправляем JSON-тестовое сообщение на сервер
+      const testMessage = JSON.stringify({ test: 'test' });
+      client.write(testMessage, 'utf8');
+      console.log('TCP клиент|Отправлено тестовое сообщение:', testMessage);
+      ToastAndroid.show(`TCP клиент|Отправлено тестовое сообщение`, ToastAndroid.SHORT);
+
       resolve('TCP клиент успешно подключился');
+    });
+
+    // Обработка ответа от сервера
+    // @ts-ignore
+    client.on('data', (data) => {
+      const dataString = data.toString();
+      console.log('TCP клиент|Получены данные:', dataString);
+      ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
+      let response = null;
+      try {
+        response = JSON.parse(dataString);
+      } catch (error) {
+        console.error('TCP клиент|Ошибка парсинга JSON:', error);
+      }
+      if (response && response.response === 'ok') {
+        console.log('TCP клиент|Получен корректный ответ:', response);
+        ToastAndroid.show(`TCP клиент|Получен ответ: ok`, ToastAndroid.SHORT);
+      }
     });
 
     // @ts-ignore
