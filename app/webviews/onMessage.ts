@@ -19,6 +19,7 @@ import {
   IEditKombainerParams,
   IEditVoditelParams,
   ILoginUserParams,
+  IOkTcpConnectEstablished,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
@@ -34,7 +35,7 @@ import {
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
-import { connectToTcpServer } from '../wifi/TcpClient';
+import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
 export let needRedirect: string;
 export let needRedirectPayload: any;
@@ -514,6 +515,26 @@ const _handleReqMessage = async (
           type: 'sendPostResponse',
           resType: 'resolve',
           res: { type: 'connectToTcpServer', message },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
+
+    case 'sendTcpRequest': {
+      try {
+        const data: IOkTcpConnectEstablished = await sendTcpRequest(req.data);
+        console.log('sendTcpRequest|data=', data);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'sendTcpRequest', data },
         };
       } catch (error) {
         return {
