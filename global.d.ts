@@ -343,20 +343,31 @@ export interface ISendPostResponseConnectToTcpServer {
 }
 
 /**
+ *
+ */
+export type ISendTcpRequestData = ITestTcpConnectEstablished | ISendTcpCurrentUser;
+
+/**
  * Интерфейс для запроса подключения к TCP-серверу.
  */
 export interface ISendPostMessageSendTcpRequest {
   type: 'sendTcpRequest';
-  data: ITestTcpConnectEstablished;
+  data: ISendTcpRequestData;
 }
+
+export type ISendTcpResponseData = IOkTcpConnectEstablished;
 
 export interface ISendPostResponseSendTcpRequest {
   type: 'sendTcpRequest';
-  data: IOkTcpConnectEstablished;
+  data: ISendTcpResponseData;
 }
 
 export interface ITestTcpConnectEstablished {
   type: 'test';
+}
+
+export interface ISendTcpCurrentUser {
+  data: ISendPostResponseCurrentUser;
 }
 
 export interface IOkTcpConnectEstablished {
