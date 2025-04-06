@@ -15,6 +15,7 @@
     "test": "jest",
     "build:android:gradle-init": "cd android && fixGradlePermissionsAndBuild.bat",
     "build:android:win": "cd android && gradlew.bat assembleRelease && explorer \"app\\build\\outputs\\apk\\release\"",
+    "build:android:inc-ver:win": "node ./android/app/incrementVersion.js && cd android && gradlew.bat assembleRelease && explorer \"app\\build\\outputs\\apk\\release\"",
     "build:android": "cd android && ./gradlew assembleRelease"
   },
   "dependencies": {

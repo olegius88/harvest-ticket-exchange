@@ -51,6 +51,7 @@ export const startTcpServer = (): Promise<string> => {
           socket.write(response, 'utf8');
           console.log('server|Отправлено:', response);
           ToastAndroid.show(`server|Отправлено: ${response}`, ToastAndroid.SHORT);
+          return;
         }
       });
 
