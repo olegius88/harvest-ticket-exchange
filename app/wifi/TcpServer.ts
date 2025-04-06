@@ -2,6 +2,7 @@
 import TcpSocket from 'react-native-tcp-socket';
 import Server from 'react-native-tcp-socket/lib/types/Server';
 import { ToastAndroid } from 'react-native';
+import { ITestTcpConnectEstablished } from '../../global';
 
 let server: Server = null;
 // Массив для хранения активных соединений
@@ -33,15 +34,20 @@ export const startTcpServer = (): Promise<string> => {
         const dataString = data.toString();
         console.log('server|socket|on|data=', dataString);
         ToastAndroid.show(`server|socket|on|data`, ToastAndroid.SHORT);
-        let message = null;
+        let message: ITestTcpConnectEstablished;
         try {
           message = JSON.parse(dataString);
         } catch (error) {
           console.error('server|Ошибка парсинга JSON:', error);
+          ToastAndroid.show(
+            `server|Ошибка парсинга JSON|${JSON.stringify(error)}`,
+            ToastAndroid.SHORT
+          );
+          return;
         }
         // Если получено тестовое сообщение, отправляем ответ "ok"
-        if (message && message.test === 'test') {
-          const response = JSON.stringify({ response: 'ok' });
+        if (message && message.type === 'test') {
+          const response = JSON.stringify({ status: 'ok' });
           socket.write(response, 'utf8');
           console.log('server|Отправлено:', response);
           ToastAndroid.show(`server|Отправлено: ${response}`, ToastAndroid.SHORT);

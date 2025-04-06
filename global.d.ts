@@ -356,7 +356,7 @@ export interface ISendPostResponseSendTcpRequest {
 }
 
 export interface ITestTcpConnectEstablished {
-  mode: 'test';
+  type: 'test';
 }
 
 export interface IOkTcpConnectEstablished {
