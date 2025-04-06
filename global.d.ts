@@ -1,6 +1,7 @@
 // Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
+import { Model } from '@nozbe/watermelondb';
 
 /**
  * Интерфейс для ответа с pushUserId.
@@ -342,6 +343,27 @@ export interface ISendPostResponseConnectToTcpServer {
 }
 
 /**
+ * Интерфейс для запроса подключения к TCP-серверу.
+ */
+export interface ISendPostMessageSendTcpRequest {
+  type: 'sendTcpRequest';
+  data: ITestTcpConnectEstablished;
+}
+
+export interface ISendPostResponseSendTcpRequest {
+  type: 'sendTcpRequest';
+  data: IOkTcpConnectEstablished;
+}
+
+export interface ITestTcpConnectEstablished {
+  mode: 'test';
+}
+
+export interface IOkTcpConnectEstablished {
+  status: 'ok';
+}
+
+/**
  * Объединённый тип запросов.
  */
 export type ISendPostMessage =
@@ -366,7 +388,8 @@ export type ISendPostMessage =
   | ISendPostMessageDisableKeepAwake
   | ISendPostMessageStartTcpServer
   | ISendPostMessageStopTcpServer
-  | ISendPostMessageConnectToTcpServer;
+  | ISendPostMessageConnectToTcpServer
+  | ISendPostMessageSendTcpRequest;
 
 /**
  * Объединённый тип ответов.
@@ -393,7 +416,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseDisableKeepAwake
   | ISendPostResponseStartTcpServer
   | ISendPostResponseStopTcpServer
-  | ISendPostResponseConnectToTcpServer; // Добавлено новое сообщение
+  | ISendPostResponseConnectToTcpServer
+  | ISendPostResponseSendTcpRequest;
 
 /**
  * Интерфейс запроса с идентификатором.
