@@ -77,6 +77,7 @@ export interface ISendPostResponseCurrentUser {
  */
 export interface ISendPostResponseNeedRedirect {
   type: 'needRedirect';
+  status: 'ok' | 'error' | 'empty';
   path: string;
   payload?: JoinHotspotResponse;
 }
