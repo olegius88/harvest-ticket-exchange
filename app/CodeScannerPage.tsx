@@ -84,7 +84,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
             // Если подключение успешно, возвращается IP-адрес
             // Можно, например, сохранить его или передать в другой модуль
-            setNeedRedirect('/voditel/crete-ticket', joinData);
+            setNeedRedirect('voditel', joinData);
             navigation.reset({
               index: 0,
               routes: [{ name: 'WebViewScreen' }],
