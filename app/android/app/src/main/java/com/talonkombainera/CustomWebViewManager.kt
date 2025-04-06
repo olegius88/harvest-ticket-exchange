@@ -134,9 +134,10 @@ class CustomWebViewManager : RNCWebViewManager() {
                         }
                     }
 
-                    override fun onHotspotJoined(ipAddress: String) {
+                    // Исправлено: параметр теперь nullable (String?) для соответствия интерфейсу
+                    override fun onHotspotJoined(ipAddress: String?) {
                         Log.d("CustomWebViewManager|joinHotspot", "startHotspot|Устройство подключилось к hotspot")
-                        Log.d("CustomWebViewManager|joinHotspot", "ipAddress:" + ipAddress)
+                        Log.d("CustomWebViewManager|joinHotspot", "ipAddress: $ipAddress")
                     }
 
                     override fun onJoinFailed(error: String) {
