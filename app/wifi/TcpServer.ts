@@ -4,6 +4,8 @@ import Server from 'react-native-tcp-socket/lib/types/Server';
 import { ToastAndroid } from 'react-native';
 
 let server: Server = null;
+// Массив для хранения активных соединений
+let activeSockets = [];
 
 /**
  * Запускает TCP-сервер на порту 3290.
@@ -22,9 +24,12 @@ export const startTcpServer = (): Promise<string> => {
       console.log('server|Клиент подключился к TCP-серверу');
       ToastAndroid.show(`server|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
 
+      // Добавляем сокет в массив активных соединений
+      activeSockets.push(socket);
+
       // Обработка полученных данных от клиента
       // @ts-ignore
-      socket.on('data', (data) => {
+      socket.on('data', (data: Buffer) => {
         const dataString = data.toString();
         console.log('server|socket|on|data=', dataString);
         ToastAndroid.show(`server|socket|on|data`, ToastAndroid.SHORT);
@@ -44,7 +49,7 @@ export const startTcpServer = (): Promise<string> => {
       });
 
       // @ts-ignore
-      socket.on('error', (error) => {
+      socket.on('error', (error: any) => {
         console.error('server|socket|on|error=', error);
         ToastAndroid.show(`server|socket|on|error`, ToastAndroid.SHORT);
       });
@@ -53,6 +58,8 @@ export const startTcpServer = (): Promise<string> => {
       socket.on('close', () => {
         console.log('server|socket|close');
         ToastAndroid.show(`server|socket|close`, ToastAndroid.SHORT);
+        // Удаляем сокет из массива активных соединений
+        activeSockets = activeSockets.filter((s) => s !== socket);
       });
     });
 
@@ -77,6 +84,7 @@ export const startTcpServer = (): Promise<string> => {
 
 /**
  * Останавливает запущенный TCP-сервер.
+ * Сначала закрывает все активные соединения, а затем сервер.
  * @returns Promise, который резолвится с сообщением об успешной остановке или отклоняется при ошибке.
  */
 export const stopTcpServer = (): Promise<string> => {
@@ -86,10 +94,22 @@ export const stopTcpServer = (): Promise<string> => {
       resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
+
+    // Закрываем все активные соединения
+    activeSockets.forEach((socket) => {
+      try {
+        socket.destroy();
+      } catch (error) {
+        console.error('stopTcpServer|Ошибка при закрытии сокета:', error);
+      }
+    });
+    activeSockets = [];
+
+    // Закрываем сервер
     server.close(() => {
       console.log('stopTcpServer|TCP-сервер остановлен');
-      server = null;
       ToastAndroid.show(`stopTcpServer|TCP-сервер остановлен`, ToastAndroid.SHORT);
+      server = null;
       resolve('stopTcpServer|TCP-сервер остановлен');
     });
   });
