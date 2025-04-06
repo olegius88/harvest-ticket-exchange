@@ -38,10 +38,12 @@ import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
 export let needRedirect: string;
+export let needRedirectStatus: 'ok' | 'error' | 'empty' = 'empty';
 export let needRedirectPayload: any;
 export const setNeedRedirect = (data: string, payload?: any): void => {
   console.log('setNeedRedirect|data=', data);
   needRedirect = data;
+  needRedirectStatus = 'ok';
   needRedirectPayload = payload;
 };
 
@@ -235,14 +237,17 @@ const _handleReqMessage = async (
     case 'needRedirect': {
       const path = needRedirect;
       const payload = needRedirectPayload;
+      const status = needRedirectStatus;
       needRedirect = null;
       needRedirectPayload = null;
+      needRedirectStatus = 'empty';
       return {
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
         res: {
           type,
+          status,
           path,
           payload,
         },
