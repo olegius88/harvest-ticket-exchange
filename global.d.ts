@@ -1,7 +1,6 @@
 // Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
-import { Model } from '@nozbe/watermelondb';
 
 /**
  * Интерфейс для ответа с pushUserId.
@@ -344,11 +343,6 @@ export interface ISendPostResponseConnectToTcpServer {
 }
 
 /**
- *
- */
-export type ISendTcpRequestData = ITestTcpConnectEstablished | ISendTcpCurrentUser;
-
-/**
  * Интерфейс для запроса подключения к TCP-серверу.
  */
 export interface ISendPostMessageSendTcpRequest {
@@ -367,6 +361,11 @@ export interface ITestTcpConnectEstablished {
   type: 'test';
 }
 
+export interface ISendTcpSetVoditelData {
+  type: 'set_voditel_data';
+  voditelData: ICreateVoditelParams;
+}
+
 export interface ISendTcpCurrentUser {
   data: ISendPostResponseCurrentUser;
 }
@@ -374,6 +373,14 @@ export interface ISendTcpCurrentUser {
 export interface IOkTcpConnectEstablished {
   status: 'ok';
 }
+
+/**
+ *
+ */
+export type ISendTcpRequestData =
+  | ITestTcpConnectEstablished
+  | ISendTcpCurrentUser
+  | ISendTcpSetVoditelData;
 
 /**
  * Объединённый тип запросов.
