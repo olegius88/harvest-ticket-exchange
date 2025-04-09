@@ -78,7 +78,7 @@ export interface ISendPostResponseNeedRedirect {
   type: 'needRedirect';
   status: 'ok' | 'error' | 'empty';
   path: string;
-  payload?: JoinHotspotResponse;
+  payload?: TNeedRedirectPayload;
 }
 
 // Интерфейсы ответов для создания и редактирования водителя
@@ -366,10 +366,6 @@ export interface ISendTcpSetVoditelData {
   voditelData: ICreateVoditelParams;
 }
 
-export interface ISendTcpCurrentUser {
-  data: ISendPostResponseCurrentUser;
-}
-
 export interface IOkTcpConnectEstablished {
   status: 'ok';
 }
@@ -377,10 +373,7 @@ export interface IOkTcpConnectEstablished {
 /**
  *
  */
-export type ISendTcpRequestData =
-  | ITestTcpConnectEstablished
-  | ISendTcpCurrentUser
-  | ISendTcpSetVoditelData;
+export type ISendTcpRequestData = ITestTcpConnectEstablished | ISendTcpSetVoditelData;
 
 /**
  * Объединённый тип запросов.
@@ -611,3 +604,5 @@ export interface RolesRoutesMap {
 export interface JoinHotspotResponse {
   ip: string;
 }
+
+export type TNeedRedirectPayload = JoinHotspotResponse;
