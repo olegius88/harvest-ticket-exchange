@@ -52,7 +52,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   // Включение фонарика
   const [torch, setTorch] = useState(false);
 
-  // Флаг для предотвращения повторного срабатывания
+  // Флаг для предотвращения повторного срабатывания.
   // Используем useRef для хранения флага, а state для управления UI
   const isProcessing = useRef(false);
   const [processing, setProcessing] = useState(false);
@@ -110,7 +110,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      {device && (
+      {device && !isProcessing.current && (
         // @ts-ignore
         <Camera
           style={StyleSheet.absoluteFill}
