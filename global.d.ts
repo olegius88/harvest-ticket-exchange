@@ -605,4 +605,8 @@ export interface JoinHotspotResponse {
   ip: string;
 }
 
-export type TNeedRedirectPayload = JoinHotspotResponse;
+export interface IPayloadVoditelData {
+  voditelData: ICreateVoditelParams;
+}
+
+export type TNeedRedirectPayload = JoinHotspotResponse | IPayloadVoditelData;
