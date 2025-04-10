@@ -580,6 +580,7 @@ export interface IGetConfigParam {
 export interface KombainerRoutes {
   index: string;
   create_ticket: string;
+  wait_ticket_confirm: string;
   ticket_detail: string;
   qr_code: string;
 }
