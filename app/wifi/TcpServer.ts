@@ -107,7 +107,7 @@ export const startTcpServer = (): Promise<string> => {
 export const stopTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!server) {
-      ToastAndroid.show(`stopTcpServer|TCP-сервер не запущен`, ToastAndroid.SHORT);
+      // ToastAndroid.show(`stopTcpServer|TCP-сервер не запущен`, ToastAndroid.SHORT);
       resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
