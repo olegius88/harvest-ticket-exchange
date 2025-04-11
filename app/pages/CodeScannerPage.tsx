@@ -1,21 +1,22 @@
-// app/CodeScannerPage.tsx
+// Файл: front/src/pages/CodeScannerPage.tsx
 
 import * as React from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
-import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from './Constants';
-import { useIsForeground } from './hooks/useIsForeground';
-import { StatusBarBlurBackground } from './views/StatusBarBlurBackground';
+import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../Constants';
+import { useIsForeground } from '../hooks/useIsForeground';
+import { StatusBarBlurBackground } from '../views/StatusBarBlurBackground';
 import { PressableOpacity } from 'react-native-pressable-opacity';
 import IonIcon from 'react-native-vector-icons/Ionicons';
-import type { Routes } from './Routes';
+import type { Routes } from '../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
-import ScanningOverlay from './views/ScanningOverlay';
-import { setNeedRedirect } from './webviews/onMessage';
-import { JoinHotspotResponse } from '../global';
+import ScanningOverlay from '../views/ScanningOverlay';
+import { setNeedRedirect } from '../webviews/onMessage';
+import { JoinHotspotResponse } from '../../global';
+import { setHotspotDisabled } from '../wifi/hotspot';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -57,6 +58,11 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   const isProcessing = useRef(false);
   const [processing, setProcessing] = useState(false);
 
+  // При загрузке страницы вызываем setHotspotDisabled
+  useEffect(() => {
+    setHotspotDisabled();
+  }, []);
+
   const onCodeScanned = useCallback(
     (codes: Code[]) => {
       const value = codes[0]?.value;
@@ -68,6 +74,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
         console.log('Parsed Wi‑Fi credentials:', ssid, password);
         isProcessing.current = true;
         setProcessing(true);
+
         MainWifiModule.joinHotspot(ssid, password)
           .then((joinDataRes: string) => {
             console.log('joinHotspot|joinDataRes=', joinDataRes);

@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import WebViewV1 from './webviews/WebViewV1';
 import { Routes } from './Routes';
-import { CodeScannerPage } from './CodeScannerPage';
+import { CodeScannerPage } from './pages/CodeScannerPage';
 
 const Stack = createNativeStackNavigator<Routes>();
 
