@@ -20,6 +20,12 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       setNeedRedirect('kombainer', voditelData);
 
       return { status: 'ok' };
+    case 'set_kombainer_data':
+      const { kombainerData } = message;
+
+      setNeedRedirect('voditel', kombainerData);
+
+      return { status: 'ok' };
     default:
       console.log('server|Получено неизвестное сообщение');
       ToastAndroid.show(`server|Получено неизвестное сообщение`, ToastAndroid.SHORT);
