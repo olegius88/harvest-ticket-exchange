@@ -366,6 +366,11 @@ export interface ISendTcpSetVoditelData {
   voditelData: ICreateVoditelParams;
 }
 
+export interface ISendTcpSetKombainerData {
+  type: 'set_kombainer_data';
+  kombainerData: ICreateKombainerParams;
+}
+
 export interface IOkTcpConnectEstablished {
   status: 'ok';
 }
@@ -373,7 +378,10 @@ export interface IOkTcpConnectEstablished {
 /**
  *
  */
-export type ISendTcpRequestData = ITestTcpConnectEstablished | ISendTcpSetVoditelData;
+export type ISendTcpRequestData =
+  | ITestTcpConnectEstablished
+  | ISendTcpSetVoditelData
+  | ISendTcpSetKombainerData;
 
 /**
  * Объединённый тип запросов.
