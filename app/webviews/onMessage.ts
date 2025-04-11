@@ -135,6 +135,10 @@ const _handleReqMessage = async (
   console.log('_handleReqMessage|req.type=', req.type);
   const type = req.type;
 
+  if (reqId === 'ignore') {
+    throw new VoidAndNotError('');
+  }
+
   switch (type) {
     case 'login': {
       const loginData = req.data as ILoginUserParams;
@@ -372,25 +376,7 @@ const _handleReqMessage = async (
       throw new VoidAndNotError('');
     }
     case 'setHotspotDisabled': {
-      const callNativeBridge = `
-        if (window.NativeBridge && window.NativeBridge.stopHotspot) {
-          const stopRes = window.NativeBridge.stopHotspot('${reqId}');
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            native: {
-              reqId: '${reqId}',
-              type: 'sendPostResponse',
-              resType: 'resolve',
-              res: { type: 'setHotspotDisabled', state: JSON.parse(stopRes).status }
-            }
-          }));
-          console.log('setHotspotDisabled|stopRes=', stopRes);
-        } else {
-          console.log('setHotspotDisabled|NativeBridge не доступен');
-          window.ReactNativeWebView.postMessage("NativeBridge не доступен");
-        }
-        true;
-      `;
-      webviewRef.current.injectJavaScript(callNativeBridge);
+      await setHotspotDisabled(reqId);
       throw new VoidAndNotError('');
     }
     case 'pushUserId': {
@@ -585,14 +571,20 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     return;
   }
 
-  if (eventData?.native?.type) {
+  const { reqId, native } = eventData;
+
+  if (reqId === 'ignore') {
+    return;
+  }
+
+  if (native?.type) {
     try {
       const res = await _handleNativeMessage(eventData);
       sendPostResponse(res);
     } catch (error) {
       console.error('_handleNativeMessage error:', error.message || error);
       sendPostResponse({
-        reqId: eventData.reqId,
+        reqId,
         type: 'sendPostResponse',
         resType: 'reject',
         error: { message: error.message || JSON.stringify(error) },
@@ -608,10 +600,32 @@ export const onMessage = async (event: WebViewMessageEvent): Promise<void> => {
     if (error instanceof VoidAndNotError) return;
     console.error('_handleReqMessage error:', error);
     sendPostResponse({
-      reqId: eventData.reqId,
+      reqId,
       type: 'sendPostResponse',
       resType: 'reject',
       error: { message: error.message || JSON.stringify(error) },
     });
   }
+};
+
+export const setHotspotDisabled = async (reqId: string): Promise<void> => {
+  const callNativeBridge = `
+    if (window.NativeBridge && window.NativeBridge.stopHotspot) {
+      const stopRes = window.NativeBridge.stopHotspot('${reqId}');
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        native: {
+          reqId: '${reqId}',
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'setHotspotDisabled', state: JSON.parse(stopRes).status }
+        }
+      }));
+      console.log('setHotspotDisabled|stopRes=', stopRes);
+    } else {
+      console.log('setHotspotDisabled|NativeBridge не доступен');
+      window.ReactNativeWebView.postMessage("NativeBridge не доступен");
+    }
+    true;
+  `;
+  webviewRef.current.injectJavaScript(callNativeBridge);
 };
