@@ -1,4 +1,4 @@
-// Файл: ScanningOverlay.tsx
+// Файл: app/views/ScanningOverlay.tsx
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
