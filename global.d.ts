@@ -589,6 +589,7 @@ export interface VoditelRoutes {
   index: string;
   create_trip: string;
   qr_scanner: string;
+  wait_kombainer_data: string;
 }
 
 export interface BunkeristRoutes {
