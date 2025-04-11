@@ -93,7 +93,7 @@ export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablishe
   return new Promise((resolve, reject) => {
     if (!client) {
       ToastAndroid.show(`TCP клиент не подключен`, ToastAndroid.SHORT);
-      reject(new Error('TCP клиент не подключен'));
+      reject('TCP клиент не подключен');
       return;
     }
     let jsonMessage: string;
