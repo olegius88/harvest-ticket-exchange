@@ -59,7 +59,7 @@ export const connectToTcpServer = ({ ip: host }): Promise<string> => {
     // @ts-ignore
     client.on('close', () => {
       console.log('TCP клиент|Соединение закрыто');
-      client = null;
+      client = undefined;
       ToastAndroid.show(`TCP клиент|Соединение закрыто`, ToastAndroid.SHORT);
     });
   });
@@ -92,7 +92,10 @@ export const disconnectTcpClient = (): Promise<string> => {
 export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablished> => {
   return new Promise((resolve, reject) => {
     if (!client) {
-      ToastAndroid.show(`TCP клиент не подключен`, ToastAndroid.SHORT);
+      ToastAndroid.show(
+        `TCP клиент не подключен ${client === undefined ? 'undefined' : 'null'}`,
+        ToastAndroid.SHORT
+      );
       reject('TCP клиент не подключен');
       return;
     }
