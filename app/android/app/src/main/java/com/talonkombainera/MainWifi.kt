@@ -1,4 +1,4 @@
-// java/com/talonkombainera/MainWifi.kt
+// Файл: java/com/talonkombainera/MainWifi.kt
 package com.talonkombainera
 
 import android.Manifest
@@ -12,6 +12,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
 import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.net.NetworkRequest
+import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
@@ -131,7 +132,7 @@ class MainWifi(private val context: Context) {
             var password = ""
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 // Для Android версий ниже R используем поле wifiConfiguration
-                val config = reservation.wifiConfiguration
+                val config: WifiConfiguration? = reservation.wifiConfiguration
                 config?.let {
                     ssid = it.SSID
                     password = it.preSharedKey
@@ -200,13 +201,32 @@ class MainWifi(private val context: Context) {
 
     /**
      * Метод для остановки запущенного локального хотспота.
-     * Теперь при остановке хотспота также вызывается метод stopTCP() для остановки TCP-сервера.
+     * Для API level 26 и выше используется стандартное закрытие через hotspotReservation,
+     * а для устройств с API level ниже 26 (например, API 24) используется отражение для отключения хотспота.
+     * Также при остановке хотспота вызывается метод stopTCP() для остановки TCP-сервера.
      */
     fun stopHotspot() {
-        hotspotReservation?.close()
-        hotspotReservation = null
         // Останавливаем TCP-сервер при остановке хотспота
         stopTCP()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            hotspotReservation?.close()
+            hotspotReservation = null
+        } else {
+            try {
+                // Для API ниже 26 используем методы setWifiApEnabled через reflection
+                val methodGet = wifiManager.javaClass.getMethod("getWifiApConfiguration")
+                val wifiConfig = methodGet.invoke(wifiManager)
+                val methodSet = wifiManager.javaClass.getMethod(
+                    "setWifiApEnabled",
+                    wifiConfig.javaClass,
+                    Boolean::class.javaPrimitiveType
+                )
+                methodSet.invoke(wifiManager, wifiConfig, false)
+            } catch (ex: Exception) {
+                Log.e("MainWifi", "Ошибка при отключении хотспота: ${ex.message}", ex)
+            }
+        }
         callback?.onHotspotStopped()
     }
 
@@ -237,11 +257,11 @@ class MainWifi(private val context: Context) {
         val connectivityManager =
             context.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         callback.connectivityManager = connectivityManager
-        peerIP = null // we check this in NetworkCallback so that we only start the transfer once per joinHotspot invocation
+        peerIP = null // Проверяем в NetworkCallback, чтобы запускать передачу только один раз для каждого вызова joinHotspot
         connectivityManager.requestNetwork(request, callback)
     }
 
-    // used when we join a hotspot
+    // Используется при подключении к хотспоту
     inner class NetworkCallback : ConnectivityManager.NetworkCallback() {
         lateinit var connectivityManager: ConnectivityManager
         override fun onAvailable(network: Network) {
@@ -259,11 +279,10 @@ class MainWifi(private val context: Context) {
             connectivityManager.bindProcessToNetwork(null)
         }
 
-        // this is our findGateway(), so after we get the gateway/dhcp server ip we're ready to confirm mode and launch transfer
+        // Получаем IP-адрес шлюза (хоста)
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
             super.onLinkPropertiesChanged(network, linkProperties)
 
-            // Получение IP-адреса хоста (шлюза)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 linkProperties.dhcpServerAddress?.let {
                     if (it is Inet4Address) {
@@ -375,7 +394,7 @@ class MainWifi(private val context: Context) {
      * Закрывает клиентский сокет и ServerSocket, если они инициализированы.
      */
     fun stopTCP() {
-        Log.d("stopTCP", "init")
+        Log.d("MainWifi", "stopTCP init")
         try {
             if (this::client.isInitialized && !client.isClosed) {
                 client.close()
@@ -384,7 +403,7 @@ class MainWifi(private val context: Context) {
                 server.close()
             }
         } catch (e: Exception) {
-            Log.e("stopTCP", "error|message="+e.message)
+            Log.e("MainWifi", "Ошибка остановки TCP-сервера: ${e.message}")
             e.printStackTrace()
         }
     }
