@@ -350,7 +350,7 @@ export interface ISendPostMessageSendTcpRequest {
   data: ISendTcpRequestData;
 }
 
-export type ISendTcpResponseData = IOkTcpConnectEstablished;
+export type ISendTcpResponseData = ITcpResponseConnectEstablishedOk | ITcpResponseKombainerData;
 
 export interface ISendPostResponseSendTcpRequest {
   type: 'sendTcpRequest';
@@ -375,8 +375,12 @@ export interface ISendTcpGetKombainerData {
   type: 'get_kombainer_data';
 }
 
-export interface IOkTcpConnectEstablished {
+export interface ITcpResponseConnectEstablishedOk {
   status: 'ok';
+}
+
+export interface ITcpResponseKombainerData {
+  kombainerData: ICreateKombainerParams;
 }
 
 /**
