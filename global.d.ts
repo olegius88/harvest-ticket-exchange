@@ -599,6 +599,7 @@ export interface KombainerRoutes {
   create_ticket: string;
   wait_ticket_confirm: string;
   ticket_detail: string;
+  ticket_detail_after_voditel_confirm: string;
   qr_code: string;
 }
 
