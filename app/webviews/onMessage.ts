@@ -1,4 +1,4 @@
-// Файл: app/webviews/onMessage.ts
+// app/webviews/onMessage.ts
 /**
  * Этот файл отвечает за обработку входящих сообщений от WebView.
  * Он разбит на следующие разделы:
@@ -10,7 +10,7 @@
  */
 
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import { useRef } from 'react';
+import { createRef } from 'react';
 import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import KeepAwake from 'react-native-keep-awake';
 import {
@@ -37,6 +37,7 @@ import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses'
 import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
+// Глобальные переменные для перенаправления
 export let needRedirect: string;
 export let needRedirectStatus: 'ok' | 'error' | 'empty' = 'empty';
 export let needRedirectPayload: any;
@@ -47,8 +48,8 @@ export const setNeedRedirect = (data: string, payload?: any): void => {
   needRedirectPayload = payload;
 };
 
-// Ссылка на WebView
-export const webviewRef = useRef<WebView>(null);
+// Создаем реф для WebView с помощью createRef (а не хука useRef)
+export const webviewRef = createRef<WebView>();
 
 /**
  * Утилита отправки ответа в WebView.
@@ -132,7 +133,7 @@ const _handleReqMessage = async (
   eventData: ISendPostMessageRequest
 ): Promise<ISendPostResponse> => {
   const { req, reqId } = eventData;
-  console.log('_handleReqMessage|req.type=', req.type);
+  console.log('_handleReqMessage|req.type=', req.type, req);
   const type = req.type;
 
   if (reqId === 'ignore') {
@@ -298,7 +299,7 @@ const _handleReqMessage = async (
         },
       };
     }
-    // открытие сканера QR
+    // Открытие сканера QR
     case 'openCodeScannerPage': {
       console.log('openCodeScannerPage|req.data=', req);
       const hasCameraAudioPermissions = await checkCameraAudioPermissions();
@@ -394,7 +395,7 @@ const _handleReqMessage = async (
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
-    // присоединение к существующему хотспоту
+    // Присоединение к существующему хотспоту
     case 'joinHotspot': {
       const { ssid, password } = req.data as { ssid: string; password: string };
       const callNativeBridge = `
@@ -477,7 +478,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'stopTcpServer': {
       try {
         const message = await stopTcpServer();
@@ -496,7 +496,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'connectToTcpServer': {
       try {
         const message = await connectToTcpServer({ ip: req.ip });
@@ -516,7 +515,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'sendTcpRequest': {
       try {
         const data: IOkTcpConnectEstablished = await sendTcpRequest(req.data);
@@ -536,7 +534,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(
