@@ -1,7 +1,7 @@
 // Файл: app/wifi/TcpClient.ts
 import TcpSocket from 'react-native-tcp-socket';
 import { ToastAndroid } from 'react-native';
-import { IOkTcpConnectEstablished } from '../../global';
+import { ITcpResponseConnectEstablishedOk } from '../../global';
 
 let client: TcpSocket.Socket | null = null;
 
@@ -89,7 +89,7 @@ export const disconnectTcpClient = (): Promise<string> => {
  * Объект преобразуется в JSON-строку и отправляется.
  * Функция ожидает ответа от сервера и возвращает его
  */
-export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablished> => {
+export const sendTcpRequest = (message: object): Promise<ITcpResponseConnectEstablishedOk> => {
   return new Promise((resolve, reject) => {
     if (!client) {
       ToastAndroid.show(`TCP клиент не подключен`, ToastAndroid.SHORT);
