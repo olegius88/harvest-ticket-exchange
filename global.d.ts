@@ -350,8 +350,6 @@ export interface ISendPostMessageSendTcpRequest {
   data: ISendTcpRequestData;
 }
 
-export type ISendTcpResponseData = ITcpResponseConnectEstablishedOk | ITcpResponseKombainerData;
-
 export interface ISendPostResponseSendTcpRequest {
   type: 'sendTcpRequest';
   data: ISendTcpResponseData;
@@ -375,6 +373,15 @@ export interface ISendTcpGetKombainerData {
   type: 'get_kombainer_data';
 }
 
+export interface ISendTcpConfirmKombainerTicket {
+  type: 'confirm_kombainer_ticket';
+  voditelData: ICreateVoditelParams;
+}
+
+export interface ITcpResponseConfirmKombainerTicket {
+  status: 'ok';
+}
+
 export interface ITcpResponseConnectEstablishedOk {
   status: 'ok';
 }
@@ -390,7 +397,13 @@ export type ISendTcpRequestData =
   | ITestTcpConnectEstablished
   | ISendTcpSetVoditelData
   | ISendTcpSetKombainerData
-  | ISendTcpGetKombainerData;
+  | ISendTcpGetKombainerData
+  | ISendTcpConfirmKombainerTicket;
+
+export type ISendTcpResponseData =
+  | ITcpResponseConnectEstablishedOk
+  | ITcpResponseKombainerData
+  | ITcpResponseConfirmKombainerTicket;
 
 /**
  * Объединённый тип запросов.
