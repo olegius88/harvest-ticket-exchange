@@ -37,9 +37,9 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'confirm_kombainer_ticket': {
-      const { voditelData } = message;
+      const { voditelData, userData } = message;
 
-      setNeedRedirect('kombainer', voditelData);
+      setNeedRedirect('kombainer', { voditelData, userData });
 
       return { status: 'ok' };
     }
