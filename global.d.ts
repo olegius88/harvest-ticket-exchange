@@ -376,6 +376,7 @@ export interface ISendTcpGetKombainerData {
 export interface ISendTcpConfirmKombainerTicket {
   type: 'confirm_kombainer_ticket';
   voditelData: ICreateVoditelParams;
+  userData: ICreateUsersParams;
 }
 
 export interface ITcpResponseConfirmKombainerTicket {
@@ -643,4 +644,12 @@ export interface IPayloadVoditelData {
   voditelData: ICreateVoditelParams;
 }
 
-export type TNeedRedirectPayload = JoinHotspotResponse | IPayloadVoditelData;
+export interface IPayloadConfirmKombainerTicket {
+  voditelData: ICreateVoditelParams;
+  userData: ICreateUsersParams;
+}
+
+export type TNeedRedirectPayload =
+  | JoinHotspotResponse
+  | IPayloadVoditelData
+  | IPayloadConfirmKombainerTicket;
