@@ -371,6 +371,10 @@ export interface ISendTcpSetKombainerData {
   kombainerData: ICreateKombainerParams;
 }
 
+export interface ISendTcpGetKombainerData {
+  type: 'get_kombainer_data';
+}
+
 export interface IOkTcpConnectEstablished {
   status: 'ok';
 }
@@ -381,7 +385,8 @@ export interface IOkTcpConnectEstablished {
 export type ISendTcpRequestData =
   | ITestTcpConnectEstablished
   | ISendTcpSetVoditelData
-  | ISendTcpSetKombainerData;
+  | ISendTcpSetKombainerData
+  | ISendTcpGetKombainerData;
 
 /**
  * Объединённый тип запросов.
@@ -598,6 +603,7 @@ export interface VoditelRoutes {
   create_trip: string;
   qr_scanner: string;
   wait_kombainer_data: string;
+  ticket_detail: string;
 }
 
 export interface BunkeristRoutes {
