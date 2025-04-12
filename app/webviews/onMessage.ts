@@ -19,10 +19,10 @@ import {
   IEditKombainerParams,
   IEditVoditelParams,
   ILoginUserParams,
-  IOkTcpConnectEstablished,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
+  ITcpResponseConnectEstablishedOk,
 } from '../../global';
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
@@ -517,7 +517,7 @@ const _handleReqMessage = async (
     }
     case 'sendTcpRequest': {
       try {
-        const data: IOkTcpConnectEstablished = await sendTcpRequest(req.data);
+        const data: ITcpResponseConnectEstablishedOk = await sendTcpRequest(req.data);
         console.log('sendTcpRequest|data=', data);
         return {
           reqId,
