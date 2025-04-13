@@ -61,7 +61,9 @@ export const startTcpServer = (): Promise<string> => {
 
         console.log('startTcpServer|onTcpMessage|res=', res);
         try {
-          socket.write(JSON.stringify({ ...res, ...{ from: 'TcpSocket.createServer-on-data' } }));
+          socket.write(
+            JSON.stringify({ ...res, ...{ from: 'TcpServer.ts-TcpSocket.createServer-on-data' } })
+          );
         } catch (error) {
           console.error('startTcpServer|socket|write|error=', error);
           ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
