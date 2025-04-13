@@ -56,13 +56,15 @@ export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string
         }
       } catch (error) {
         console.error('TCP клиент|Ошибка в onTcpMessage:', error);
-        ToastAndroid.show(`TCP клиент|Ошибка в onTcpMessage`, ToastAndroid.SHORT);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка в onTcpMessage`, ToastAndroid.SHORT);
       }
     });
 
     client.on('error', (error) => {
       console.error('TCP клиент|Ошибка:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка`, ToastAndroid.SHORT);
       reject(error);
     });
 
@@ -111,7 +113,8 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
       jsonMessage = JSON.stringify({ ...message, from: 'TcpClient.ts-sendTcpRequest' });
     } catch (error) {
       console.error('TCP клиент|Ошибка при сериализации объекта:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
       reject(error);
       return;
     }
@@ -127,7 +130,8 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
         resolve(response);
       } catch (error) {
         console.error('TCP клиент|Ошибка при парсинге ответа:', error);
-        ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
         reject(error);
       }
     });
@@ -139,7 +143,8 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
       });
     } catch (error) {
       console.error('TCP клиент|Ошибка при отправке данных:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка при отправке данных`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка при отправке данных`, ToastAndroid.SHORT);
       reject(error);
     }
   });
