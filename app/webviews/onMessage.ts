@@ -517,7 +517,7 @@ const _handleReqMessage = async (
     }
     case 'sendTcpRequest': {
       try {
-        const data: ITcpResponseConnectEstablishedOk = await sendTcpRequest(req.data);
+        const data: ISendTcpResponseData = await sendTcpRequest(req.data);
         console.log('sendTcpRequest|data=', data);
         return {
           reqId,
