@@ -1,7 +1,6 @@
 // Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
-import { tcpServerSendRequest } from './app/wifi/TcpServer';
 
 /**
  * Интерфейс для ответа с pushUserId.
@@ -390,6 +389,13 @@ export interface ISendTcpConfirmKombainerTicket {
   userData: ICreateUsersParams;
 }
 
+export interface ISendTcpSendSetTalonOfKombainer {
+  type: 'set_talon_of_kombainer';
+  kombainerData: ICreateKombainerParams;
+  userData: ICreateUsersParams;
+  weight: number;
+}
+
 export interface IIsTcpServerSendResponse {
   isTcpServerSendResponse: boolean;
 }
@@ -414,7 +420,8 @@ export type ISendTcpRequestData =
   | ISendTcpSetVoditelData
   | ISendTcpSetKombainerData
   | ISendTcpGetKombainerData
-  | ISendTcpConfirmKombainerTicket;
+  | ISendTcpConfirmKombainerTicket
+  | ISendTcpSendSetTalonOfKombainer;
 
 export type ISendTcpResponseData =
   | ITcpResponseConnectEstablishedOk
