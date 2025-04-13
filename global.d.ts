@@ -390,6 +390,10 @@ export interface ISendTcpConfirmKombainerTicket {
   userData: ICreateUsersParams;
 }
 
+export interface IIsTcpServerSendResponse {
+  isTcpServerSendResponse: boolean;
+}
+
 export interface ITcpResponseConfirmKombainerTicket {
   status: 'ok';
 }
