@@ -655,6 +655,7 @@ export interface KombainerRoutes {
   wait_ticket_confirm: string;
   ticket_detail: string;
   ticket_detail_after_voditel_confirm: string;
+  ticket_created_success: string;
   qr_code: string;
 }
 
@@ -665,6 +666,7 @@ export interface VoditelRoutes {
   wait_kombainer_data: string;
   ticket_detail: string;
   ticket_detail_after_set_weight: string;
+  ticket_created_success: string;
 }
 
 export interface BunkeristRoutes {
