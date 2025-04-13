@@ -67,8 +67,11 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     default:
-      console.log('server|Получено неизвестное сообщение');
-      ToastAndroid.show(`server|Получено неизвестное сообщение`, ToastAndroid.SHORT);
-      throw new Error('server|Получено неизвестное сообщение');
+      console.log(`onTcpMessage|Получено неизвестное сообщение|type=${type}`, message);
+      ToastAndroid.show(
+        `onTcpMessage|Получено неизвестное сообщение|type=${type}`,
+        ToastAndroid.SHORT
+      );
+      throw new Error(`onTcpMessage|Получено неизвестное сообщение|type=${type}`);
   }
 };
