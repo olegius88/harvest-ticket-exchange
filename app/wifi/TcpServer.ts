@@ -2,12 +2,13 @@
 import TcpSocket from 'react-native-tcp-socket';
 import Server from 'react-native-tcp-socket/lib/types/Server';
 import { ToastAndroid } from 'react-native';
-import { ISendTcpRequestData } from '../../global';
+import { IIsTcpServerSendResponse, ISendTcpRequestData, ISendTcpResponseData } from '../../global';
 import { onTcpMessage } from './onTcpMessage';
+import Socket from 'react-native-tcp-socket/lib/types/Socket';
 
 let server: Server = null;
-// Массив для хранения активных соединений
-let activeSockets = [];
+// Массив для хранения активных соединений (подключён может быть только один клиент)
+let activeSockets: TcpSocket.Socket[] = [];
 
 /**
  * Запускает TCP-сервер на порту 3290.
@@ -16,25 +17,23 @@ let activeSockets = [];
 export const startTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (server) {
-      // Если сервер уже запущен, возвращаем сообщение
-      ToastAndroid.show(`server|TCP-сервер уже запущен`, ToastAndroid.SHORT);
-      resolve('server|TCP-сервер уже запущен');
+      ToastAndroid.show(`startTcpServer|TCP-сервер уже запущен`, ToastAndroid.SHORT);
+      resolve('startTcpServer|TCP-сервер уже запущен');
       return;
     }
 
-    server = TcpSocket.createServer((socket) => {
-      console.log('server|Клиент подключился к TCP-серверу');
-      ToastAndroid.show(`server|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
+    server = TcpSocket.createServer((socket: Socket) => {
+      console.log('startTcpServer|Клиент подключился к TCP-серверу');
+      ToastAndroid.show(`startTcpServer|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
 
       // Добавляем сокет в массив активных соединений
       activeSockets.push(socket);
 
       // Обработка полученных данных от клиента
-      // @ts-ignore
       socket.on('data', async (data: Buffer) => {
         const dataString = data.toString();
-        console.log('server|socket|on|data=', dataString);
-        ToastAndroid.show(`server|socket|on|data`, ToastAndroid.SHORT);
+        console.log('startTcpServer|socket|on|data=', dataString);
+        ToastAndroid.show(`startTcpServer|socket|on|data`, ToastAndroid.SHORT);
         let message: ISendTcpRequestData;
         try {
           message = JSON.parse(dataString);
@@ -43,9 +42,9 @@ export const startTcpServer = (): Promise<string> => {
             return;
           }
         } catch (error) {
-          console.error('server|Ошибка парсинга JSON:', error);
+          console.error('startTcpServer|Ошибка парсинга JSON:', error);
           ToastAndroid.show(
-            `server|Ошибка парсинга JSON|${JSON.stringify(error)}`,
+            `startTcpServer|Ошибка парсинга JSON|${JSON.stringify(error)}`,
             ToastAndroid.SHORT
           );
           return;
@@ -55,50 +54,47 @@ export const startTcpServer = (): Promise<string> => {
         try {
           res = await onTcpMessage(message);
         } catch (error) {
-          console.error('server|onTcpMessage|error=', error);
-          ToastAndroid.show(`server|onTcpMessage|error`, ToastAndroid.SHORT);
+          console.error('startTcpServer|onTcpMessage|error=', error);
+          ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
           return;
         }
 
-        console.log('server|onTcpMessage|res=', res);
+        console.log('startTcpServer|onTcpMessage|res=', res);
         try {
           socket.write(JSON.stringify(res));
         } catch (error) {
-          console.error('server|socket|write|error=', error);
-          ToastAndroid.show(`server|socket|write|error`, ToastAndroid.SHORT);
+          console.error('startTcpServer|socket|write|error=', error);
+          ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
         }
       });
 
-      // @ts-ignore
       socket.on('error', (error: any) => {
-        console.error('server|socket|on|error=', error);
-        ToastAndroid.show(`server|socket|on|error`, ToastAndroid.SHORT);
+        console.error('startTcpServer|socket|on|error=', error);
+        ToastAndroid.show(`startTcpServer|socket|on|error`, ToastAndroid.SHORT);
       });
 
-      // @ts-ignore
       socket.on('close', () => {
-        console.log('server|socket|close');
-        ToastAndroid.show(`server|socket|close`, ToastAndroid.SHORT);
+        console.log('startTcpServer|socket|close');
+        ToastAndroid.show(`startTcpServer|socket|close`, ToastAndroid.SHORT);
         // Удаляем сокет из массива активных соединений
         activeSockets = activeSockets.filter((s) => s !== socket);
       });
     });
 
-    // @ts-ignore
     server.on('error', (error: any) => {
-      console.log('server|Ошибка TCP-сервера|error=', error);
-      ToastAndroid.show(`server|Ошибка TCP-сервера|error`, ToastAndroid.SHORT);
+      console.log('startTcpServer|Ошибка TCP-сервера|error=', error);
+      ToastAndroid.show(`startTcpServer|Ошибка TCP-сервера|error`, ToastAndroid.SHORT);
       reject(error);
     });
 
     server.listen({ port: 3290, host: '0.0.0.0', reuseAddress: true }, () => {
       const address = server.address();
-      console.log('server|TCP-сервер запущен на порту 3290', address);
+      console.log('startTcpServer|TCP-сервер запущен на порту 3290', address);
       ToastAndroid.show(
-        `server|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
+        `startTcpServer|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
         ToastAndroid.SHORT
       );
-      resolve('server|TCP-сервер успешно запущен');
+      resolve('startTcpServer|TCP-сервер успешно запущен');
     });
   });
 };
@@ -111,7 +107,6 @@ export const startTcpServer = (): Promise<string> => {
 export const stopTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!server) {
-      // ToastAndroid.show(`stopTcpServer|TCP-сервер не запущен`, ToastAndroid.SHORT);
       resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
@@ -133,5 +128,55 @@ export const stopTcpServer = (): Promise<string> => {
       server = null;
       resolve('stopTcpServer|TCP-сервер остановлен');
     });
+  });
+};
+
+/**
+ * Отправляет сообщение подключённому TCP-клиенту и ожидает ответа.
+ * Предполагается, что подключён только один TCP-клиент.
+ * @param message данные сообщения для отправки (любой объект, который будет сериализован в JSON).
+ * @returns Promise, который резолвится с ответом от клиента или отклоняется при ошибке.
+ */
+export const tcpServerSendRequest = (message: any): Promise<ISendTcpResponseData> => {
+  return new Promise((resolve, reject) => {
+    if (activeSockets.length !== 1) {
+      const errMsg =
+        activeSockets.length === 0
+          ? 'tcpServerSendRequest|Нет подключенных TCP-клиентов'
+          : 'tcpServerSendRequest|Подключено более одного TCP-клиента';
+      ToastAndroid.show(errMsg, ToastAndroid.SHORT);
+      return reject(new Error(errMsg));
+    }
+    const socket = activeSockets[0];
+    const messageString = JSON.stringify(message);
+
+    // Устанавливаем одноразовый обработчик для получения ответа от клиента
+    socket.once('data', (data: Buffer) => {
+      const dataString = data.toString();
+      console.log('tcpServerSendRequest|sendMessage|Получен ответ от клиента:', dataString);
+      try {
+        const response = JSON.parse(dataString);
+        resolve(response);
+      } catch (error) {
+        console.error('tcpServerSendRequest|sendMessage|Ошибка парсинга ответа:', error);
+        ToastAndroid.show(
+          `tcpServerSendRequest|sendMessage|Ошибка парсинга ответа`,
+          ToastAndroid.SHORT
+        );
+        reject(error);
+      }
+    });
+
+    try {
+      socket.write(messageString);
+      console.log('tcpServerSendRequest|sendMessage|Сообщение отправлено:', messageString);
+    } catch (error) {
+      console.error('tcpServerSendRequest|sendMessage|Ошибка при отправке сообщения:', error);
+      ToastAndroid.show(
+        `tcpServerSendRequest|sendMessage|Ошибка при отправке сообщения`,
+        ToastAndroid.SHORT
+      );
+      reject(error);
+    }
   });
 };
