@@ -69,6 +69,7 @@ export interface ISendPostResponseCurrentUser {
   userData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams | null;
   voditelData: ICreateVoditelParams | null;
+  kombainerUserData: ICreateUsersParams;
 }
 
 /**
@@ -663,6 +664,7 @@ export interface VoditelRoutes {
   qr_scanner: string;
   wait_kombainer_data: string;
   ticket_detail: string;
+  ticket_detail_after_set_weight: string;
 }
 
 export interface BunkeristRoutes {
@@ -688,11 +690,17 @@ export interface IPayloadConfirmKombainerTicket {
   voditelData: ICreateVoditelParams;
   userData: ICreateUsersParams;
 }
+export interface IPayloadSetTalonOfKombainer {
+  kombainerData: ICreateKombainerParams;
+  userData: ICreateUsersParams;
+  weight: number;
+}
 
 export type TNeedRedirectPayload =
   | JoinHotspotResponse
   | IPayloadVoditelData
-  | IPayloadConfirmKombainerTicket;
+  | IPayloadConfirmKombainerTicket
+  | IPayloadSetTalonOfKombainer;
 
 /**
  * Возможные статусы талона
