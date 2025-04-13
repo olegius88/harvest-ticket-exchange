@@ -1,7 +1,7 @@
 // Файл: front/src/pages/CodeScannerPage.tsx
 
 import * as React from 'react';
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
@@ -77,21 +77,22 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
         MainWifiModule.joinHotspot(ssid, password)
           .then((joinDataRes: string) => {
-            console.log('joinHotspot|joinDataRes=', joinDataRes);
+            console.log('onCodeScanned|joinHotspot|joinDataRes=', joinDataRes);
             let joinData: JoinHotspotResponse;
             try {
               joinData = JSON.parse(joinDataRes);
             } catch (e) {
-              console.error('JSON.parse error|e=', e);
-              console.error('JSON.parse error|e|joinDataRes=', joinDataRes);
+              console.error('onCodeScanned|JSON.parse error|e=', e);
+              console.error('onCodeScanned|JSON.parse error|e|joinDataRes=', joinDataRes);
               Alert.alert('Ошибка joinDataRes');
               return;
             }
-            console.log('joinData=', joinData);
+            console.log('onCodeScanned|joinData=', joinData);
 
             // Если подключение успешно, возвращается IP-адрес
             // Можно, например, сохранить его или передать в другой модуль
             setNeedRedirect('voditel', joinData);
+
             navigation.reset({
               index: 0,
               routes: [{ name: 'WebViewScreen' }],
@@ -103,6 +104,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
             setProcessing(false);
           });
       } else {
+        console.error('onCodeScanned|!credentials|value=', value);
         Alert.alert('Ошибка считывания QR-кода');
       }
     },
