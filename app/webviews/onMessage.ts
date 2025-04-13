@@ -534,6 +534,25 @@ const _handleReqMessage = async (
         };
       }
     }
+    case 'tcpServerSendRequest': {
+      try {
+        const data: ISendTcpResponseData = await tcpServerSendRequest(req.data);
+        console.log('sendTcpRequest|data=', data);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'sendTcpRequest', data },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(
