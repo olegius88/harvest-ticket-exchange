@@ -13,6 +13,7 @@ import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { createRef } from 'react';
 import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import KeepAwake from 'react-native-keep-awake';
+import DeviceInfo from 'react-native-device-info';
 import {
   ICreateKombainerParams,
   ICreateTalonParams,
@@ -79,17 +80,27 @@ const sendPostResponse = (obj: ISendPostResponse): void => {
 /**
  * Проверка и запрос разрешений для работы с Wi-Fi (для Android).
  */
-const checkPermissionsHotspot = async (): Promise<boolean> => {
+export const checkPermissionsHotspot = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return true;
+
+  // Проверяем, включён ли режим определения местоположения.
+  const locationEnabled = await DeviceInfo.isLocationEnabled();
+  if (!locationEnabled) {
+    console.log('checkPermissionsHotspot|locationEnabled = false');
+    return false;
+  }
+
   const permissions = [
     PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
     PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
   ];
+
   const granted = await PermissionsAndroid.requestMultiple(permissions);
   const allGranted = permissions.every(
     (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
   );
+
   console.log('checkPermissionsHotspot|allGranted=', allGranted);
   return allGranted;
 };
