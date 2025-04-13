@@ -45,7 +45,13 @@ export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string
         const response = await onTcpMessage(message);
         // Отправляем ответ обратно на сервер
         if (client) {
-          client.write(JSON.stringify({ ...response, isTcpServerSendResponse: true }));
+          client.write(
+            JSON.stringify({
+              ...response,
+              isTcpServerSendResponse: true,
+              from: 'TcpClient.ts-connectToTcpServer-on-data',
+            })
+          );
           console.log('TCP клиент|Ответ отправлен на сервер:', JSON.stringify(response));
         }
       } catch (error) {
@@ -102,7 +108,7 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
     }
     let jsonMessage: string;
     try {
-      jsonMessage = JSON.stringify(message);
+      jsonMessage = JSON.stringify({ ...message, from: 'TcpClient.ts-sendTcpRequest' });
     } catch (error) {
       console.error('TCP клиент|Ошибка при сериализации объекта:', error);
       ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
