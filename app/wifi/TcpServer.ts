@@ -38,6 +38,10 @@ export const startTcpServer = (): Promise<string> => {
         let message: ISendTcpRequestData;
         try {
           message = JSON.parse(dataString);
+          if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
+            console.log('startTcpServer|isTcpServerSendResponse|message=', message);
+            return;
+          }
         } catch (error) {
           console.error('server|Ошибка парсинга JSON:', error);
           ToastAndroid.show(
