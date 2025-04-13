@@ -448,7 +448,15 @@ export type ISendPostMessage =
   | ISendPostMessageStopTcpServer
   | ISendPostMessageConnectToTcpServer
   | ISendTcpRequest
-  | ITcpServerSendRequest;
+  | ITcpServerSendRequest
+  | ISendPostMessageCreateTalon
+  | ISendPostMessageEditTalon
+  | ISendPostMessageAssignDriverToTalon
+  | ISendPostMessageUpdateTalonStatus
+  | ISendPostMessageUpdateTalonWeight
+  | ISendPostMessageGetTalonById
+  | ISendPostMessageGetTalonsByKombainerId
+  | ISendPostMessageGetTalonsByVoditelId;
 
 /**
  * Объединённый тип ответов.
@@ -477,7 +485,15 @@ export type ISendPostResponseRes =
   | ISendPostResponseStopTcpServer
   | ISendPostResponseConnectToTcpServer
   | ISendTcpResponse
-  | ITcpServerSendResponse;
+  | ITcpServerSendResponse
+  | ISendPostResponseCreateTalon
+  | ISendPostResponseEditTalon
+  | ISendPostResponseAssignDriverToTalon
+  | ISendPostResponseUpdateTalonStatus
+  | ISendPostResponseUpdateTalonWeight
+  | ISendPostResponseGetTalonById
+  | ISendPostResponseGetTalonsByKombainerId
+  | ISendPostResponseGetTalonsByVoditelId;
 
 /**
  * Интерфейс запроса с идентификатором.
@@ -670,3 +686,132 @@ export type TNeedRedirectPayload =
   | JoinHotspotResponse
   | IPayloadVoditelData
   | IPayloadConfirmKombainerTicket;
+
+/**
+ * Возможные статусы талона
+ */
+export type TalonStatus = 'created' | 'driver_assigned' | 'in_progress' | 'completed' | 'cancelled';
+
+/**
+ * Интерфейс для редактирования талона комбайнера
+ */
+export interface IEditTalonParams {
+  talonId: string; // ID талона
+  kombainerId: string; // ID комбайнера
+  voditelId?: string; // ID водителя (может быть не назначен)
+  status: TalonStatus; // Статус талона
+  startTime: number; // Время начала
+  endTime?: number; // Время окончания (может быть не заполнено)
+  weight?: number; // Вес (может быть не заполнен)
+  comment?: string; // Комментарий
+}
+
+/**
+ * Интерфейс для создания талона комбайнера
+ */
+export interface ICreateTalonParams {
+  kombainerId: string; // ID комбайнера
+  voditelId?: string; // ID водителя (может быть не назначен)
+  status: TalonStatus; // Статус талона
+  startTime: number; // Время начала
+  endTime?: number; // Время окончания (может быть не заполнено)
+  weight?: number; // Вес (может быть не заполнен)
+  comment?: string; // Комментарий
+}
+
+// Интерфейсы для запросов создания и редактирования талона
+export interface ISendPostMessageCreateTalon {
+  type: 'createTalon';
+  data: ICreateTalonParams;
+}
+
+export interface ISendPostMessageEditTalon {
+  type: 'editTalon';
+  data: IEditTalonParams;
+}
+
+export interface ISendPostMessageAssignDriverToTalon {
+  type: 'assignDriverToTalon';
+  data: {
+    talonId: string;
+    voditelId: string;
+  };
+}
+
+export interface ISendPostMessageUpdateTalonStatus {
+  type: 'updateTalonStatus';
+  data: {
+    talonId: string;
+    status: TalonStatus;
+  };
+}
+
+export interface ISendPostMessageUpdateTalonWeight {
+  type: 'updateTalonWeight';
+  data: {
+    talonId: string;
+    weight: number;
+  };
+}
+
+export interface ISendPostMessageGetTalonById {
+  type: 'getTalonById';
+  data: {
+    talonId: string;
+  };
+}
+
+export interface ISendPostMessageGetTalonsByKombainerId {
+  type: 'getTalonsByKombainerId';
+  data: {
+    kombainerId: string;
+  };
+}
+
+export interface ISendPostMessageGetTalonsByVoditelId {
+  type: 'getTalonsByVoditelId';
+  data: {
+    voditelId: string;
+  };
+}
+
+// Интерфейсы для ответов
+export interface ISendPostResponseCreateTalon {
+  type: 'createTalon';
+  talonId: string;
+}
+
+export interface ISendPostResponseEditTalon {
+  type: 'editTalon';
+  talonId: string;
+}
+
+export interface ISendPostResponseAssignDriverToTalon {
+  type: 'assignDriverToTalon';
+  talonId: string;
+}
+
+export interface ISendPostResponseUpdateTalonStatus {
+  type: 'updateTalonStatus';
+  talonId: string;
+}
+
+export interface ISendPostResponseUpdateTalonWeight {
+  type: 'updateTalonWeight';
+  talonId: string;
+}
+
+export interface ISendPostResponseGetTalonById {
+  type: 'getTalonById';
+  talon: ICreateTalonsParams;
+}
+
+export interface ISendPostResponseGetTalonsByKombainerId {
+  type: 'getTalonsByKombainerId';
+  talons: ICreateTalonsParams[];
+}
+
+export interface ISendPostResponseGetTalonsByVoditelId {
+  type: 'getTalonsByVoditelId';
+  talons: ICreateTalonsParams[];
+}
