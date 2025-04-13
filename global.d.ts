@@ -1,6 +1,7 @@
 // Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
+import { tcpServerSendRequest } from './app/wifi/TcpServer';
 
 /**
  * Интерфейс для ответа с pushUserId.
@@ -345,12 +346,22 @@ export interface ISendPostResponseConnectToTcpServer {
 /**
  * Интерфейс для запроса подключения к TCP-серверу.
  */
-export interface ISendPostMessageSendTcpRequest {
+export interface ISendTcpRequest {
   type: 'sendTcpRequest';
   data: ISendTcpRequestData;
 }
 
-export interface ISendPostResponseSendTcpRequest {
+export interface ISendTcpResponse {
+  type: 'sendTcpRequest';
+  data: ISendTcpResponseData;
+}
+
+export interface ITcpServerSendRequest {
+  type: 'tcpServerSendRequest';
+  data: ISendTcpRequestData;
+}
+
+export interface ITcpServerSendResponse {
   type: 'sendTcpRequest';
   data: ISendTcpResponseData;
 }
@@ -432,7 +443,8 @@ export type ISendPostMessage =
   | ISendPostMessageStartTcpServer
   | ISendPostMessageStopTcpServer
   | ISendPostMessageConnectToTcpServer
-  | ISendPostMessageSendTcpRequest;
+  | ISendTcpRequest
+  | ITcpServerSendRequest;
 
 /**
  * Объединённый тип ответов.
@@ -460,7 +472,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseStartTcpServer
   | ISendPostResponseStopTcpServer
   | ISendPostResponseConnectToTcpServer
-  | ISendPostResponseSendTcpRequest;
+  | ISendTcpResponse
+  | ITcpServerSendResponse;
 
 /**
  * Интерфейс запроса с идентификатором.

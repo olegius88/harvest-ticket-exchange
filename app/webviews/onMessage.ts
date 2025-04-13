@@ -22,7 +22,7 @@ import {
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
-  ITcpResponseConnectEstablishedOk,
+  ISendTcpResponseData,
 } from '../../global';
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
@@ -34,7 +34,7 @@ import {
 } from '../db/kombainers';
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
-import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
+import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
 // Глобальные переменные для перенаправления
