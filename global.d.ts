@@ -389,6 +389,13 @@ export interface ISendTcpConfirmKombainerTicket {
   voditelData: ICreateVoditelParams;
   userData: ICreateUsersParams;
 }
+export interface ISendTcpConfirmKombainerTicketWithWeight {
+  type: 'confirm_kombainer_ticket_with_weight';
+  // voditelData: ICreateVoditelParams;
+  // userData: ICreateUsersParams;
+  // kombainerData: ICreateKombainerParams;
+  // weight: number;
+}
 
 export interface ISendTcpSendSetTalonOfKombainer {
   type: 'set_talon_of_kombainer';
@@ -422,6 +429,7 @@ export type ISendTcpRequestData =
   | ISendTcpSetKombainerData
   | ISendTcpGetKombainerData
   | ISendTcpConfirmKombainerTicket
+  | ISendTcpConfirmKombainerTicketWithWeight
   | ISendTcpSendSetTalonOfKombainer;
 
 export type ISendTcpResponseData =
@@ -653,6 +661,7 @@ export interface KombainerRoutes {
   index: string;
   create_ticket: string;
   wait_ticket_confirm: string;
+  wait_ticket_with_weight_confirm: string;
   ticket_detail: string;
   ticket_detail_after_voditel_confirm: string;
   ticket_created_success: string;
