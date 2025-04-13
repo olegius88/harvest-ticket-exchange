@@ -61,7 +61,7 @@ export const startTcpServer = (): Promise<string> => {
 
         console.log('startTcpServer|onTcpMessage|res=', res);
         try {
-          socket.write(JSON.stringify(res));
+          socket.write(JSON.stringify({ ...res, ...{ from: 'TcpSocket.createServer-on-data' } }));
         } catch (error) {
           console.error('startTcpServer|socket|write|error=', error);
           ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
@@ -148,7 +148,10 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
       return reject(new Error(errMsg));
     }
     const socket = activeSockets[0];
-    const messageString = JSON.stringify(message);
+    const messageString = JSON.stringify({
+      ...message,
+      ...{ fromTcpServerSendRequest: true, from: 'tcpServerSendRequest-once-data' },
+    });
 
     // Устанавливаем одноразовый обработчик для получения ответа от клиента
     socket.once('data', (data: Buffer) => {
