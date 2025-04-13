@@ -527,7 +527,7 @@ export type ISendPostResponse =
 export interface IPostMessageCallback {
   resolve: (value: unknown) => void;
   reject: (reason?: any) => void;
-  timerId: NodeJS.Timeout;
+  timerId: NodeJS.Timeout | number;
 }
 
 /**
