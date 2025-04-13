@@ -137,7 +137,7 @@ export const stopTcpServer = (): Promise<string> => {
  * @param message данные сообщения для отправки (любой объект, который будет сериализован в JSON).
  * @returns Promise, который резолвится с ответом от клиента или отклоняется при ошибке.
  */
-export const tcpServerSendRequest = (message: any): Promise<ISendTcpResponseData> => {
+export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseData> => {
   return new Promise((resolve, reject) => {
     if (activeSockets.length !== 1) {
       const errMsg =
