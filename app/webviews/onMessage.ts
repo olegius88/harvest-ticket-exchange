@@ -15,14 +15,17 @@ import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import KeepAwake from 'react-native-keep-awake';
 import {
   ICreateKombainerParams,
+  ICreateTalonParams,
   ICreateVoditelParams,
   IEditKombainerParams,
+  IEditTalonParams,
   IEditVoditelParams,
   ILoginUserParams,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
   ISendTcpResponseData,
+  TalonStatus,
 } from '../../global';
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
@@ -33,6 +36,16 @@ import {
   getKombainerByUserId,
 } from '../db/kombainers';
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
+import {
+  assignDriverToTalon,
+  createTalon,
+  editTalon,
+  getTalonById,
+  getTalonsByKombainerId,
+  getTalonsByVoditelId,
+  updateTalonStatus,
+  updateTalonWeight,
+} from '../db/talons_of_combainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
 import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
@@ -553,6 +566,109 @@ const _handleReqMessage = async (
         };
       }
     }
+    case 'createTalon': {
+      const talonData = req.data as ICreateTalonParams;
+      console.log('createTalon|req.data=', talonData);
+      const talonId = await createTalon(talonData);
+      console.log('createTalon|talonId=', talonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId },
+      };
+    }
+
+    case 'editTalon': {
+      const editData = req.data as IEditTalonParams;
+      console.log('editTalon|req.data=', editData);
+      const talonId = await editTalon(editData);
+      console.log('editTalon|talonId=', talonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId },
+      };
+    }
+
+    case 'assignDriverToTalon': {
+      const { talonId, voditelId } = req.data as { talonId: string; voditelId: string };
+      console.log('assignDriverToTalon|req.data=', { talonId, voditelId });
+      const updatedTalonId = await assignDriverToTalon(talonId, voditelId);
+      console.log('assignDriverToTalon|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'updateTalonStatus': {
+      const { talonId, status } = req.data as { talonId: string; status: TalonStatus };
+      console.log('updateTalonStatus|req.data=', { talonId, status });
+      const updatedTalonId = await updateTalonStatus(talonId, status);
+      console.log('updateTalonStatus|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'updateTalonWeight': {
+      const { talonId, weight } = req.data as { talonId: string; weight: number };
+      console.log('updateTalonWeight|req.data=', { talonId, weight });
+      const updatedTalonId = await updateTalonWeight(talonId, weight);
+      console.log('updateTalonWeight|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'getTalonById': {
+      const { talonId } = req.data as { talonId: string };
+      console.log('getTalonById|req.data=', { talonId });
+      const talon = await getTalonById(talonId);
+      console.log('getTalonById|talon=', talon);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talon },
+      };
+    }
+
+    case 'getTalonsByKombainerId': {
+      const { kombainerId } = req.data as { kombainerId: string };
+      console.log('getTalonsByKombainerId|req.data=', { kombainerId });
+      const talons = await getTalonsByKombainerId(kombainerId);
+      console.log('getTalonsByKombainerId|talons.length=', talons.length);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talons },
+      };
+    }
+
+    case 'getTalonsByVoditelId': {
+      const { voditelId } = req.data as { voditelId: string };
+      console.log('getTalonsByVoditelId|req.data=', { voditelId });
+      const talons = await getTalonsByVoditelId(voditelId);
+      console.log('getTalonsByVoditelId|talons.length=', talons.length);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talons },
+      };
+    }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(
@@ -560,6 +676,9 @@ const _handleReqMessage = async (
       );
   }
 };
+
+// todo вынести в эту отдельную функцию все что касается talons_of_combainers
+const _talonsofCombainers = () => {};
 
 /**
  * Основная функция обработки сообщений, полученных из WebView.
