@@ -4,7 +4,9 @@ package com.talonkombainera
 import android.Manifest
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
@@ -18,6 +20,7 @@ import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,7 +78,7 @@ class MainWifi(private val context: Context) {
         /**
          * Вызывается, если запуск хотспота завершился ошибкой.
          *
-         * @param reason Код ошибки (например: -2 – отсутствует разрешение, -3 – исключение).
+         * @param reason Код ошибки (например: -2 – отсутствует разрешение, -3 – исключение, -4 – отключён режим определения местоположения).
          */
         fun onHotspotFailed(reason: Int)
 
@@ -108,6 +111,24 @@ class MainWifi(private val context: Context) {
 
     // Объект-резервация для запущенного локального хотспота (если имеется)
     private var hotspotReservation: WifiManager.LocalOnlyHotspotReservation? = null
+
+    /**
+     * Функция для проверки, включён ли режим определения местоположения.
+     */
+    private fun isLocationEnabled(context: Context): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+    /**
+     * Функция для открытия настроек включения определения местоположения.
+     */
+    fun promptEnableLocation() {
+        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
 
     /**
      * Внутренний объект обратного вызова для локального хотспота.
@@ -175,6 +196,7 @@ class MainWifi(private val context: Context) {
      * - Для Android 33 и выше: NEARBY_WIFI_DEVICES
      *
      * Если разрешение отсутствует, вызывается callback с кодом ошибки -2.
+     * Если режим определения местоположения отключён – callback получает код -4.
      */
     fun startHotspot() {
         // Определяем требуемое разрешение в зависимости от версии Android
@@ -186,14 +208,25 @@ class MainWifi(private val context: Context) {
 
         // Проверяем наличие разрешения
         if (ActivityCompat.checkSelfPermission(context, requiredPermission) != PackageManager.PERMISSION_GRANTED) {
-            // Разрешение отсутствует – уведомляем через callback
             callback?.onHotspotFailed(-2)
             return
         }
+
+        // Проверяем, включён ли режим определения местоположения
+        if (!isLocationEnabled(context)) {
+            Log.e("MainWifi", "Режим определения местоположения отключён. Необходимо его включить.")
+            // Можно дополнительно уведомить пользователя или открыть настройки
+            promptEnableLocation()
+            callback?.onHotspotFailed(-4)
+            return
+        }
+
         try {
             // Запускаем локальный хотспот с использованием нашего callback и Handler'а
             wifiManager.startLocalOnlyHotspot(localOnlyHotspotCallback, handler)
         } catch (e: Exception) {
+            Log.e("MainWifi", "startHotspot|error: ${e.message}", e)
+            e.printStackTrace()
             // В случае возникновения исключения уведомляем через callback об ошибке (-3)
             callback?.onHotspotFailed(-3)
         }
@@ -403,7 +436,7 @@ class MainWifi(private val context: Context) {
                 server.close()
             }
         } catch (e: Exception) {
-            Log.e("MainWifi", "Ошибка остановки TCP-сервера: ${e.message}")
+            Log.e("MainWifi", "stopTCP|Ошибка остановки TCP-сервера: ${e.message}", e)
             e.printStackTrace()
         }
     }
