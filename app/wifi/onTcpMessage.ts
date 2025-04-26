@@ -4,7 +4,7 @@ import { ISendTcpRequestData } from '../../global';
 import { ToastAndroid } from 'react-native';
 import { setNeedRedirect } from '../webviews/onMessage';
 import { getConfig } from '../db/configs';
-import { getUserById } from '../db/users';
+import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';
 import { getKombainerByUserId } from '../db/kombainers';
 
@@ -58,20 +58,28 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       const currentUserId = await getConfig('currentUserId');
       console.log('currentUser|currentUserId=', currentUserId);
       if (!currentUserId) {
-        ToastAndroid.show(`TCP клиент успешно подключился`, ToastAndroid.SHORT);
+        ToastAndroid.show(`Ошибка: Не найден ID текущего пользователя`, ToastAndroid.SHORT);
         return { status: 'error' };
       }
-      let userData = null;
+      let userData: ICreateUsersParams;
       try {
         userData = await getUserById(currentUserId);
         console.log('currentUser|userData=', userData);
       } catch (e) {
         if (!(e instanceof NotFoundError)) throw e;
+        return { status: 'error' };
+      }
+      if (!userData) {
+        ToastAndroid.show(
+          `Ошибка: не найдены данные комбайнера у пользователя`,
+          ToastAndroid.SHORT
+        );
+        return { status: 'error' };
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('currentUser|kombainerData=', kombainerData);
 
-      return { status: 'ok', kombainerData };
+      return { status: 'ok', kombainerData, kombainerUserData: userData };
     }
 
     case 'set_talon_of_kombainer': {

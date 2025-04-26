@@ -417,6 +417,7 @@ export interface ITcpResponseConnectEstablishedOk {
 }
 
 export interface ITcpResponseKombainerData {
+  kombainerUserData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams;
 }
 
