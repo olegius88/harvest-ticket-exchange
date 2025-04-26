@@ -1,0 +1,159 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug React Frontend",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/front",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/src/*"
+      },
+      "preLaunchTask": "react dev",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug React Native",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android",
+      "cwd": "${workspaceFolder}/app",
+      "preLaunchTask": "npx-react-native-start",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug React Native (Reset Cache)",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android",
+      "cwd": "${workspaceFolder}/app",
+      "preLaunchTask": "npx-react-native-start-reset-cache",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Attach to React Native Packager",
+      "type": "reactnative",
+      "request": "attach",
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "npx-react-native-start-reset-cache",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "npx-react-native-start-reset-cache"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "android",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "android"],
+      "preLaunchTask": "build react",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "build react",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/front",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "npx-react-native-start",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "npx-react-native-start"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "react dev",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/front",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "start:env.dev",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:dev"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "build:android:inc-ver:win",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build:android:inc-ver:win"],
+      "preLaunchTask": "build react",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "build:android:win",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build:android:win"],
+      "preLaunchTask": "build react",
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "build:android:gradle:init",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build:android:gradle:init"],
+      "console": "integratedTerminal",
+      "outputCapture": "console",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Full App (Android)",
+      "configurations": ["Debug React Frontend", "Debug React Native"],
+      "preLaunchTask": "android"
+    }
+  ]
+}

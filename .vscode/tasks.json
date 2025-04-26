@@ -1,0 +1,130 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start:env.dev",
+      "type": "npm",
+      "script": "start:dev",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "react dev",
+      "type": "npm",
+      "script": "dev",
+      "path": "front/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "npx-react-native-start-reset-cache",
+      "type": "npm",
+      "script": "npx-react-native-start-reset-cache",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true,
+        "clear": true
+      },
+      "options": {
+        "statusbar": {
+          "hide": false
+        },
+        "env": {
+          "REACT_NATIVE_HIDE_DEBUGGER_MESSAGES": "1"
+        }
+      },
+      "group": "build"
+    },
+    {
+      "label": "npx-react-native-start",
+      "type": "npm",
+      "script": "npx-react-native-start",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true,
+        "clear": true
+      },
+      "options": {
+        "statusbar": {
+          "hide": false
+        },
+        "env": {
+          "REACT_NATIVE_HIDE_DEBUGGER_MESSAGES": "1"
+        }
+      },
+      "group": "build"
+    },
+    {
+      "label": "build react",
+      "type": "npm",
+      "script": "build",
+      "path": "front/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "group": "build"
+    },
+    {
+      "label": "build:android:win",
+      "type": "npm",
+      "script": "build:android:win",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "dependsOn": ["build react"],
+      "group": "build"
+    },
+    {
+      "label": "build:android:inc-ver:win",
+      "type": "npm",
+      "script": "build:android:inc-ver:win",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "dependsOn": ["build react"],
+      "group": "build"
+    },
+    {
+      "label": "android",
+      "type": "npm",
+      "script": "android",
+      "path": "app/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "dependsOn": ["build react"],
+      "group": "build"
+    }
+  ]
+}
