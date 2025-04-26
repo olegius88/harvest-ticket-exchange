@@ -472,7 +472,9 @@ export type ISendPostMessage =
   | ISendPostMessageUpdateTalonWeight
   | ISendPostMessageGetTalonById
   | ISendPostMessageGetTalonsByKombainerId
-  | ISendPostMessageGetTalonsByVoditelId;
+  | ISendPostMessageGetTalonsByVoditelId
+  | ISendPostMessageCheckUserRegistration
+  | ISendPostMessageUpdateUserProfile;
 
 /**
  * Объединённый тип ответов.
@@ -509,7 +511,9 @@ export type ISendPostResponseRes =
   | ISendPostResponseUpdateTalonWeight
   | ISendPostResponseGetTalonById
   | ISendPostResponseGetTalonsByKombainerId
-  | ISendPostResponseGetTalonsByVoditelId;
+  | ISendPostResponseGetTalonsByVoditelId
+  | ISendPostResponseCheckUserRegistration
+  | ISendPostResponseUpdateUserProfile;
 
 /**
  * Интерфейс запроса с идентификатором.
@@ -609,7 +613,7 @@ export interface IEditKombainerParams {
  */
 export interface IConfigParams {
   key: string;
-  value: string;
+  value: string | null;
 }
 
 /**
@@ -840,4 +844,42 @@ export interface ISendPostResponseGetTalonsByKombainerId {
 export interface ISendPostResponseGetTalonsByVoditelId {
   type: 'getTalonsByVoditelId';
   talons: ICreateTalonsParams[];
+}
+
+/**
+ * Интерфейс для запроса проверки регистрации пользователя.
+ */
+export interface ISendPostMessageCheckUserRegistration {
+  type: 'checkUserRegistration';
+}
+
+/**
+ * Интерфейс для ответа на запрос проверки регистрации пользователя.
+ */
+export interface ISendPostResponseCheckUserRegistration {
+  type: 'checkUserRegistration';
+  isRegistered: boolean;
+  userData?: ICreateUsersParams;
+}
+
+/**
+ * Интерфейс для запроса обновления профиля пользователя.
+ */
+export interface ISendPostMessageUpdateUserProfile {
+  type: 'updateUserProfile';
+  data: {
+    userId: string;
+    fio: string;
+    phone: string;
+    position: string;
+  };
+}
+
+/**
+ * Интерфейс для ответа на запрос обновления профиля пользователя.
+ */
+export interface ISendPostResponseUpdateUserProfile {
+  type: 'updateUserProfile';
+  userId: string;
+  status: 'ok';
 }
