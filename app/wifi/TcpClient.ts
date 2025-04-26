@@ -1,7 +1,8 @@
 // Файл: app/wifi/TcpClient.ts
 import TcpSocket from 'react-native-tcp-socket';
 import { ToastAndroid } from 'react-native';
-import { IOkTcpConnectEstablished } from '../../global';
+import { ISendTcpResponseData } from '../../global';
+import { onTcpMessage } from './onTcpMessage';
 
 let client: TcpSocket.Socket | null = null;
 
@@ -10,7 +11,7 @@ let client: TcpSocket.Socket | null = null;
  * Возвращает Promise, который резолвится сообщением об успешном подключении
  * или отклоняется при возникновении ошибки.
  */
-export const connectToTcpServer = ({ ip: host }): Promise<string> => {
+export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string> => {
   console.log('connectToTcpServer|host=', host);
   return new Promise((resolve, reject) => {
     if (client) {
@@ -21,42 +22,52 @@ export const connectToTcpServer = ({ ip: host }): Promise<string> => {
     client = TcpSocket.createConnection({ port: 3290, host }, () => {
       console.log('TCP клиент подключился к серверу');
       ToastAndroid.show(`TCP клиент успешно подключился`, ToastAndroid.SHORT);
-
-      // // Отправляем JSON-тестовое сообщение на сервер
-      // const testMessage = JSON.stringify({ test: 'test' });
-      // client.write(testMessage, 'utf8');
-      // console.log('TCP клиент|Отправлено тестовое сообщение:', testMessage);
-      // ToastAndroid.show(`TCP клиент|Отправлено тестовое сообщение`, ToastAndroid.SHORT);
-
       resolve('TCP клиент успешно подключился');
     });
 
-    // Обработка ответа от сервера
-    // @ts-ignore
-    client.on('data', (data) => {
+    // Глобальный обработчик входящих сообщений от сервера,
+    // если сообщение не получено как ответ на sendTcpRequest.
+    client.on('data', async (data: Buffer) => {
       const dataString = data.toString();
       console.log('TCP клиент|Получены данные:', dataString);
       ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
-      // let response = null;
-      // try {
-      //   response = JSON.parse(dataString);
-      // } catch (error) {
-      //   console.error('TCP клиент|Ошибка парсинга JSON:', error);
-      // }
-      // if (response && response.response === 'ok') {
-      //   console.log('TCP клиент|Получен корректный ответ:', response);
-      //   ToastAndroid.show(`TCP клиент|Получен ответ: ok`, ToastAndroid.SHORT);
-      // }
+      let message: any;
+      try {
+        message = JSON.parse(dataString);
+      } catch (error) {
+        console.error('TCP клиент|Ошибка парсинга JSON:', error);
+        return;
+      }
+      // Если данные получили как результат одноразового обработчика (sendTcpRequest),
+      // то данный глобальный обработчик может быть не вызван.
+      try {
+        // Передаём полученное сообщение в onTcpMessage для обработки
+        const response = await onTcpMessage(message);
+        // Отправляем ответ обратно на сервер
+        if (client) {
+          client.write(
+            JSON.stringify({
+              ...response,
+              isTcpServerSendResponse: true,
+              from: 'TcpClient.ts-connectToTcpServer-on-data',
+            })
+          );
+          console.log('TCP клиент|Ответ отправлен на сервер:', JSON.stringify(response));
+        }
+      } catch (error) {
+        console.error('TCP клиент|Ошибка в onTcpMessage:', error);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка в onTcpMessage`, ToastAndroid.SHORT);
+      }
     });
 
-    // @ts-ignore
     client.on('error', (error) => {
       console.error('TCP клиент|Ошибка:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка`, ToastAndroid.SHORT);
       reject(error);
     });
 
-    // @ts-ignore
     client.on('close', () => {
       console.log('TCP клиент|Соединение закрыто');
       client = undefined;
@@ -72,6 +83,7 @@ export const connectToTcpServer = ({ ip: host }): Promise<string> => {
 export const disconnectTcpClient = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (client) {
+      // @ts-ignore
       client.end(() => {
         console.log('TCP клиент отключился');
         client = null;
@@ -87,9 +99,9 @@ export const disconnectTcpClient = (): Promise<string> => {
  * Функция для отправки запроса на TCP-сервер и получения ответа.
  * Принимает объект message, который необходимо отправить.
  * Объект преобразуется в JSON-строку и отправляется.
- * Функция ожидает ответа от сервера и возвращает его
+ * Функция ожидает ответа от сервера и возвращает его.
  */
-export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablished> => {
+export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> => {
   return new Promise((resolve, reject) => {
     if (!client) {
       ToastAndroid.show(
@@ -101,16 +113,16 @@ export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablishe
     }
     let jsonMessage: string;
     try {
-      jsonMessage = JSON.stringify(message);
+      jsonMessage = JSON.stringify({ ...message, from: 'TcpClient.ts-sendTcpRequest' });
     } catch (error) {
       console.error('TCP клиент|Ошибка при сериализации объекта:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
       reject(error);
       return;
     }
 
     // Устанавливаем одноразовый обработчик для получения ответа
-    // @ts-ignore
     client.once('data', (data: Buffer) => {
       const dataString = data.toString();
       console.log('TCP клиент|Получен ответ:', dataString);
@@ -121,7 +133,8 @@ export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablishe
         resolve(response);
       } catch (error) {
         console.error('TCP клиент|Ошибка при парсинге ответа:', error);
-        ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
         reject(error);
       }
     });
@@ -133,7 +146,8 @@ export const sendTcpRequest = (message: object): Promise<IOkTcpConnectEstablishe
       });
     } catch (error) {
       console.error('TCP клиент|Ошибка при отправке данных:', error);
-      ToastAndroid.show(`TCP клиент|Ошибка при отправке данных`, ToastAndroid.SHORT);
+      // DEV LOGS
+      // ToastAndroid.show(`TCP клиент|Ошибка при отправке данных`, ToastAndroid.SHORT);
       reject(error);
     }
   });

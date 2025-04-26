@@ -6,17 +6,24 @@ import { Configs } from './configs';
 import { migrations, schemaVersion } from './migrations';
 import { Kombainers } from './kombainers';
 import { Voditeli } from './viditels';
+import { TalonsOfCombainers } from './talons_of_combainers';
 
 const schema = appSchema({
   version: schemaVersion,
-  tables: [Users.tableSchema, Configs.tableSchema, Kombainers.tableSchema, Voditeli.tableSchema],
+  tables: [
+    Users.tableSchema,
+    Configs.tableSchema,
+    Kombainers.tableSchema,
+    Voditeli.tableSchema,
+    TalonsOfCombainers.tableSchema,
+  ],
 });
 
 const adapter = new SQLiteAdapter({ schema, migrations });
 
 export const database = new Database({
   adapter,
-  modelClasses: [Users, Configs, Kombainers, Voditeli],
+  modelClasses: [Users, Configs, Kombainers, Voditeli, TalonsOfCombainers],
 });
 
-export { Users, Configs, Kombainers, Voditeli };
+export { Users, Configs, Kombainers, Voditeli, TalonsOfCombainers };

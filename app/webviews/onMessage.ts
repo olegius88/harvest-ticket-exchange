@@ -1,4 +1,4 @@
-// Файл: app/webviews/onMessage.ts
+// app/webviews/onMessage.ts
 /**
  * Этот файл отвечает за обработку входящих сообщений от WebView.
  * Он разбит на следующие разделы:
@@ -10,19 +10,23 @@
  */
 
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import { useRef } from 'react';
+import { createRef } from 'react';
 import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import KeepAwake from 'react-native-keep-awake';
+import DeviceInfo from 'react-native-device-info';
 import {
   ICreateKombainerParams,
+  ICreateTalonParams,
   ICreateVoditelParams,
   IEditKombainerParams,
+  IEditTalonParams,
   IEditVoditelParams,
   ILoginUserParams,
-  IOkTcpConnectEstablished,
   ISendNativeMessageRequest,
   ISendPostMessageRequest,
   ISendPostResponse,
+  ISendTcpResponseData,
+  TalonStatus,
 } from '../../global';
 import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
@@ -33,10 +37,21 @@ import {
   getKombainerByUserId,
 } from '../db/kombainers';
 import { createVoditel, editVoditel, getVoditelByUserId } from '../db/viditels';
+import {
+  assignDriverToTalon,
+  createTalon,
+  editTalon,
+  getTalonById,
+  getTalonsByKombainerId,
+  getTalonsByVoditelId,
+  updateTalonStatus,
+  updateTalonWeight,
+} from '../db/talons_of_combainers';
 import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
-import { startTcpServer, stopTcpServer } from '../wifi/TcpServer';
+import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
+// Глобальные переменные для перенаправления
 export let needRedirect: string;
 export let needRedirectStatus: 'ok' | 'error' | 'empty' = 'empty';
 export let needRedirectPayload: any;
@@ -47,8 +62,8 @@ export const setNeedRedirect = (data: string, payload?: any): void => {
   needRedirectPayload = payload;
 };
 
-// Ссылка на WebView
-export const webviewRef = useRef<WebView>(null);
+// Создаем реф для WebView с помощью createRef (а не хука useRef)
+export const webviewRef = createRef<WebView>();
 
 /**
  * Утилита отправки ответа в WebView.
@@ -65,17 +80,27 @@ const sendPostResponse = (obj: ISendPostResponse): void => {
 /**
  * Проверка и запрос разрешений для работы с Wi-Fi (для Android).
  */
-const checkPermissionsHotspot = async (): Promise<boolean> => {
+export const checkPermissionsHotspot = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return true;
+
+  // Проверяем, включён ли режим определения местоположения.
+  const locationEnabled = await DeviceInfo.isLocationEnabled();
+  if (!locationEnabled) {
+    console.log('checkPermissionsHotspot|locationEnabled = false');
+    return false;
+  }
+
   const permissions = [
     PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
     PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
   ];
+
   const granted = await PermissionsAndroid.requestMultiple(permissions);
   const allGranted = permissions.every(
     (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
   );
+
   console.log('checkPermissionsHotspot|allGranted=', allGranted);
   return allGranted;
 };
@@ -132,7 +157,7 @@ const _handleReqMessage = async (
   eventData: ISendPostMessageRequest
 ): Promise<ISendPostResponse> => {
   const { req, reqId } = eventData;
-  console.log('_handleReqMessage|req.type=', req.type);
+  console.log('_handleReqMessage|req.type=', req.type, req);
   const type = req.type;
 
   if (reqId === 'ignore') {
@@ -298,7 +323,7 @@ const _handleReqMessage = async (
         },
       };
     }
-    // открытие сканера QR
+    // Открытие сканера QR
     case 'openCodeScannerPage': {
       console.log('openCodeScannerPage|req.data=', req);
       const hasCameraAudioPermissions = await checkCameraAudioPermissions();
@@ -394,7 +419,7 @@ const _handleReqMessage = async (
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
-    // присоединение к существующему хотспоту
+    // Присоединение к существующему хотспоту
     case 'joinHotspot': {
       const { ssid, password } = req.data as { ssid: string; password: string };
       const callNativeBridge = `
@@ -477,7 +502,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'stopTcpServer': {
       try {
         const message = await stopTcpServer();
@@ -496,7 +520,6 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'connectToTcpServer': {
       try {
         const message = await connectToTcpServer({ ip: req.ip });
@@ -516,10 +539,9 @@ const _handleReqMessage = async (
         };
       }
     }
-
     case 'sendTcpRequest': {
       try {
-        const data: IOkTcpConnectEstablished = await sendTcpRequest(req.data);
+        const data: ISendTcpResponseData = await sendTcpRequest(req.data);
         console.log('sendTcpRequest|data=', data);
         return {
           reqId,
@@ -536,7 +558,128 @@ const _handleReqMessage = async (
         };
       }
     }
+    case 'tcpServerSendRequest': {
+      try {
+        const data: ISendTcpResponseData = await tcpServerSendRequest(req.data);
+        console.log('sendTcpRequest|data=', data);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'sendTcpRequest', data },
+        };
+      } catch (error) {
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
+    case 'createTalon': {
+      const talonData = req.data as ICreateTalonParams;
+      console.log('createTalon|req.data=', talonData);
+      const talonId = await createTalon(talonData);
+      console.log('createTalon|talonId=', talonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId },
+      };
+    }
 
+    case 'editTalon': {
+      const editData = req.data as IEditTalonParams;
+      console.log('editTalon|req.data=', editData);
+      const talonId = await editTalon(editData);
+      console.log('editTalon|talonId=', talonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId },
+      };
+    }
+
+    case 'assignDriverToTalon': {
+      const { talonId, voditelId } = req.data as { talonId: string; voditelId: string };
+      console.log('assignDriverToTalon|req.data=', { talonId, voditelId });
+      const updatedTalonId = await assignDriverToTalon(talonId, voditelId);
+      console.log('assignDriverToTalon|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'updateTalonStatus': {
+      const { talonId, status } = req.data as { talonId: string; status: TalonStatus };
+      console.log('updateTalonStatus|req.data=', { talonId, status });
+      const updatedTalonId = await updateTalonStatus(talonId, status);
+      console.log('updateTalonStatus|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'updateTalonWeight': {
+      const { talonId, weight } = req.data as { talonId: string; weight: number };
+      console.log('updateTalonWeight|req.data=', { talonId, weight });
+      const updatedTalonId = await updateTalonWeight(talonId, weight);
+      console.log('updateTalonWeight|updatedTalonId=', updatedTalonId);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talonId: updatedTalonId },
+      };
+    }
+
+    case 'getTalonById': {
+      const { talonId } = req.data as { talonId: string };
+      console.log('getTalonById|req.data=', { talonId });
+      const talon = await getTalonById(talonId);
+      console.log('getTalonById|talon=', talon);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talon },
+      };
+    }
+
+    case 'getTalonsByKombainerId': {
+      const { kombainerId } = req.data as { kombainerId: string };
+      console.log('getTalonsByKombainerId|req.data=', { kombainerId });
+      const talons = await getTalonsByKombainerId(kombainerId);
+      console.log('getTalonsByKombainerId|talons.length=', talons.length);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talons },
+      };
+    }
+
+    case 'getTalonsByVoditelId': {
+      const { voditelId } = req.data as { voditelId: string };
+      console.log('getTalonsByVoditelId|req.data=', { voditelId });
+      const talons = await getTalonsByVoditelId(voditelId);
+      console.log('getTalonsByVoditelId|talons.length=', talons.length);
+      return {
+        reqId,
+        type: 'sendPostResponse',
+        resType: 'resolve',
+        res: { type, talons },
+      };
+    }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(
@@ -544,6 +687,9 @@ const _handleReqMessage = async (
       );
   }
 };
+
+// todo вынести в эту отдельную функцию все что касается talons_of_combainers
+const _talonsofCombainers = () => {};
 
 /**
  * Основная функция обработки сообщений, полученных из WebView.

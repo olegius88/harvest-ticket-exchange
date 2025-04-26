@@ -57,7 +57,28 @@ const migrationTo10 = {
   ],
 };
 
-export const schemaVersion = 10;
+// Миграция для версии 11: создаём новую таблицу талонов комбайнера (talons_of_combainers).
+const migrationTo11 = {
+  toVersion: 11,
+  steps: [
+    createTable({
+      name: 'talons_of_combainers',
+      columns: [
+        { name: 'kombainerId', type: 'string' },
+        { name: 'voditelId', type: 'string' },
+        { name: 'status', type: 'string' },
+        { name: 'startTime', type: 'number' },
+        { name: 'endTime', type: 'number' },
+        { name: 'weight', type: 'number' },
+        { name: 'comment', type: 'string' },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ],
+    }),
+  ],
+};
+
+export const schemaVersion = 11;
 export const migrations = schemaMigrations({
-  migrations: [migrationTo8, migrationTo9, migrationTo10],
+  migrations: [migrationTo8, migrationTo9, migrationTo10, migrationTo11],
 });
