@@ -28,7 +28,14 @@ import {
   ISendTcpResponseData,
   TalonStatus,
 } from '../../global';
-import { createUser, getAllUsers, getUserById, ICreateUsersParams, loginUser } from '../db/users';
+import {
+  createUser,
+  getAllUsers,
+  getUserById,
+  ICreateUsersParams,
+  loginUser,
+  editUser,
+} from '../db/users';
 import { getConfig, setConfig } from '../db/configs';
 import {
   createKombainer,
@@ -679,6 +686,94 @@ const _handleReqMessage = async (
         resType: 'resolve',
         res: { type, talons },
       };
+    }
+
+    case 'checkUserRegistration': {
+      // Проверка, зарегистрирован ли пользователь
+      try {
+        const currentUserId = await getConfig('currentUserId');
+        console.log('checkUserRegistration|currentUserId=', currentUserId);
+
+        // Если ID пользователя есть в конфигурации, проверяем существование записи
+        if (currentUserId) {
+          try {
+            const userData = await getUserById(currentUserId);
+            return {
+              reqId,
+              type: 'sendPostResponse',
+              resType: 'resolve',
+              res: {
+                type,
+                isRegistered: true,
+                userData,
+              },
+            };
+          } catch (error) {
+            // Если пользователь не найден, сбрасываем ID в конфигурации
+            if (error instanceof NotFoundError) {
+              await setConfig({ key: 'currentUserId', value: null });
+            }
+          }
+        }
+
+        // Если пользователь не найден или ID отсутствует
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type,
+            isRegistered: false,
+          },
+        };
+      } catch (error) {
+        console.error('checkUserRegistration|error=', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
+    }
+
+    case 'updateUserProfile': {
+      try {
+        const { userId, fio, phone, position } = req.data as {
+          userId: string;
+          fio: string;
+          phone: string;
+          position: string;
+        };
+
+        console.log('updateUserProfile|req.data=', { userId, fio, phone, position });
+
+        // Проверяем существование пользователя
+        await getUserById(userId);
+
+        // Обновляем данные пользователя
+        const updatedUserId = await editUser(userId, fio, phone, position);
+        console.log('updateUserProfile|updatedUserId=', updatedUserId);
+
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type,
+            userId: updatedUserId,
+            status: 'ok',
+          },
+        };
+      } catch (error) {
+        console.error('updateUserProfile|error=', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || JSON.stringify(error) },
+        };
+      }
     }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);

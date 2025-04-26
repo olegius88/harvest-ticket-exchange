@@ -161,3 +161,42 @@ export async function editUserFio(userId: string, newFio: string): Promise<strin
     return user.id;
   });
 }
+
+/**
+ * Функция editUser обновляет данные пользователя (ФИО, телефон, должность).
+ * @param userId - ID пользователя, данные которого нужно обновить.
+ * @param newFio - Новое значение ФИО.
+ * @param newPhone - Новый номер телефона.
+ * @param newPosition - Новая должность.
+ * @returns Promise с ID пользователя после обновления.
+ */
+export async function editUser(
+  userId: string,
+  newFio: string,
+  newPhone: string,
+  newPosition: string
+): Promise<string> {
+  return database.write(async () => {
+    const collection = database.collections.get<ICreateUsersParams>(Users.table);
+    const user = await collection.find(userId);
+
+    // Проверка правильности значения поля position
+    if (newPosition) {
+      const validPositions: PositionOptionValue[] = ['kombainer', 'voditel', 'bunkerist'];
+      if (!validPositions.includes(newPosition as PositionOptionValue)) {
+        throw new Error(
+          `Validation Error: Invalid value for position. Allowed values are: ${validPositions.join(', ')}`
+        );
+      }
+    }
+
+    await user.update((u) => {
+      if (newFio) u.fio = newFio.trim();
+      if (newPhone) u.phone = newPhone.trim();
+      if (newPosition) u.position = newPosition;
+      u.updated_at = Date.now();
+    });
+
+    return user.id;
+  });
+}
