@@ -190,15 +190,21 @@ class MainWifi(private val context: Context) {
 
     /**
      * Метод для запуска локального хотспота.
-     *
-     * Перед вызовом метода убедитесь, что у приложения есть необходимые разрешения:
-     * - Для Android версий ниже 33: ACCESS_FINE_LOCATION
-     * - Для Android 33 и выше: NEARBY_WIFI_DEVICES
-     *
-     * Если разрешение отсутствует, вызывается callback с кодом ошибки -2.
-     * Если режим определения местоположения отключён – callback получает код -4.
+     * Если хотспот уже запущен, сначала останавливает его.
      */
     fun startHotspot() {
+        // Проверяем, запущен ли уже хотспот, и останавливаем его перед запуском нового
+        if (hotspotReservation != null) {
+            Log.d("MainWifi", "Хотспот уже запущен, останавливаем перед повторным запуском")
+            stopHotspot()
+            // Небольшая задержка для корректного завершения предыдущего хотспота
+            try {
+                Thread.sleep(500)
+            } catch (e: InterruptedException) {
+                Log.e("MainWifi", "Прерывание потока во время задержки", e)
+            }
+        }
+
         // Определяем требуемое разрешение в зависимости от версии Android
         val requiredPermission = if (Build.VERSION.SDK_INT < 33) {
             Manifest.permission.ACCESS_FINE_LOCATION
