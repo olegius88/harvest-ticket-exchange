@@ -21,9 +21,9 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'set_voditel_data': {
-      const { voditelData } = message;
+      const { voditelData, voditelUserData } = message;
 
-      setNeedRedirect('kombainer', voditelData);
+      setNeedRedirect('kombainer', { voditelData, voditelUserData });
 
       return { status: 'ok' };
     }

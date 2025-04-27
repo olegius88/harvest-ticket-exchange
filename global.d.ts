@@ -373,6 +373,7 @@ export interface ITestTcpConnectEstablished {
 export interface ISendTcpSetVoditelData {
   type: 'set_voditel_data';
   voditelData: ICreateVoditelParams;
+  voditelUserData: ICreateUsersParams;
 }
 
 export interface ISendTcpSetKombainerData {
@@ -700,6 +701,11 @@ export interface JoinHotspotResponse {
 
 export interface IPayloadVoditelData {
   voditelData: ICreateVoditelParams;
+}
+
+export interface IPayloadVoditelConnectSuccess {
+  voditelData: ICreateVoditelParams;
+  voditelUserData: ICreateUsersParams;
 }
 
 export interface IPayloadConfirmKombainerTicket {
