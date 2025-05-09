@@ -29,6 +29,7 @@ export class TalonsOfCombainers extends Model {
   @field('endTime') endTime: number;
   @field('weight') weight: number;
   @field('comment') comment: string;
+  @field('talonNumber') talonNumber: string;
   @field('created_at') created_at: number;
   @field('updated_at') updated_at: number;
 
@@ -43,6 +44,7 @@ export class TalonsOfCombainers extends Model {
         { name: 'endTime', type: 'number' },
         { name: 'weight', type: 'number' },
         { name: 'comment', type: 'string' },
+        { name: 'talonNumber', type: 'string' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
       ],
@@ -88,11 +90,23 @@ export async function createTalon({
   endTime,
   weight,
   comment,
+  talonNumber,
 }: ICreateTalonParams): Promise<string> {
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
     const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+
+    // Генерация номера талона, если он не предоставлен
+    let talonNum = talonNumber;
+    if (!talonNum) {
+      // Получаем все талоны данного комбайнера
+      const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
+      // Вычисляем номер талона: ID комбайнера + порядковый номер
+      const sequentialNumber = existingTalons.length + 1;
+      talonNum = `${sequentialNumber}`;
+    }
+
     const now = Date.now();
     const newTalon = await collection.create((record) => {
       record._raw.id = uuid.v4();
@@ -103,6 +117,7 @@ export async function createTalon({
       record.endTime = endTime || null;
       record.weight = weight || null;
       record.comment = comment ? comment.trim() : null;
+      record.talonNumber = talonNum;
       record.created_at = now;
       record.updated_at = now;
     });

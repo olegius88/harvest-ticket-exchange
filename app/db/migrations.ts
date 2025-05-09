@@ -78,7 +78,18 @@ const migrationTo11 = {
   ],
 };
 
-export const schemaVersion = 11;
+// Миграция для версии 12: добавляем поле talonNumber в таблицу talons_of_combainers.
+const migrationTo12 = {
+  toVersion: 12,
+  steps: [
+    addColumns({
+      table: 'talons_of_combainers',
+      columns: [{ name: 'talonNumber', type: 'string' }],
+    }),
+  ],
+};
+
+export const schemaVersion = 12;
 export const migrations = schemaMigrations({
-  migrations: [migrationTo8, migrationTo9, migrationTo10, migrationTo11],
+  migrations: [migrationTo8, migrationTo9, migrationTo10, migrationTo11, migrationTo12],
 });

@@ -403,6 +403,7 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
+  talonNumber: string;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -420,6 +421,7 @@ export interface ITcpResponseConnectEstablishedOk {
 export interface ITcpResponseKombainerData {
   kombainerUserData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams;
+  talonNumber: string;
 }
 
 /**
@@ -552,7 +554,24 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'resolve';
-      res: ISendPostResponseRes;
+      res:
+        | Exclude<ISendPostResponseRes, ISendPostResponseCurrentUser>
+        | {
+            type: 'currentUser';
+            status: 'authOk';
+            userData: ICreateUsersParams;
+            kombainerData: ICreateKombainerParams | null;
+            voditelData: ICreateVoditelParams | null;
+            kombainerUserData: ICreateUsersParams;
+          }
+        | {
+            type: 'currentUser';
+            status: 'noAuth' | 'noUser';
+            userData: null;
+            kombainerData: null;
+            kombainerUserData: null;
+            voditelData: null;
+          };
       error?: any; // При 'resolve' не используем поле 'error'
     }
   // Игнорируемые сообщения
@@ -716,6 +735,7 @@ export interface IPayloadSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
+  talonNumber: string;
 }
 
 export type TNeedRedirectPayload =
@@ -741,6 +761,7 @@ export interface IEditTalonParams {
   endTime?: number; // Время окончания (может быть не заполнено)
   weight?: number; // Вес (может быть не заполнен)
   comment?: string; // Комментарий
+  talonNumber: string; // Номер талона (ID комбайнера + порядковый номер)
 }
 
 /**
@@ -754,6 +775,7 @@ export interface ICreateTalonParams {
   endTime?: number; // Время окончания (может быть не заполнено)
   weight?: number; // Вес (может быть не заполнен)
   comment?: string; // Комментарий
+  talonNumber: string; // Номер талона (ID комбайнера + порядковый номер)
 }
 
 // Интерфейсы для запросов создания и редактирования талона

@@ -59,7 +59,7 @@ import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/Tcp
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
 // Глобальные переменные для перенаправления
-export let needRedirect: string;
+export let needRedirect: string | null;
 export let needRedirectStatus: 'ok' | 'error' | 'empty' = 'empty';
 export let needRedirectPayload: any;
 export const setNeedRedirect = (data: string, payload?: any): void => {
@@ -76,7 +76,7 @@ export const webviewRef = createRef<WebView>();
  * Утилита отправки ответа в WebView.
  */
 const sendPostResponse = (obj: ISendPostResponse): void => {
-  console.log('sendPostResponse|obj=', obj);
+  // console.log('sendPostResponse|obj=', obj);
   if (!webviewRef.current) {
     console.error('sendPostResponse|!webviewRef.current');
     return;
@@ -284,7 +284,7 @@ const _handleReqMessage = async (
         res: {
           type,
           status,
-          path,
+          path: path || '', // Provide empty string as fallback when path is null
           payload,
         },
       };
@@ -302,16 +302,30 @@ const _handleReqMessage = async (
             status: 'noAuth',
             userData: null,
             kombainerData: null,
+            kombainerUserData: null,
             voditelData: null,
           },
         };
       }
-      let userData = null;
+      let userData: ICreateUsersParams;
       try {
         userData = await getUserById(currentUserId);
         console.log('currentUser|userData=', userData);
       } catch (e) {
         if (!(e instanceof NotFoundError)) throw e;
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: {
+            type,
+            status: 'noAuth',
+            userData: null,
+            kombainerData: null,
+            kombainerUserData: null,
+            voditelData: null,
+          },
+        };
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('currentUser|kombainerData=', kombainerData);
@@ -323,9 +337,10 @@ const _handleReqMessage = async (
         resType: 'resolve',
         res: {
           type,
-          status: userData ? 'authOk' : 'noAuth',
+          status: 'authOk',
           userData,
           kombainerData,
+          kombainerUserData: userData,
           voditelData,
         },
       };
@@ -371,6 +386,10 @@ const _handleReqMessage = async (
         }
         true;
       `;
+      if (!webviewRef.current) {
+        console.error('isHotspotEnabled|webviewRef.current is null');
+        throw new Error('webviewRef.current is null');
+      }
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
@@ -404,6 +423,10 @@ const _handleReqMessage = async (
         }
         true;
       `;
+      if (!webviewRef.current) {
+        console.error('setHotspotEnabled|webviewRef.current is null');
+        throw new Error('webviewRef.current is null');
+      }
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
@@ -423,6 +446,10 @@ const _handleReqMessage = async (
         }
         true;
       `;
+      if (!webviewRef.current) {
+        console.error('pushUserId|webviewRef.current is null');
+        throw new Error('webviewRef.current is null');
+      }
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
@@ -454,12 +481,19 @@ const _handleReqMessage = async (
         }
         true;
       `;
+      if (!webviewRef.current) {
+        console.error('joinHotspot|webviewRef.current is null');
+        throw new Error('webviewRef.current is null');
+      }
       webviewRef.current.injectJavaScript(callNativeBridge);
       throw new VoidAndNotError('');
     }
     case 'userData': {
       const currentUserId = await getConfig('currentUserId');
       console.log('userData|currentUserId=', currentUserId);
+      if (!currentUserId) {
+        throw new NotFoundError(`Пользователь с ID ${currentUserId} не найден.`);
+      }
       const userData = await getUserById(currentUserId);
       console.log('userData|data=', userData);
       const kombainerData = await getKombainerByUserId(currentUserId);
@@ -658,7 +692,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type, talon },
+        res: { type: 'getTalonById', talon },
       };
     }
 
@@ -671,7 +705,7 @@ const _handleReqMessage = async (
         reqId,
         type: 'sendPostResponse',
         resType: 'resolve',
-        res: { type, talons },
+        res: { type: 'getTalonsByKombainerId', talons },
       };
     }
 
@@ -868,5 +902,9 @@ export const setHotspotDisabled = async (reqId: string): Promise<void> => {
     }
     true;
   `;
+  if (!webviewRef.current) {
+    console.error('setHotspotDisabled|webviewRef.current is null');
+    throw new Error('webviewRef.current is null');
+  }
   webviewRef.current.injectJavaScript(callNativeBridge);
 };

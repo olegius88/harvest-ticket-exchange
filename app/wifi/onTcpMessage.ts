@@ -7,6 +7,7 @@ import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';
 import { getKombainerByUserId } from '../db/kombainers';
+import { getTalonsByKombainerId } from '../db/talons_of_combainers';
 
 /**
  * Основная функция обработки сообщений
@@ -79,13 +80,31 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('currentUser|kombainerData=', kombainerData);
 
-      return { status: 'ok', kombainerData, kombainerUserData: userData };
+      // Получаем номер последнего талона комбайнера, если есть
+      let talonNumber = '';
+      if (kombainerData && kombainerData.id) {
+        try {
+          const talons = await getTalonsByKombainerId(kombainerData.id);
+          if (talons && talons.length > 0) {
+            // Находим последний созданный талон
+            const latestTalon = talons.reduce((latest, current) => {
+              return latest.created_at > current.created_at ? latest : current;
+            });
+
+            talonNumber = latestTalon.talonNumber || '';
+          }
+        } catch (error) {
+          console.error('Ошибка при получении номера талона:', error);
+        }
+      }
+
+      return { status: 'ok', kombainerData, kombainerUserData: userData, talonNumber };
     }
 
     case 'set_talon_of_kombainer': {
-      const { kombainerData, userData, weight } = message;
+      const { kombainerData, userData, weight, talonNumber } = message;
 
-      setNeedRedirect('voditel', { kombainerData, userData, weight });
+      setNeedRedirect('voditel', { kombainerData, userData, weight, talonNumber });
 
       return { status: 'ok' };
     }
