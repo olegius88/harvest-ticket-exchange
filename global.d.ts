@@ -717,6 +717,7 @@ export interface RolesRoutesMap {
 
 export interface JoinHotspotResponse {
   ip: string;
+  talonId: string;
 }
 
 export interface IPayloadVoditelData {
