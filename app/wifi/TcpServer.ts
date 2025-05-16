@@ -33,7 +33,7 @@ export const startTcpServer = (): Promise<string> => {
       socket.on('data', async (data: Buffer) => {
         const dataString = data.toString();
         console.log('startTcpServer|socket|on|data=', dataString);
-        ToastAndroid.show(`startTcpServer|socket|on|data`, ToastAndroid.SHORT);
+        // ToastAndroid.show(`startTcpServer|socket|on|data`, ToastAndroid.SHORT);
         let message: ISendTcpRequestData;
         try {
           message = JSON.parse(dataString);
@@ -79,7 +79,7 @@ export const startTcpServer = (): Promise<string> => {
         console.log('startTcpServer|socket|close');
         ToastAndroid.show(`startTcpServer|socket|close`, ToastAndroid.SHORT);
         // Удаляем сокет из массива активных соединений
-        activeSockets = activeSockets.filter((s) => s !== socket);
+        activeSockets = activeSockets.filter(s => s !== socket);
       });
     });
 
@@ -114,7 +114,7 @@ export const stopTcpServer = (): Promise<string> => {
     }
 
     // Закрываем все активные соединения
-    activeSockets.forEach((socket) => {
+    activeSockets.forEach(socket => {
       try {
         socket.destroy();
       } catch (error) {
