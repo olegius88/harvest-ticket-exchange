@@ -12,6 +12,7 @@ import { ICreateTalonParams, IEditTalonParams, TalonStatus } from '../../global'
  */
 export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   readonly id: string;
+  readonly talonNumber: string;
   created_at: number;
   updated_at: number;
 }
@@ -90,25 +91,22 @@ export async function createTalon({
   endTime,
   weight,
   comment,
-  talonNumber,
 }: ICreateTalonParams): Promise<string> {
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
     const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
 
-    // Генерация номера талона, если он не предоставлен
-    let talonNum = talonNumber;
-    if (!talonNum) {
-      // Получаем все талоны данного комбайнера
-      const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
-      // Вычисляем номер талона: ID комбайнера + порядковый номер
-      const sequentialNumber = existingTalons.length + 1;
-      talonNum = `${sequentialNumber}`;
-    }
+    // Получаем все талоны данного комбайнера
+    const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
+    // Вычисляем номер талона: ID комбайнера + порядковый номер
+    const sequentialNumber = existingTalons.length + 1;
+    const talonNumber = `${sequentialNumber}`;
+
+    console.log('createTalon|talonNumber=', talonNumber);
 
     const now = Date.now();
-    const newTalon = await collection.create((record) => {
+    const newTalon = await collection.create(record => {
       record._raw.id = uuid.v4();
       record.kombainerId = kombainerId.trim();
       record.voditelId = voditelId ? voditelId.trim() : null;
@@ -117,7 +115,7 @@ export async function createTalon({
       record.endTime = endTime || null;
       record.weight = weight || null;
       record.comment = comment ? comment.trim() : null;
-      record.talonNumber = talonNum;
+      record.talonNumber = talonNumber;
       record.created_at = now;
       record.updated_at = now;
     });
@@ -139,6 +137,7 @@ export async function getAllTalons(): Promise<ICreateTalonsParams[]> {
  * Получить талон по ID.
  */
 export async function getTalonById(talonId: string): Promise<ICreateTalonsParams> {
+  console.log('getTalonById|talonId=', talonId);
   return database.read(async () => {
     const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
@@ -156,6 +155,7 @@ export async function getTalonById(talonId: string): Promise<ICreateTalonsParams
       endTime: record.endTime,
       weight: record.weight,
       comment: record.comment,
+      talonNumber: record.talonNumber,
       created_at: record.created_at,
       updated_at: record.updated_at,
     } as ICreateTalonsParams;
@@ -206,7 +206,7 @@ export async function editTalon({
     }
 
     const now = Date.now();
-    await record.update((r) => {
+    await record.update(r => {
       r.kombainerId = kombainerId.trim();
       r.voditelId = voditelId ? voditelId.trim() : null;
       r.status = status;
@@ -233,7 +233,7 @@ export async function assignDriverToTalon(talonId: string, voditelId: string): P
     }
 
     const now = Date.now();
-    await record.update((r) => {
+    await record.update(r => {
       r.voditelId = voditelId.trim();
       r.status = 'driver_assigned';
       r.updated_at = now;
@@ -268,7 +268,7 @@ export async function updateTalonStatus(talonId: string, status: TalonStatus): P
     }
 
     const now = Date.now();
-    await record.update((r) => {
+    await record.update(r => {
       r.status = status;
       r.updated_at = now;
 
@@ -298,7 +298,7 @@ export async function updateTalonWeight(talonId: string, weight: number): Promis
     }
 
     const now = Date.now();
-    await record.update((r) => {
+    await record.update(r => {
       r.weight = weight;
       r.updated_at = now;
     });
