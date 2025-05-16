@@ -404,7 +404,6 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonData: TalonsOfCombainers;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -425,6 +424,11 @@ export interface ITcpResponseKombainerData {
   talonNumber: string;
 }
 
+export interface ITcpResponseTalonData {
+  status: 'ok';
+  talonData: ICreateTalonsParams;
+}
+
 /**
  *
  */
@@ -435,12 +439,14 @@ export type ISendTcpRequestData =
   | ISendTcpGetKombainerData
   | ISendTcpConfirmKombainerTicket
   | ISendTcpConfirmKombainerTicketWithWeight
-  | ISendTcpSendSetTalonOfKombainer;
+  | ISendTcpSendSetTalonOfKombainer
+  | ISendTcpGetTalonDataById;
 
 export type ISendTcpResponseData =
   | ITcpResponseConnectEstablishedOk
   | ITcpResponseKombainerData
-  | ITcpResponseConfirmKombainerTicket;
+  | ITcpResponseConfirmKombainerTicket
+  | ITcpResponseTalonData;
 
 /**
  * Объединённый тип запросов.
