@@ -16,6 +16,13 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
   console.log('onTcpMessage|message=', message);
   const { type } = message;
 
+  if (type === undefined) {
+    console.error('onTcpMessage|type === undefined');
+    // ToastAndroid.show(`Ошибка: Не указан тип сообщения`, ToastAndroid.SHORT);
+    // return { status: 'error', message: 'Не указан тип сообщения' };
+    return { status: 'ok' };
+  }
+
   switch (type) {
     case 'test': {
       return { status: 'ok' };
