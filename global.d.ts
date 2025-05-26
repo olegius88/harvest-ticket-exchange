@@ -406,11 +406,6 @@ export interface ISendTcpSendSetTalonOfKombainer {
   weight: number;
 }
 
-export interface ISendTcpGetTalonDataById {
-  type: 'get_talon_data_by_id';
-  talonId: string;
-}
-
 export interface IIsTcpServerSendResponse {
   isTcpServerSendResponse: boolean;
 }
