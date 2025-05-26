@@ -22,31 +22,22 @@ const { MainWifiModule } = NativeModules; // Получаем нативный �
 
 /**
  * Функция для парсинга Wi‑Fi строки.
- * Ожидается формат: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;T:talonId;;"
- * где T: - это идентификатор талона (обязательный параметр)
+ * Ожидается формат: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;;"
  */
-const parseWifiCredentials = (
-  value: string
-): { ssid: string; password: string; talonId: string } | null => {
+const parseWifiCredentials = (value: string): { ssid: string; password: string } | null => {
   if (!value.startsWith('WIFI:')) return null;
   const wifiData = value.slice(5); // удаляем префикс "WIFI:"
   const parts = wifiData.split(';');
   let ssid = '';
   let password = '';
-  let talonId = '';
-
   for (const part of parts) {
     if (part.startsWith('S:')) {
       ssid = part.substring(2);
     } else if (part.startsWith('P:')) {
       password = part.substring(2);
-    } else if (part.startsWith('T:')) {
-      talonId = part.substring(2);
     }
   }
-
-  // Все три параметра обязательны
-  return ssid && password && talonId ? { ssid, password, talonId } : null;
+  return ssid && password ? { ssid, password } : null;
 };
 
 type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
@@ -79,33 +70,8 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
       const credentials = parseWifiCredentials(value);
       if (credentials) {
-        const { ssid, password, talonId } = credentials;
-        console.log('Parsed Wi‑Fi credentials:', ssid, password, 'Talon ID:', talonId);
-        // Check each credential individually with specific error messages
-        if (!ssid) {
-          console.error('onCodeScanned|missing SSID|value=', value);
-          Alert.alert('Ошибка', 'В QR-коде отсутствует имя сети Wi-Fi (SSID).');
-          isProcessing.current = false;
-          setProcessing(false);
-          return;
-        }
-
-        if (!password) {
-          console.error('onCodeScanned|missing password|value=', value);
-          Alert.alert('Ошибка', 'В QR-коде отсутствует пароль Wi-Fi.');
-          isProcessing.current = false;
-          setProcessing(false);
-          return;
-        }
-
-        if (!talonId) {
-          console.error('onCodeScanned|missing talonId|value=', value);
-          Alert.alert('Ошибка', 'В QR-коде отсутствует идентификатор талона.');
-          isProcessing.current = false;
-          setProcessing(false);
-          return;
-        }
-
+        const { ssid, password } = credentials;
+        console.log('Parsed Wi‑Fi credentials:', ssid, password);
         isProcessing.current = true;
         setProcessing(true);
 
@@ -124,14 +90,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
             console.log('onCodeScanned|joinData=', joinData);
 
             // Если подключение успешно, возвращается IP-адрес
-            if (!joinData.ip) {
-              Alert.alert('Ошибка', 'Не удалось подключиться к сети');
-              isProcessing.current = false;
-              setProcessing(false);
-              return;
-            }
-            console.log('onCodeScanned|joinData.ip=', joinData.ip);
-            joinData.talonId = talonId;
+            // Можно, например, сохранить его или передать в другой модуль
             setNeedRedirect('voditel', joinData);
 
             navigation.reset({
