@@ -7,7 +7,7 @@ import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';
 import { getKombainerByUserId } from '../db/kombainers';
-import { getTalonsByKombainerId, getTalonById } from '../db/talons_of_combainers';
+import { getTalonsByKombainerId } from '../db/talons_of_combainers';
 
 /**
  * Основная функция обработки сообщений
@@ -54,7 +54,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'get_kombainer_data': {
-      // const {} = message;
+      const {} = message;
 
       const currentUserId = await getConfig('currentUserId');
       console.log('currentUser|currentUserId=', currentUserId);
@@ -101,38 +101,10 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       return { status: 'ok', kombainerData, kombainerUserData: userData, talonNumber };
     }
 
-    case 'get_talon_data_by_id': {
-      const { talonId } = message;
-
-      if (!talonId) {
-        ToastAndroid.show(`Ошибка: Не указан ID талона`, ToastAndroid.SHORT);
-        return { status: 'error' };
-      }
-
-      try {
-        const talonData = await getTalonById(talonId);
-        console.log('get_talon_data_by_id|talonData=', talonData);
-
-        if (!talonData) {
-          ToastAndroid.show(`Ошибка: Талон с ID ${talonId} не найден`, ToastAndroid.SHORT);
-          return { status: 'error' };
-        }
-
-        return { status: 'ok', talonData };
-      } catch (error: any) {
-        console.error('Ошибка при получении данных талона:', error);
-        ToastAndroid.show(
-          `Ошибка при получении данных талона: ${error.message}`,
-          ToastAndroid.SHORT
-        );
-        return { status: 'error', message: error.message };
-      }
-    }
-
     case 'set_talon_of_kombainer': {
-      const { kombainerData, userData, weight } = message;
+      const { kombainerData, userData, weight, talonNumber } = message;
 
-      setNeedRedirect('voditel', { kombainerData, userData, weight });
+      setNeedRedirect('voditel', { kombainerData, userData, weight, talonNumber });
 
       return { status: 'ok' };
     }
