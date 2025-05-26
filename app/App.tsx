@@ -16,8 +16,8 @@ export default function App(): React.ReactElement {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   // Определение URL: сначала пытаемся взять из переменной окружения, если её нет – используем локальный файл
-  const url = process.env?.API_URL || 'file:///android_asset/web/index.html';
-  console.log('process.env.API_URL=', process.env?.API_URL);
+  const url = process.env.API_URL || 'file:///android_asset/web/index.html';
+  console.log('process.env.API_URL=', process.env.API_URL);
   console.log('url=', url);
 
   // Подписка на событие openCodeScannerPage для навигации на CodeScannerPage
