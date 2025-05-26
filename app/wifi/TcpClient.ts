@@ -30,7 +30,7 @@ export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string
     client.on('data', async (data: Buffer) => {
       const dataString = data.toString();
       console.log('TCP клиент|Получены данные:', dataString);
-      // ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
+      ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
       let message: any;
       try {
         message = JSON.parse(dataString);
@@ -61,7 +61,7 @@ export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string
       }
     });
 
-    client.on('error', error => {
+    client.on('error', (error) => {
       console.error('TCP клиент|Ошибка:', error);
       // DEV LOGS
       // ToastAndroid.show(`TCP клиент|Ошибка`, ToastAndroid.SHORT);
