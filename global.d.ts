@@ -1,7 +1,6 @@
 // Файл: /global.d.ts
 
 import { ICreateUsersParams } from './app/db/users';
-import { ICreateTalonsParams, TalonsOfCombainers } from './app/db/talons_of_combainers';
 
 /**
  * Интерфейс для ответа с pushUserId.
@@ -404,7 +403,7 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonData: TalonsOfCombainers;
+  talonNumber: string;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -573,14 +572,14 @@ export type ISendPostResponse =
             kombainerUserData: null;
             voditelData: null;
           };
-      error?: never; // При 'resolve' не используем поле 'error'
+      error?: any; // При 'resolve' не используем поле 'error'
     }
   // Игнорируемые сообщения
   | {
       type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid' | 'webpackHot';
       reqId?: string;
       resType?: 'reject';
-      error?: never;
+      error?: any;
     };
 
 /**
@@ -776,6 +775,7 @@ export interface ICreateTalonParams {
   endTime?: number; // Время окончания (может быть не заполнено)
   weight?: number; // Вес (может быть не заполнен)
   comment?: string; // Комментарий
+  talonNumber: string; // Номер талона (ID комбайнера + порядковый номер)
 }
 
 // Интерфейсы для запросов создания и редактирования талона
