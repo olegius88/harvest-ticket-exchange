@@ -12,6 +12,7 @@ import { ICreateTalonParams, IEditTalonParams, TalonStatus } from '../../global'
  */
 export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   readonly id: string;
+  readonly talonNumber: string;
   created_at: number;
   updated_at: number;
 }
@@ -29,7 +30,7 @@ export class TalonsOfCombainers extends Model {
   @field('endTime') endTime: number;
   @field('weight') weight: number;
   @field('comment') comment: string;
-  @field('talonNumber') talonNumber: string;
+  @field('talonNumber') readonly talonNumber: string;
   @field('created_at') created_at: number;
   @field('updated_at') updated_at: number;
 
@@ -90,22 +91,18 @@ export async function createTalon({
   endTime,
   weight,
   comment,
-  talonNumber,
 }: ICreateTalonParams): Promise<string> {
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
     const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
 
-    // Генерация номера талона, если он не предоставлен
-    let talonNum = talonNumber;
-    if (!talonNum) {
-      // Получаем все талоны данного комбайнера
-      const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
-      // Вычисляем номер талона: ID комбайнера + порядковый номер
-      const sequentialNumber = existingTalons.length + 1;
-      talonNum = `${sequentialNumber}`;
-    }
+    // Генерация номера талона
+    // Получаем все талоны данного комбайнера
+    const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
+    // Вычисляем номер талона: ID комбайнера + порядковый номер
+    const sequentialNumber = existingTalons.length + 1;
+    const talonNumber = `${sequentialNumber}`;
 
     const now = Date.now();
     const newTalon = await collection.create((record) => {
@@ -117,7 +114,8 @@ export async function createTalon({
       record.endTime = endTime || null;
       record.weight = weight || null;
       record.comment = comment ? comment.trim() : null;
-      record.talonNumber = talonNum;
+      // @ts-ignore
+      record.talonNumber = talonNumber;
       record.created_at = now;
       record.updated_at = now;
     });

@@ -403,7 +403,6 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonNumber: string;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -421,7 +420,6 @@ export interface ITcpResponseConnectEstablishedOk {
 export interface ITcpResponseKombainerData {
   kombainerUserData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams;
-  talonNumber: string;
 }
 
 /**
@@ -735,7 +733,6 @@ export interface IPayloadSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonNumber: string;
 }
 
 export type TNeedRedirectPayload =
@@ -761,7 +758,6 @@ export interface IEditTalonParams {
   endTime?: number; // Время окончания (может быть не заполнено)
   weight?: number; // Вес (может быть не заполнен)
   comment?: string; // Комментарий
-  talonNumber: string; // Номер талона (ID комбайнера + порядковый номер)
 }
 
 /**
@@ -775,7 +771,6 @@ export interface ICreateTalonParams {
   endTime?: number; // Время окончания (может быть не заполнено)
   weight?: number; // Вес (может быть не заполнен)
   comment?: string; // Комментарий
-  talonNumber: string; // Номер талона (ID комбайнера + порядковый номер)
 }
 
 // Интерфейсы для запросов создания и редактирования талона
@@ -912,3 +907,15 @@ export interface ISendPostResponseUpdateUserProfile {
   userId: string;
   status: 'ok';
 }
+
+export type RootStackParamList = {
+  LoginScreen: undefined;
+  RegistrationScreen: undefined;
+  MainScreen: undefined;
+  WebViewScreen: undefined;
+  CodeScannerPageScreen: undefined;
+  KombainerRegistrationScreen: undefined;
+  KombainerTicketDetailScreen: undefined;
+  KombainerQRCodeScreen: undefined;
+  KombainerCreateTicketScreen: undefined;
+};

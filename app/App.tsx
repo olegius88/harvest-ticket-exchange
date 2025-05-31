@@ -8,8 +8,15 @@ import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import WebViewV1 from './webviews/WebViewV1';
 import { Routes } from './Routes';
 import { CodeScannerPage } from './pages/CodeScannerPage';
+import Login from './pages/Login';
+import Registration from './pages/Registration';
+import Main from './pages/Main';
+import KombainerRegistration from './pages/KombainerRegistration';
+import KombainerQRCode from './pages/KombainerQRCode';
+import KombainerTicketDetail from './pages/KombainerTicketDetail';
+import KombainerCreateTicket from './pages/KombainerCreateTicket';
 
-const Stack = createNativeStackNavigator<Routes>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App(): React.ReactElement {
   // Создаем реф для навигации
@@ -24,7 +31,7 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('openCodeScannerPage', () => {
       if (navigationRef.current) {
-        navigationRef.current.navigate('CodeScannerPage');
+        navigationRef.current.navigate('CodeScannerPageScreen');
       }
     });
     return () => subscription.remove();
@@ -37,9 +44,19 @@ export default function App(): React.ReactElement {
           screenOptions={{
             headerShown: false,
           }}
+          initialRouteName="MainScreen"
         >
+          <Stack.Screen name="MainScreen" component={Main} />
+          <Stack.Screen name="LoginScreen" component={Login} />
+          <Stack.Screen name="RegistrationScreen" component={Registration} />
+          <Stack.Screen name="KombainerRegistrationScreen" component={KombainerRegistration} />
+          <Stack.Screen name="KombainerTicketDetailScreen" component={KombainerTicketDetail} />
+          <Stack.Screen name="KombainerCreateTicketScreen" component={KombainerCreateTicket} />
+          <Stack.Screen name="KombainerQRCodeScreen">
+            {(props) => <KombainerQRCode {...props} />}
+          </Stack.Screen>
           <Stack.Screen name="WebViewScreen">{() => <WebViewV1 url={url} />}</Stack.Screen>
-          <Stack.Screen name="CodeScannerPage" component={CodeScannerPage} />
+          <Stack.Screen name="CodeScannerPageScreen" component={CodeScannerPage} />
         </Stack.Navigator>
       </GestureHandlerRootView>
     </NavigationContainer>

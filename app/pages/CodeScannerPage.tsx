@@ -40,7 +40,8 @@ const parseWifiCredentials = (value: string): { ssid: string; password: string }
   return ssid && password ? { ssid, password } : null;
 };
 
-type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
+type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
+
 export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   // Используем заднюю камеру
   const device = useCameraDevice('back');

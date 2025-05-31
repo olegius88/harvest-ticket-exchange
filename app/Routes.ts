@@ -1,4 +1,3 @@
-export type Routes = {
-  WebViewScreen: undefined;
-  CodeScannerPage: undefined;
-};
+import { RootStackParamList } from '../global';
+
+export type Routes = RootStackParamList;
