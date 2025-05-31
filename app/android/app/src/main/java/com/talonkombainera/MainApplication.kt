@@ -22,6 +22,9 @@ class MainApplication : Application(), ReactApplication {
                     // Добавьте ваш кастомный пакет сюда:
                     add(CustomWebViewPackage())
                     add(MainPackage())
+
+                    // Добавляем наш HotspotBridgePackage
+                    add(HotspotBridgePackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"
