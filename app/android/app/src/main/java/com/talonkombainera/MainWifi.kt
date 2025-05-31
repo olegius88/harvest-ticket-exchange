@@ -50,6 +50,14 @@ const val PORT = 3290
  */
 class MainWifi(private val context: Context) {
 
+    companion object {
+        @Volatile
+        private var isHotspotOperationInProgress = false
+        private val hotspotLock = Object()
+        private const val MAX_RETRY_COUNT = 3
+        private const val RETRY_DELAY_MS = 3000L
+    }
+
     lateinit var server: ServerSocket // TCP listener, используемый для освобождения порта при ошибках или завершении передачи
     lateinit var client: Socket // TCP сокет
     lateinit var inputStream: InputStream // входящий поток от сокета
@@ -88,7 +96,7 @@ class MainWifi(private val context: Context) {
         fun onHotspotStopped()
 
         /**
-         * Вызывается, когда устройство успешно подключилось к хотспоту.
+         * Вызывается, когда устройство успешно подключилось to хотспоту.
          */
         fun onHotspotJoined(ipAddress: String?)
 
@@ -193,48 +201,109 @@ class MainWifi(private val context: Context) {
      * Если хотспот уже запущен, сначала останавливает его.
      */
     fun startHotspot() {
-        // Проверяем, запущен ли уже хотспот, и останавливаем его перед запуском нового
-        if (hotspotReservation != null) {
-            Log.d("MainWifi", "Хотспот уже запущен, останавливаем перед повторным запуском")
-            stopHotspot()
-            // Небольшая задержка для корректного завершения предыдущего хотспота
-            try {
-                Thread.sleep(500)
-            } catch (e: InterruptedException) {
-                Log.e("MainWifi", "Прерывание потока во время задержки", e)
+        synchronized(hotspotLock) {
+            if (isHotspotOperationInProgress) {
+                Log.d("MainWifi", "Операция с хотспотом уже выполняется, пропускаем запрос")
+                callback?.onHotspotFailed(-6) // Код для "операция уже выполняется"
+                return
             }
-        }
 
-        // Определяем требуемое разрешение в зависимости от версии Android
-        val requiredPermission = if (Build.VERSION.SDK_INT < 33) {
-            Manifest.permission.ACCESS_FINE_LOCATION
-        } else {
-            Manifest.permission.NEARBY_WIFI_DEVICES
-        }
+            isHotspotOperationInProgress = true
+            try {
+                // Проверяем, запущен ли уже хотспот, и останавливаем его перед запуском нового
+                if (hotspotReservation != null) {
+                    Log.d("MainWifi", "Хотспот уже запущен, останавливаем перед повторным запуском")
+                    stopHotspot()
+                    // Увеличиваем задержку для корректного завершения предыдущего хотспота
+                    try {
+                        Thread.sleep(2000) // Увеличиваем до 2 секунд
+                    } catch (e: InterruptedException) {
+                        Log.e("MainWifi", "Прерывание потока во время задержки", e)
+                    }
+                }
 
-        // Проверяем наличие разрешения
-        if (ActivityCompat.checkSelfPermission(context, requiredPermission) != PackageManager.PERMISSION_GRANTED) {
-            callback?.onHotspotFailed(-2)
-            return
-        }
+                // Определяем требуемое разрешение в зависимости от версии Android
+                val requiredPermission = if (Build.VERSION.SDK_INT < 33) {
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                } else {
+                    Manifest.permission.NEARBY_WIFI_DEVICES
+                }
 
-        // Проверяем, включён ли режим определения местоположения
-        if (!isLocationEnabled(context)) {
-            Log.e("MainWifi", "Режим определения местоположения отключён. Необходимо его включить.")
-            // Можно дополнительно уведомить пользователя или открыть настройки
-            promptEnableLocation()
-            callback?.onHotspotFailed(-4)
-            return
-        }
+                // Дополнительная проверка активного хотспота через другие методы
+                try {
+                    // Пытаемся запустить хотспот с обработкой ошибок
+                    if (ActivityCompat.checkSelfPermission(context, requiredPermission) != PackageManager.PERMISSION_GRANTED) {
+                        callback?.onHotspotFailed(-2)
+                        return
+                    }
 
-        try {
-            // Запускаем локальный хотспот с использованием нашего callback и Handler'а
-            wifiManager.startLocalOnlyHotspot(localOnlyHotspotCallback, handler)
-        } catch (e: Exception) {
-            Log.e("MainWifi", "startHotspot|error: ${e.message}", e)
-            e.printStackTrace()
-            // В случае возникновения исключения уведомляем через callback об ошибке (-3)
-            callback?.onHotspotFailed(-3)
+                    // Проверяем, включён ли режим определения местоположения
+                    if (!isLocationEnabled(context)) {
+                        Log.e("MainWifi", "Режим определения местоположения отключён. Необходимо его включить.")
+                        promptEnableLocation()
+                        callback?.onHotspotFailed(-4)
+                        return
+                    }
+
+                    try {
+                        // Запускаем локальный хотспот с использованием нашего callback и Handler'а
+                        wifiManager.startLocalOnlyHotspot(localOnlyHotspotCallback, handler)
+                    } catch (e: IllegalStateException) {
+                        // Обрабатываем конкретно эту ошибку
+                        Log.e("MainWifi", "Хотспот уже активен в системе. Выполняем последовательность принудительного сброса", e)
+
+                        // Повторные попытки с принудительным сбросом
+                        var retryCount = 0
+                        var success = false
+
+                        while (retryCount < MAX_RETRY_COUNT && !success) {
+                            retryCount++
+                            Log.d("MainWifi", "Попытка принудительного сброса хотспота #$retryCount")
+
+                            // Попытка принудительного сброса через рефлексию
+                            try {
+                                val method = wifiManager.javaClass.getMethod("cancelLocalOnlyHotspotRequest")
+                                method.invoke(wifiManager)
+                                Log.d("MainWifi", "Выполнен принудительный сброс хотспота")
+                            } catch (reflectEx: Exception) {
+                                Log.e("MainWifi", "Не удалось выполнить принудительный сброс: ${reflectEx.message}")
+                            }
+
+                            // Ждем перед повторной попыткой
+                            try {
+                                Thread.sleep(RETRY_DELAY_MS)
+                                Log.d("MainWifi", "Повторная попытка запуска хотспота после сброса")
+
+                                // Повторная попытка запуска
+                                try {
+                                    wifiManager.startLocalOnlyHotspot(localOnlyHotspotCallback, handler)
+                                    success = true
+                                    Log.d("MainWifi", "Успешный запуск хотспота после принудительного сброса")
+                                    break
+                                } catch (retryEx: IllegalStateException) {
+                                    Log.e("MainWifi", "Повторная попытка #$retryCount не удалась: ${retryEx.message}")
+                                }
+                            } catch (sleepEx: InterruptedException) {
+                                Log.e("MainWifi", "Прерывание во время ожидания между попытками", sleepEx)
+                            }
+                        }
+
+                        if (!success) {
+                            Log.e("MainWifi", "Все попытки запустить хотспот после сброса не удались")
+                            callback?.onHotspotFailed(-5)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainWifi", "startHotspot|error: ${e.message}", e)
+                        e.printStackTrace()
+                        callback?.onHotspotFailed(-3)
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainWifi", "Общая ошибка при запуске хотспота: ${e.message}", e)
+                    callback?.onHotspotFailed(-3)
+                }
+            } finally {
+                isHotspotOperationInProgress = false
+            }
         }
     }
 
@@ -248,25 +317,65 @@ class MainWifi(private val context: Context) {
         // Останавливаем TCP-сервер при остановке хотспота
         stopTCP()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            hotspotReservation?.close()
-            hotspotReservation = null
-        } else {
-            try {
-                // Для API ниже 26 используем методы setWifiApEnabled через reflection
-                val methodGet = wifiManager.javaClass.getMethod("getWifiApConfiguration")
-                val wifiConfig = methodGet.invoke(wifiManager)
-                val methodSet = wifiManager.javaClass.getMethod(
-                    "setWifiApEnabled",
-                    wifiConfig.javaClass,
-                    Boolean::class.javaPrimitiveType
-                )
-                methodSet.invoke(wifiManager, wifiConfig, false)
-            } catch (ex: Exception) {
-                Log.e("MainWifi", "Ошибка при отключении хотспота: ${ex.message}", ex)
+        Log.d("MainWifi", "Остановка хотспота начата")
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val reservation = hotspotReservation
+                if (reservation != null) {
+                    reservation.close()
+                    hotspotReservation = null
+
+                    // Увеличиваем время ожидания для полного освобождения ресурсов
+                    try {
+                        Thread.sleep(3000) // Увеличиваем до 3 секунд
+                    } catch (e: InterruptedException) {
+                        Log.e("MainWifi", "Прерывание во время ожидания освобождения ресурсов", e)
+                    }
+
+                    // Принудительная попытка сбросить хотспот через WifiManager
+                    try {
+                        val method = wifiManager.javaClass.getMethod("cancelLocalOnlyHotspotRequest")
+                        method.invoke(wifiManager)
+                        Log.d("MainWifi", "Выполнен принудительный сброс хотспота через API")
+                    } catch (e: Exception) {
+                        Log.e("MainWifi", "Не удалось выполнить принудительный сброс хотспота: ${e.message}", e)
+                    }
+
+                    Log.d("MainWifi", "Хотспот успешно остановлен")
+                } else {
+                    Log.d("MainWifi", "Нет активного hotspotReservation для остановки")
+
+                    // Попытка принудительного сброса, даже если у нас нет объекта reservation
+                    try {
+                        val method = wifiManager.javaClass.getMethod("cancelLocalOnlyHotspotRequest")
+                        method.invoke(wifiManager)
+                        Log.d("MainWifi", "Выполнен принудительный сброс хотспота через API (без reservation)")
+                    } catch (e: Exception) {
+                        Log.e("MainWifi", "Не удалось выполнить принудительный сброс хотспота: ${e.message}", e)
+                    }
+                }
+            } else {
+                try {
+                    // Для API ниже 26 используем методы setWifiApEnabled через reflection
+                    val methodGet = wifiManager.javaClass.getMethod("getWifiApConfiguration")
+                    val wifiConfig = methodGet.invoke(wifiManager)
+                    val methodSet = wifiManager.javaClass.getMethod(
+                        "setWifiApEnabled",
+                        wifiConfig.javaClass,
+                        Boolean::class.javaPrimitiveType
+                    )
+                    methodSet.invoke(wifiManager, wifiConfig, false)
+                    Thread.sleep(1000)
+                } catch (ex: Exception) {
+                    Log.e("MainWifi", "Ошибка при отключении хотспота: ${ex.message}", ex)
+                }
             }
+        } catch (e: Exception) {
+            Log.e("MainWifi", "Ошибка при остановке хотспота: ${e.message}", e)
+        } finally {
+            // Обязательно вызываем callback даже при ошибках
+            callback?.onHotspotStopped()
         }
-        callback?.onHotspotStopped()
     }
 
     /**
@@ -444,6 +553,27 @@ class MainWifi(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MainWifi", "stopTCP|Ошибка остановки TCP-сервера: ${e.message}", e)
             e.printStackTrace()
+        }
+    }
+
+    /**
+     * Метод для перезапуска службы Wi-Fi.
+     * Выключает и снова включает Wi-Fi на устройстве.
+     */
+    private fun resetWifiService() {
+        Log.d("MainWifi", "Попытка перезапуска службы Wi-Fi")
+        try {
+            // Выключаем Wi-Fi
+            wifiManager.setWifiEnabled(false)
+            Thread.sleep(1000)
+
+            // Включаем Wi-Fi
+            wifiManager.setWifiEnabled(true)
+            Thread.sleep(2000)
+
+            Log.d("MainWifi", "Служба Wi-Fi перезапущена")
+        } catch (e: Exception) {
+            Log.e("MainWifi", "Ошибка при перезапуске службы Wi-Fi: ${e.message}", e)
         }
     }
 }
