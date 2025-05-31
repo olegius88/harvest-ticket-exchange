@@ -55,7 +55,6 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="KombainerQRCodeScreen">
             {(props) => <KombainerQRCode {...props} />}
           </Stack.Screen>
-          <Stack.Screen name="WebViewScreen">{() => <WebViewV1 url={url} />}</Stack.Screen>
           <Stack.Screen name="CodeScannerPageScreen" component={CodeScannerPage} />
         </Stack.Navigator>
       </GestureHandlerRootView>
