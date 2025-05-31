@@ -511,11 +511,6 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          {/* Логотип */}
-          <View style={styles.logoContainer}>
-            <VectorLogo />
-          </View>
-
           {/* Заголовок */}
           <Text style={styles.title}>Сканируйте QR-код для подключения к WiFi</Text>
 
@@ -545,7 +540,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
                 // Отображаем QR-код напрямую вместо Image
                 <QRCode
                   value={qrValue}
-                  size={200}
+                  size={300}
                   logoSize={30}
                   logoBackgroundColor="transparent"
                 />
@@ -595,14 +590,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 40,
   },
-  logoContainer: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 40,
+    marginBottom: 30,
     textAlign: 'center',
     color: '#333333',
   },
@@ -615,9 +606,9 @@ const styles = StyleSheet.create({
   },
   // Контейнер для QR-кода
   qrContainer: {
-    width: 240,
-    height: 240,
-    padding: 20,
+    width: '90%',
+    aspectRatio: 1,
+    padding: 10,
     backgroundColor: '#ffffff',
     borderRadius: 10,
     shadowColor: '#000',
@@ -625,7 +616,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    marginBottom: 40,
+    marginBottom: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -640,8 +631,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   qrImage: {
-    width: 200,
-    height: 200,
+    width: '100%',
+    height: '100%',
   },
   errorContainer: {
     alignItems: 'center',
