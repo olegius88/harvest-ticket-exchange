@@ -324,14 +324,50 @@ const _handleReqMessage = async (
       };
     }
     case 'isHotspotEnabled': {
-      // TODO: Implement hotspot status check for React Native
-      console.log('isHotspotEnabled|Hotspot functionality not implemented for React Native');
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'isHotspotEnabled', status: 'stopped' },
-      };
+      console.log('isHotspotEnabled|Checking hotspot status for React Native');
+      try {
+        const { HotspotBridge } = NativeModules;
+
+        if (!HotspotBridge) {
+          console.log('isHotspotEnabled|HotspotBridge not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'isHotspotEnabled', status: 'stopped' },
+          };
+        }
+
+        if (!HotspotBridge.getHotspotStatus) {
+          console.log('isHotspotEnabled|HotspotBridge.getHotspotStatus not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'isHotspotEnabled', status: 'stopped' },
+          };
+        }
+
+        // Вызываем нативный метод getHotspotStatus
+        const statusResStr = await HotspotBridge.getHotspotStatus(reqId);
+        const statusRes = JSON.parse(statusResStr);
+        console.log('isHotspotEnabled|statusRes=', statusRes);
+
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'isHotspotEnabled', status: statusRes.status },
+        };
+      } catch (error) {
+        console.error('isHotspotEnabled error:', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve', // Возвращаем resolve, а не reject для обратной совместимости
+          res: { type: 'isHotspotEnabled', status: 'stopped' },
+        };
+      }
     }
     case 'setHotspotEnabled': {
       console.log('setHotspotEnabled|req=', req);
@@ -398,14 +434,50 @@ const _handleReqMessage = async (
       }
     }
     case 'setHotspotDisabled': {
-      // TODO: Implement hotspot disable for React Native
-      console.log('setHotspotDisabled|Hotspot functionality not implemented for React Native');
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'setHotspotDisabled' },
-      };
+      console.log('setHotspotDisabled|Stopping hotspot for React Native');
+      try {
+        const { HotspotBridge } = NativeModules;
+
+        if (!HotspotBridge) {
+          console.log('setHotspotDisabled|HotspotBridge not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'setHotspotDisabled', state: 'stopped' },
+          };
+        }
+
+        if (!HotspotBridge.stopHotspot) {
+          console.log('setHotspotDisabled|HotspotBridge.stopHotspot not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'setHotspotDisabled', state: 'stopped' },
+          };
+        }
+
+        // Вызываем нативный метод stopHotspot
+        const stopResStr = await HotspotBridge.stopHotspot(reqId);
+        const stopRes = JSON.parse(stopResStr);
+        console.log('setHotspotDisabled|stopRes=', stopRes);
+
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'setHotspotDisabled', state: stopRes.status },
+        };
+      } catch (error) {
+        console.error('setHotspotDisabled error:', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve', // Возвращаем resolve, а не reject для обратной совместимости
+          res: { type: 'setHotspotDisabled', state: 'error' },
+        };
+      }
     }
     case 'pushUserId': {
       // TODO: Implement push notification functionality for React Native
