@@ -39,6 +39,10 @@ interface KombainerQRCodeState {
   permissionsStatus: {
     [key: string]: string;
   };
+  // Новые поля для отслеживания попыток
+  retryCount: number;
+  maxRetries: number;
+  retryInProgress: boolean;
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
@@ -53,6 +57,10 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       generatingQR: true,
       allPermissionsGranted: true,
       permissionsStatus: {},
+      // Инициализация новых полей
+      retryCount: 0,
+      maxRetries: 5, // Максимальное количество попыток
+      retryInProgress: false,
     };
   }
 
@@ -135,7 +143,16 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   // Генерация QR-кода - упрощённая версия
-  generateQRCode = async () => {
+  generateQRCode = async (isRetry = false) => {
+    console.log(`generateQRCode|init|isRetry=${isRetry}|retryCount=${this.state.retryCount}`);
+
+    if (isRetry) {
+      this.setState({
+        retryInProgress: true,
+        retryCount: this.state.retryCount + 1,
+      });
+    }
+
     let sheRes: ISendPostResponseSetHotspotEnabled;
     let iheRes: ISendPostResponseIsHotspotEnabled;
 
@@ -144,6 +161,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       console.log('generateQRCode|isHotspotEnabled|iheRes=', iheRes);
     } catch (e) {
       console.error('Ошибка при проверке точки доступа:', e);
+      this.handleRetryIfNeeded('Ошибка при проверке точки доступа');
       return;
     }
 
@@ -151,15 +169,22 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       await this.setHotspotDisabled();
     } catch (e) {
       console.error('generateQRCode|Ошибка при отключении точки доступа:', e);
+      this.handleRetryIfNeeded('Ошибка при отключении точки доступа');
       return;
     }
 
     try {
       sheRes = await this.setHotspotEnabled();
       console.log('generateQRCode|setHotspotEnabled|sheRes=', sheRes);
+
+      // Проверка валидности полученных данных
+      if (!sheRes || !sheRes.ssid || !sheRes.password) {
+        throw new Error('Получены неполные данные Wi-Fi (отсутствует SSID или пароль)');
+      }
     } catch (e) {
       console.error('generateQRCode|setHotspotEnabled|error=', e);
-      throw e;
+      this.handleRetryIfNeeded('Ошибка при включении точки доступа');
+      return;
     }
 
     // Новая часть: запуск TCP-сервера через API
@@ -186,7 +211,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       } catch (disableError) {
         console.error('Ошибка при отключении hotspot после ошибки TCP:', disableError);
       }
-      throw e;
+      this.handleRetryIfNeeded('Ошибка при запуске TCP-сервера');
+      return;
     }
 
     // Генерация строки для QR-кода Wi-Fi точки доступа
@@ -198,9 +224,41 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       qrValue: wifiQRCodeContent,
       generatingQR: false,
       loading: false,
+      retryInProgress: false,
+      retryCount: 0, // Сбрасываем счетчик после успешной генерации
     });
 
     console.log('QR-код сгенерирован для Wi-Fi:', wifiQRCodeContent);
+  };
+
+  // Новый метод для обработки повторных попыток
+  handleRetryIfNeeded = async (errorMessage: string) => {
+    const { retryCount, maxRetries } = this.state;
+
+    if (retryCount < maxRetries) {
+      console.log(
+        `Попытка ${retryCount + 1}/${maxRetries} не удалась: ${errorMessage}. Повторяем...`
+      );
+
+      // Небольшая задержка перед следующей попыткой
+      setTimeout(() => {
+        this.generateQRCode(true);
+      }, 1500);
+    } else {
+      console.error(
+        `Достигнуто максимальное количество попыток (${maxRetries}). Прекращаем попытки.`
+      );
+      this.setState({
+        generatingQR: false,
+        loading: false,
+        retryInProgress: false,
+      });
+
+      Alert.alert(
+        'Ошибка генерации QR-кода',
+        'Не удалось создать точку доступа после нескольких попыток. Пожалуйста, проверьте настройки устройства и попробуйте снова.'
+      );
+    }
   };
 
   componentDidMount() {
@@ -296,8 +354,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   initGenerateQr = async () => {
     console.log('initGenerateQr|init');
 
-    // Сбрасываем индикатор загрузки
-    this.setState({ loading: true, generatingQR: true });
+    // Сбрасываем индикатор загрузки и счетчик попыток
+    this.setState({
+      loading: true,
+      generatingQR: true,
+      retryCount: 0,
+      retryInProgress: false,
+    });
 
     // Разрешим запускать проверку разрешений снова
     this.generateQr = false;
@@ -342,7 +405,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
-      await this.generateQRCode();
+      await this.generateQRCode(false); // Первая попытка, не является повторной
       console.log('componentDidMount|generateQRCode|ok');
     } catch (e) {
       console.error('componentDidMount|generateQRCode|error=', e);
@@ -350,10 +413,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         'Ошибка генерации QR-кода',
         'Произошла ошибка при создании точки доступа и генерации QR-кода. Попробуйте еще раз.'
       );
-      this.setState({ generatingQR: false, loading: false });
+      this.setState({ generatingQR: false, loading: false, retryInProgress: false });
       return;
     } finally {
-      this.setState({ loading: false });
+      if (!this.state.retryInProgress) {
+        this.setState({ loading: false });
+      }
     }
 
     this.waitingVoditelDataCtrl = 0;
@@ -506,7 +571,15 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   render() {
-    const { qrValue, loading, generatingQR, allPermissionsGranted } = this.state;
+    const {
+      qrValue,
+      loading,
+      generatingQR,
+      allPermissionsGranted,
+      retryCount,
+      maxRetries,
+      retryInProgress,
+    } = this.state;
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -533,7 +606,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color="#98d642" />
                   <Text style={styles.loadingText}>
-                    Создание точки доступа и генерация QR-кода...
+                    {retryInProgress
+                      ? `Повторная попытка ${retryCount}/${maxRetries}...`
+                      : 'Создание точки доступа и генерация QR-кода...'}
                   </Text>
                 </View>
               ) : qrValue ? (
