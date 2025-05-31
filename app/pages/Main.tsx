@@ -304,8 +304,7 @@ const Main = () => {
           switch (context) {
             case 'kombainer':
               if (currentUserResponse.kombainerData) {
-                // В React Native версии переходим на WebView
-                navigation.navigate('WebViewScreen');
+                navigation.navigate('KombainerCreateTicketScreen');
                 return;
               }
               // Если нет данных комбайнера, нужна специальная регистрация комбайнера

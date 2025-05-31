@@ -72,14 +72,13 @@ export const setNeedRedirect = (data: string, payload?: any): void => {
  * Проверка и запрос разрешений для работы с Wi-Fi (для Android).
  */
 export const checkPermissionsHotspot = async (): Promise<boolean> => {
-  if (Platform.OS !== 'android') return true;
-
   // Проверяем, включён ли режим определения местоположения.
-  const locationEnabled = await DeviceInfo.isLocationEnabled();
-  if (!locationEnabled) {
-    console.log('checkPermissionsHotspot|locationEnabled = false');
-    return false;
-  }
+  // const locationEnabled = await DeviceInfo.isLocationEnabled();
+  // console.log('checkPermissionsHotspot|locationEnabled=', locationEnabled);
+  // if (!locationEnabled) {
+  //   console.log('checkPermissionsHotspot|locationEnabled = false');
+  //   return false;
+  // }
 
   const permissions = [
     PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
@@ -88,6 +87,7 @@ export const checkPermissionsHotspot = async (): Promise<boolean> => {
   ];
 
   const granted = await PermissionsAndroid.requestMultiple(permissions);
+
   const allGranted = permissions.every(
     (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
   );
@@ -334,14 +334,41 @@ const _handleReqMessage = async (
       };
     }
     case 'setHotspotEnabled': {
-      // TODO: Implement hotspot enable for React Native
-      console.log('setHotspotEnabled|Hotspot functionality not implemented for React Native');
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'reject',
-        error: { message: 'Hotspot functionality not implemented for React Native' },
-      };
+      const callNativeBridge = `
+            if (window.NativeBridge && window.NativeBridge.startHotspot) {
+              const startRes = JSON.parse(window.NativeBridge.startHotspot('${reqId}'));
+              console.log('setHotspotEnabled|startRes=', startRes);
+              if (startRes.status === 'error') {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  native: {
+                    reqId: '${reqId}',
+                    type: 'sendPostResponse',
+                    resType: 'reject',
+                    res: { type: 'setHotspotEnabled', status: startRes.status, error: startRes.error }
+                  }
+                }));
+              } else {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  native: {
+                    reqId: '${reqId}',
+                    type: 'sendPostResponse',
+                    resType: 'resolve',
+                    res: { type: 'setHotspotEnabled', status: startRes.status, ssid: startRes.ssid, password: startRes.password }
+                  }
+                }));
+              }
+            } else {
+              console.log('setHotspotEnabled|NativeBridge не доступен');
+              window.ReactNativeWebView.postMessage("NativeBridge не доступен");
+            }
+            true;
+          `;
+      if (!webviewRef.current) {
+        console.error('setHotspotEnabled|webviewRef.current is null');
+        throw new Error('webviewRef.current is null');
+      }
+      webviewRef.current.injectJavaScript(callNativeBridge);
+      throw new VoidAndNotError('');
     }
     case 'setHotspotDisabled': {
       // TODO: Implement hotspot disable for React Native

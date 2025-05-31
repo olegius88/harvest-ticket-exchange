@@ -9,9 +9,11 @@ import {
   Image,
   ScrollView,
   BackHandler,
+  PermissionsAndroid,
+  Linking,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
+import { checkPermissionsHotspot, handleMessage } from '../services/MessageHandler';
 import { AuthStoreData } from '../stores/AuthStore';
 import { VectorLogo } from '../components/VectorLogo';
 import {
@@ -22,6 +24,7 @@ import {
   IPayloadVoditelConnectSuccess,
   RootStackParamList,
 } from '../../global';
+import DeviceInfo from 'react-native-device-info';
 
 interface KombainerQRCodeProps {
   navigation: NavigationProp<RootStackParamList, 'KombainerQRCodeScreen'>;
@@ -32,6 +35,10 @@ interface KombainerQRCodeState {
   qrUrl: string;
   loading: boolean;
   generatingQR: boolean;
+  allPermissionsGranted: boolean;
+  permissionsStatus: {
+    [key: string]: string;
+  };
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
@@ -44,6 +51,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       qrUrl: '',
       loading: true,
       generatingQR: true,
+      allPermissionsGranted: true, // По умолчанию считаем, что включено, потом проверим
+      permissionsStatus: {},
     };
   }
 
@@ -299,31 +308,50 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   initGenerateQr = async () => {
-    console.log('componentDidMount|initGenerateQr');
-    if (this.generateQr) return;
+    console.log('initGenerateQr|init');
+
+    // Сбрасываем индикатор загрузки
+    this.setState({ loading: true, generatingQR: true });
+
+    // Разрешим запускать проверку разрешений снова
+    this.generateQr = false;
     this.generateQr = true;
 
     try {
-      // ✅ Включаем не гаснущий экран
-      await handleMessage({
-        req: {
-          type: 'enableKeepAwake',
-        },
-        reqId: 'enableKeepAwake_' + Date.now(),
-      });
+      const permissions = [
+        PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      ];
+      const granted = await PermissionsAndroid.requestMultiple(permissions);
+      console.log('initGenerateQr|requestMultiple|granted=', granted);
 
-      await handleMessage({
-        req: {
-          type: 'checkPermissionsHotspot',
-        },
-        reqId: 'checkPermissionsHotspot_' + Date.now(),
-      });
-    } catch (e) {
-      console.error('componentDidMount|generateQRCode|error=', e);
-      Alert.alert(
-        'Ошибка разрешений',
-        'Не предоставлены все необходимые разрешения приложению. Пожалуйста, предоставьте разрешения в настройках устройства.'
+      // Сохраняем текущие статусы разрешений
+      this.setState({ permissionsStatus: granted });
+
+      const allGranted = permissions.every(
+        (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
       );
+
+      if (!allGranted) {
+        if (
+          granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
+          PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+        ) {
+          console.log('checkPermissionsHotspot|ACCESS_FINE_LOCATION = NEVER_ASK_AGAIN');
+
+          const locationEnabled = await DeviceInfo.isLocationEnabled();
+          console.log('checkPermissionsHotspot|locationEnabled=', locationEnabled);
+          if (!locationEnabled) {
+            console.log('initGenerateQr|requestMultiple|!allGranted');
+            this.setState({ loading: false, generatingQR: false, allPermissionsGranted: false });
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('initGenerateQr|generateQRCode|error=', e);
+      this.setState({ loading: false, generatingQR: false, allPermissionsGranted: false });
       return;
     }
 
@@ -403,8 +431,96 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     );
   };
 
+  // Открытие настроек приложения
+  openAppSettings = () => {
+    Linking.openSettings().catch(() => {
+      Alert.alert(
+        'Ошибка',
+        'Не удалось открыть настройки приложения. Пожалуйста, откройте их вручную через меню устройства: Настройки → Приложения → Это приложение → Разрешения'
+      );
+    });
+  };
+
+  renderPermissionStatusMessages = () => {
+    const { permissionsStatus } = this.state;
+    const messages: React.ReactNode[] = [];
+
+    // Текст с описанием проблемы для каждого типа разрешения
+    const permissionMessages: {
+      [key: string]: {
+        title: string;
+        denied: string;
+        never_ask_again: string;
+        instruction: string;
+      };
+    } = {
+      [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]: {
+        title: 'Точное местоположение',
+        denied: 'Разрешение на доступ к точному местоположению отклонено.',
+        never_ask_again: 'Разрешение на доступ к точному местоположению заблокировано навсегда.',
+        instruction:
+          'Перейдите в Настройки → Приложения → Это приложение → Разрешения → Местоположение → включите доступ к местоположению.',
+      },
+      [PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION]: {
+        title: 'Приблизительное местоположение',
+        denied: 'Разрешение на доступ к приблизительному местоположению отклонено.',
+        never_ask_again:
+          'Разрешение на доступ к приблизительному местоположению заблокировано навсегда.',
+        instruction:
+          'Перейдите в Настройки → Приложения → Это приложение → Разрешения → Местоположение → включите доступ к местоположению.',
+      },
+      [PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES]: {
+        title: 'Устройства Wi-Fi поблизости',
+        denied: 'Разрешение на доступ к устройствам Wi-Fi поблизости отклонено.',
+        never_ask_again:
+          'Разрешение на доступ к устройствам Wi-Fi поблизости заблокировано навсегда.',
+        instruction:
+          'Перейдите в Настройки → Приложения → Это приложение → Разрешения → Ближайшие устройства → включите доступ к устройствам Wi-Fi поблизости.',
+      },
+    };
+
+    // Обрабатываем каждое разрешение и добавляем соответствующее сообщение
+    Object.entries(permissionsStatus).forEach(([permission, status]) => {
+      const permInfo = permissionMessages[permission];
+      if (!permInfo) return;
+
+      if (status === PermissionsAndroid.RESULTS.DENIED) {
+        messages.push(
+          <View key={permission} style={styles.permissionMessageContainer}>
+            <Text style={styles.permissionTitle}>{permInfo.title}</Text>
+            <Text style={styles.permissionError}>{permInfo.denied}</Text>
+            <Text style={styles.permissionInstruction}>
+              Нажмите кнопку "Проверить разрешения", чтобы запросить доступ повторно.
+            </Text>
+          </View>
+        );
+      } else if (status === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        messages.push(
+          <View key={permission} style={styles.permissionMessageContainer}>
+            <Text style={styles.permissionTitle}>{permInfo.title}</Text>
+            <Text style={styles.permissionError}>{permInfo.never_ask_again}</Text>
+            <Text style={styles.permissionInstruction}>{permInfo.instruction}</Text>
+          </View>
+        );
+      }
+    });
+
+    // Если нет сообщений (что странно, так как мы в блоке отображения ошибок)
+    if (messages.length === 0) {
+      messages.push(
+        <View key="generic" style={styles.permissionMessageContainer}>
+          <Text style={styles.permissionError}>
+            Пожалуйста, включите определение местоположения в настройках устройства.
+          </Text>
+        </View>
+      );
+    }
+
+    return messages;
+  };
+
   render() {
-    const { qrUrl, loading, generatingQR } = this.state;
+    const { qrUrl, loading, generatingQR, allPermissionsGranted } = this.state;
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -417,29 +533,43 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           {/* Заголовок */}
           <Text style={styles.title}>Сканируйте QR-код для подключения к WiFi</Text>
 
-          {/* QR-код */}
-          <View style={styles.qrContainer}>
-            {loading || generatingQR ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#98d642" />
-                <Text style={styles.loadingText}>
-                  Создание точки доступа и генерация QR-кода...
-                </Text>
-              </View>
-            ) : qrUrl ? (
-              <Image source={{ uri: qrUrl }} style={styles.qrImage} />
-            ) : (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Ошибка генерации QR-кода</Text>
+          {/* QR-код или контент ошибки */}
+          {!allPermissionsGranted ? (
+            <View style={styles.permissionsErrorContainer}>
+              {this.renderPermissionStatusMessages()}
+              <View style={styles.buttonsContainer}>
                 <TouchableOpacity style={styles.retryButton} onPress={this.initGenerateQr}>
-                  <Text style={styles.retryButtonText}>Попробовать еще раз</Text>
+                  <Text style={styles.retryButtonText}>Проверить разрешения</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.settingsButton} onPress={this.openAppSettings}>
+                  <Text style={styles.settingsButtonText}>Открыть настройки</Text>
                 </TouchableOpacity>
               </View>
-            )}
-          </View>
+            </View>
+          ) : (
+            <View style={styles.qrContainer}>
+              {loading || generatingQR ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#98d642" />
+                  <Text style={styles.loadingText}>
+                    Создание точки доступа и генерация QR-кода...
+                  </Text>
+                </View>
+              ) : qrUrl ? (
+                <Image source={{ uri: qrUrl }} style={styles.qrImage} />
+              ) : (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Ошибка генерации QR-кода</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={this.initGenerateQr}>
+                    <Text style={styles.retryButtonText}>Попробовать еще раз</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Инструкция */}
-          {!loading && !generatingQR && qrUrl && (
+          {!loading && !generatingQR && qrUrl && allPermissionsGranted && (
             <View style={styles.instructionContainer}>
               <Text style={styles.instructionText}>1. Откройте камеру на устройстве водителя</Text>
               <Text style={styles.instructionText}>2. Наведите камеру на QR-код</Text>
@@ -484,6 +614,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333333',
   },
+  // Контейнер для ошибок разрешений
+  permissionsErrorContainer: {
+    width: '100%',
+    maxWidth: 400,
+    marginBottom: 40,
+    alignItems: 'center',
+  },
+  // Контейнер для QR-кода
   qrContainer: {
     width: 240,
     height: 240,
@@ -523,13 +661,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+  // Контейнер для кнопок
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 16,
+    gap: 12,
+  },
   retryButton: {
     backgroundColor: '#98d642',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 6,
+    flex: 1,
+    alignItems: 'center',
   },
   retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  settingsButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 6,
+    flex: 1,
+    alignItems: 'center',
+  },
+  settingsButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '500',
@@ -538,6 +699,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 32,
     paddingHorizontal: 16,
+    width: '100%',
+    maxWidth: 400,
   },
   instructionText: {
     fontSize: 14,
@@ -557,6 +720,32 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Стили для сообщений о разрешениях
+  permissionMessageContainer: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff3cd',
+    borderColor: '#ffeeba',
+    borderWidth: 1,
+    width: '100%',
+  },
+  permissionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#856404',
+  },
+  permissionError: {
+    fontSize: 14,
+    color: '#856404',
+    marginBottom: 8,
+  },
+  permissionInstruction: {
+    fontSize: 14,
+    color: '#856404',
+    lineHeight: 20,
   },
 });
 
