@@ -480,29 +480,98 @@ const _handleReqMessage = async (
       }
     }
     case 'pushUserId': {
-      // TODO: Implement push notification functionality for React Native
-      console.log('pushUserId|Push notification functionality not implemented for React Native');
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'pushUserId', status: 'not_implemented' },
-      };
+      const { userId } = req.data as { userId: string };
+      console.log('pushUserId|Setting user ID for React Native:', userId);
+      try {
+        const { HotspotBridge } = NativeModules;
+
+        if (!HotspotBridge) {
+          console.log('pushUserId|HotspotBridge not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'pushUserId', success: false },
+          };
+        }
+
+        if (!HotspotBridge.setUserId) {
+          console.log('pushUserId|HotspotBridge.setUserId not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'resolve',
+            res: { type: 'pushUserId', success: false },
+          };
+        }
+
+        // Вызываем нативный метод setUserId
+        await HotspotBridge.setUserId(userId);
+        console.log('pushUserId|User ID set successfully:', userId);
+
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'pushUserId', success: true },
+        };
+      } catch (error) {
+        console.error('pushUserId error:', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'pushUserId', success: false },
+        };
+      }
     }
     // Присоединение к существующему хотспоту
     case 'joinHotspot': {
       const { ssid, password } = req.data as { ssid: string; password: string };
-      // TODO: Implement hotspot join for React Native
-      console.log('joinHotspot|Hotspot functionality not implemented for React Native', {
-        ssid,
-        password,
-      });
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'reject',
-        error: { message: 'Hotspot functionality not implemented for React Native' },
-      };
+      console.log('joinHotspot|Joining hotspot for React Native', { ssid, password });
+      try {
+        const { HotspotBridge } = NativeModules;
+
+        if (!HotspotBridge) {
+          console.log('joinHotspot|HotspotBridge not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'reject',
+            error: { message: 'HotspotBridge not available' },
+          };
+        }
+
+        if (!HotspotBridge.joinHotspot) {
+          console.log('joinHotspot|HotspotBridge.joinHotspot not available');
+          return {
+            reqId,
+            type: 'sendPostResponse',
+            resType: 'reject',
+            error: { message: 'HotspotBridge.joinHotspot not available' },
+          };
+        }
+
+        // Вызываем нативный метод joinHotspot
+        const joinResStr = await HotspotBridge.joinHotspot(ssid, password, reqId);
+        const joinRes = JSON.parse(joinResStr);
+        console.log('joinHotspot|joinRes=', joinRes);
+
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'resolve',
+          res: { type: 'joinHotspot', status: 'joining' },
+        };
+      } catch (error) {
+        console.error('joinHotspot error:', error);
+        return {
+          reqId,
+          type: 'sendPostResponse',
+          resType: 'reject',
+          error: { message: error.message || 'Ошибка при присоединении к hotspot' },
+        };
+      }
     }
     case 'userData': {
       const currentUserId = await getConfig('currentUserId');
