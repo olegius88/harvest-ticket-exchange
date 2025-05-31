@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Image,
   ScrollView,
   BackHandler,
   PermissionsAndroid,
@@ -25,6 +24,7 @@ import {
   RootStackParamList,
 } from '../../global';
 import DeviceInfo from 'react-native-device-info';
+import QRCode from 'react-native-qrcode-svg';
 
 interface KombainerQRCodeProps {
   navigation: NavigationProp<RootStackParamList, 'KombainerQRCodeScreen'>;
@@ -32,7 +32,7 @@ interface KombainerQRCodeProps {
 }
 
 interface KombainerQRCodeState {
-  qrUrl: string;
+  qrValue: string; // Изменено с qrUrl на qrValue
   loading: boolean;
   generatingQR: boolean;
   allPermissionsGranted: boolean;
@@ -48,10 +48,10 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   constructor(props: KombainerQRCodeProps) {
     super(props);
     this.state = {
-      qrUrl: '',
+      qrValue: '', // Изменено с qrUrl на qrValue
       loading: true,
       generatingQR: true,
-      allPermissionsGranted: true, // По умолчанию считаем, что включено, потом проверим
+      allPermissionsGranted: true,
       permissionsStatus: {},
     };
   }
@@ -134,7 +134,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
   };
 
-  // Генерация QR-кода
+  // Генерация QR-кода - упрощённая версия
   generateQRCode = async () => {
     let sheRes: ISendPostResponseSetHotspotEnabled;
     let iheRes: ISendPostResponseIsHotspotEnabled;
@@ -189,32 +189,18 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       throw e;
     }
 
-    // Генерация QR-кода для Wi-Fi точки доступа
+    // Генерация строки для QR-кода Wi-Fi точки доступа
     const { ssid, password } = sheRes;
     const wifiQRCodeContent = `WIFI:S:${ssid};P:${password};;`;
 
-    // В React Native используем простую генерацию base64 QR-кода
-    // Поскольку generateQRCode не существует в типах, используем альтернативный подход
-    try {
-      // Временно используем заглушку для QR-кода
-      // В реальном приложении здесь должна быть библиотека react-native-qrcode-svg
-      const qrCodeBase64 = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
+    // Устанавливаем значение для QR-кода напрямую
+    this.setState({
+      qrValue: wifiQRCodeContent,
+      generatingQR: false,
+      loading: false,
+    });
 
-      this.setState({
-        qrUrl: qrCodeBase64,
-        generatingQR: false,
-        loading: false,
-      });
-
-      console.log('QR-код сгенерирован для Wi-Fi:', wifiQRCodeContent);
-    } catch (error) {
-      console.error('Ошибка генерации QR-кода:', error);
-      this.setState({
-        generatingQR: false,
-        loading: false,
-      });
-      Alert.alert('Ошибка', 'Не удалось сгенерировать QR-код');
-    }
+    console.log('QR-код сгенерирован для Wi-Fi:', wifiQRCodeContent);
   };
 
   componentDidMount() {
@@ -520,7 +506,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   render() {
-    const { qrUrl, loading, generatingQR, allPermissionsGranted } = this.state;
+    const { qrValue, loading, generatingQR, allPermissionsGranted } = this.state;
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -555,8 +541,14 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
                     Создание точки доступа и генерация QR-кода...
                   </Text>
                 </View>
-              ) : qrUrl ? (
-                <Image source={{ uri: qrUrl }} style={styles.qrImage} />
+              ) : qrValue ? (
+                // Отображаем QR-код напрямую вместо Image
+                <QRCode
+                  value={qrValue}
+                  size={200}
+                  logoSize={30}
+                  logoBackgroundColor="transparent"
+                />
               ) : (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>Ошибка генерации QR-кода</Text>
@@ -569,7 +561,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           )}
 
           {/* Инструкция */}
-          {!loading && !generatingQR && qrUrl && allPermissionsGranted && (
+          {!loading && !generatingQR && qrValue && allPermissionsGranted && (
             <View style={styles.instructionContainer}>
               <Text style={styles.instructionText}>1. Откройте камеру на устройстве водителя</Text>
               <Text style={styles.instructionText}>2. Наведите камеру на QR-код</Text>
