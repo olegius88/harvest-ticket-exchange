@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { VectorLogo } from '../components/VectorLogo';
-import { RootStackParamList } from '../../global';
+import { VectorLogo } from '../../components/VectorLogo';
+import { RootStackParamList } from '../../../global';
 
 const KombainerCreateTicket: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();

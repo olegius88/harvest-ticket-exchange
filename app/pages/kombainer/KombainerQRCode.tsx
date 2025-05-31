@@ -12,9 +12,9 @@ import {
   Linking,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { checkPermissionsHotspot, handleMessage } from '../services/MessageHandler';
-import { AuthStoreData } from '../stores/AuthStore';
-import { VectorLogo } from '../components/VectorLogo';
+import { checkPermissionsHotspot, handleMessage } from '../../services/MessageHandler';
+import { AuthStoreData } from '../../stores/AuthStore';
+import { VectorLogo } from '../../components/VectorLogo';
 import {
   ISendPostResponseIsHotspotEnabled,
   ISendPostResponseSetHotspotEnabled,
@@ -22,7 +22,7 @@ import {
   PositionOptionValue,
   IPayloadVoditelConnectSuccess,
   RootStackParamList,
-} from '../../global';
+} from '../../../global';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
 

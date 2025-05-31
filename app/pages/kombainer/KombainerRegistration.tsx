@@ -12,9 +12,13 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
-import { AuthStoreData } from '../stores/AuthStore';
-import { IEditKombainerParams, IKombainerForm, ISendPostResponseCurrentUser } from '../../global';
+import { handleMessage } from '../../services/MessageHandler';
+import { AuthStoreData } from '../../stores/AuthStore';
+import {
+  IEditKombainerParams,
+  IKombainerForm,
+  ISendPostResponseCurrentUser,
+} from '../../../global';
 
 type RootStackParamList = {
   LoginScreen: undefined;

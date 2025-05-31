@@ -9,13 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
-import { VectorLogo } from '../components/VectorLogo';
+import { handleMessage } from '../../services/MessageHandler';
+import { VectorLogo } from '../../components/VectorLogo';
 import {
   ISendPostResponseCurrentUser,
   PositionOptionValue,
   RootStackParamList,
-} from '../../global';
+} from '../../../global';
 
 /**
  * Страница "Талон комбайнера N"

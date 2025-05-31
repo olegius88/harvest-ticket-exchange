@@ -7,14 +7,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import WebViewV1 from './webviews/WebViewV1';
 import { Routes } from './Routes';
-import { CodeScannerPage } from './pages/CodeScannerPage';
+import { CodeScannerPage } from './pages/kombainer/CodeScannerPage';
 import Login from './pages/Login';
 import Registration from './pages/Registration';
 import Main from './pages/Main';
-import KombainerRegistration from './pages/KombainerRegistration';
-import KombainerQRCode from './pages/KombainerQRCode';
-import KombainerTicketDetail from './pages/KombainerTicketDetail';
-import KombainerCreateTicket from './pages/KombainerCreateTicket';
+import KombainerRegistration from './pages/kombainer/KombainerRegistration';
+import KombainerQRCode from './pages/kombainer/KombainerQRCode';
+import KombainerTicketDetail from './pages/kombainer/KombainerTicketDetail';
+import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
+import { RootStackParamList } from '../global';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

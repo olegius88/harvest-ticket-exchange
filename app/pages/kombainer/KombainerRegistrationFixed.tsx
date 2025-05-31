@@ -12,15 +12,15 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
-import { VectorLogo } from '../components/VectorLogo';
+import { handleMessage } from '../../services/MessageHandler';
+import { VectorLogo } from '../../components/VectorLogo';
 import {
   ISendPostResponseCurrentUser,
   PositionOptionValue,
   IKombainerForm,
   IEditKombainerParams,
   RootStackParamList,
-} from '../../global';
+} from '../../../global';
 
 /**
  * Компонент регистрации/редактирования данных комбайнера для React Native
