@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { Routes } from './Routes';
-import { CodeScannerPage } from './pages/CodeScannerPage';
+import { VoditelQrCodeScanner } from './pages/voditel/VoditelQrCodeScanner';
 import Login from './pages/Login';
 import Registration from './pages/Registration';
 import Main from './pages/Main';
@@ -16,12 +16,12 @@ import KombainerTicketDetail from './pages/kombainer/KombainerTicketDetail';
 import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
 import KombainerWaitTicketConfirm from './pages/kombainer/KombainerWaitTicketConfirm';
 import { RootStackParamList } from '../global';
-import VoditelRegistration from './pages/VoditelRegistration';
-import VoditelCreateTrip from './pages/VoditelCreateTrip';
-import VoditelTicketDetail from './pages/VoditelTicketDetailNew';
-import VoditelWaitKombainerData from './pages/VoditelWaitKombainerData';
-import VoditelTicketDetailAfterSetWeight from './pages/VoditelTicketDetailAfterSetWeight';
-import VoditelTicketCreatedSuccess from './pages/VoditelTicketCreatedSuccess';
+import VoditelRegistration from './pages/voditel/VoditelRegistration';
+import VoditelCreateTrip from './pages/voditel/VoditelCreateTrip';
+import VoditelTicketDetail from './pages/voditel/VoditelTicketDetailNew';
+import VoditelWaitKombainerData from './pages/voditel/VoditelWaitKombainerData';
+import VoditelTicketDetailAfterSetWeight from './pages/voditel/VoditelTicketDetailAfterSetWeight';
+import VoditelTicketCreatedSuccess from './pages/voditel/VoditelTicketCreatedSuccess';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -34,7 +34,7 @@ export default function App(): React.ReactElement {
   console.log('process.env.API_URL=', process.env.API_URL);
   console.log('url=', url);
 
-  // Подписка на событие openCodeScannerPage для навигации на CodeScannerPage
+  // Подписка на событие openCodeScannerPage для навигации на VoditelQrCodeScanner
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('openCodeScannerPage', () => {
       if (navigationRef.current) {
@@ -56,6 +56,7 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="MainScreen" component={Main} />
           <Stack.Screen name="LoginScreen" component={Login} />
           <Stack.Screen name="RegistrationScreen" component={Registration} />
+
           <Stack.Screen name="KombainerRegistrationScreen" component={KombainerRegistration} />
           <Stack.Screen name="KombainerTicketDetailScreen" component={KombainerTicketDetail} />
           <Stack.Screen name="KombainerCreateTicketScreen" component={KombainerCreateTicket} />
@@ -65,7 +66,8 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="KombainerQRCodeScreen">
             {(props) => <KombainerQRCode {...props} />}
           </Stack.Screen>
-          <Stack.Screen name="CodeScannerPageScreen" component={CodeScannerPage} />
+
+          <Stack.Screen name="CodeScannerPageScreen" component={VoditelQrCodeScanner} />
           <Stack.Screen name="VoditelRegistrationScreen" component={VoditelRegistration} />
           <Stack.Screen name="VoditelCreateTripScreen" component={VoditelCreateTrip} />
           <Stack.Screen name="VoditelTicketDetailScreen" component={VoditelTicketDetail} />

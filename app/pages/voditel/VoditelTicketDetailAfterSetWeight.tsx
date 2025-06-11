@@ -9,9 +9,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
-import { AuthStoreData } from '../stores/AuthStore';
-import { VectorLogo } from '../components/VectorLogo';
+import { handleMessage } from '../../services/MessageHandler';
+import { AuthStoreData } from '../../stores/AuthStore';
+import { VectorLogo } from '../../components/VectorLogo';
 
 interface VoditelTicketDetailAfterSetWeightState {
   isKombainerData: boolean;

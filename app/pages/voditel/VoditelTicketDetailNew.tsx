@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
+import { handleMessage } from '../../services/MessageHandler';
 import {
   ICreateKombainerParams,
   ICreateUserParams,
@@ -18,9 +18,9 @@ import {
   ITcpResponseConfirmKombainerTicket,
   ITcpResponseKombainerData,
   RootStackParamList,
-} from '../../global';
-import { AuthStoreData } from '../stores/AuthStore';
-import { ICreateUsersParams } from '../../app/db/users';
+} from '../../../global';
+import { AuthStoreData } from '../../stores/AuthStore';
+import { ICreateUsersParams } from '../../db/users';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({

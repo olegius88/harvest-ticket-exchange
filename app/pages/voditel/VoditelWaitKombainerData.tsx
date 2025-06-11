@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../services/MessageHandler';
-import { ISendPostResponseCurrentUser, ISendTcpResponse } from '../../global';
+import { handleMessage } from '../../services/MessageHandler';
+import { ISendPostResponseCurrentUser, ISendTcpResponse } from '../../../global';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({

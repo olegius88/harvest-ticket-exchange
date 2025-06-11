@@ -10,9 +10,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { AuthStoreData } from '../stores/AuthStore';
-import { handleMessage } from '../services/MessageHandler';
-import { IEditVoditelParams, RootStackParamList } from '../../global';
+import { AuthStoreData } from '../../stores/AuthStore';
+import { handleMessage } from '../../services/MessageHandler';
+import { IEditVoditelParams, RootStackParamList } from '../../../global';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({

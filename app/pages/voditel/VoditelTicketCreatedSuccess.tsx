@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { VectorLogo } from '../components/VectorLogo';
+import { VectorLogo } from '../../components/VectorLogo';
 
 const VoditelTicketCreatedSuccess: React.FC = () => {
   const navigation = useNavigation<NavigationProp<any>>();
