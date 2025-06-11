@@ -33,7 +33,7 @@ interface VoditelTicketDetailAfterSetWeightState {
 
 const VoditelTicketDetailAfterSetWeight: React.FC = () => {
   const navigation = useNavigation<NavigationProp<any>>();
-  
+
   // Контроллер для периодического опроса данных
   const waitingKombainerDataWithWeightConfirmCtrl = useRef<NodeJS.Timeout | null>(null);
 
@@ -58,10 +58,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
   useEffect(() => {
     getKombainerData().catch((e: any) => {
       console.error('VoditelTicketDetailAfterSetWeight|getKombainerData|error=', e);
-      Alert.alert(
-        'Ошибка передачи данных комбайнера',
-        e.message || JSON.stringify(e)
-      );
+      Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
     });
 
     // Cleanup function для очистки таймера при размонтировании компонента
@@ -101,7 +98,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     let tcpResponse;
     let kombainerData: any;
     let kombainerUserData: any;
-    
+
     // В зависимости от контекста отправляем TCP-запрос за данными комбайнера
     switch (AuthStoreData.context) {
       case 'voditel': {
@@ -116,15 +113,15 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
             reqId: Date.now().toString(),
           });
           tcpResponse = response;
-          console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=', tcpResponse);
+          console.log(
+            'VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=',
+            tcpResponse
+          );
           kombainerData = (tcpResponse.data as any).kombainerData;
           kombainerUserData = (tcpResponse.data as any).kombainerUserData;
         } catch (error: any) {
           console.error('VoditelTicketDetailAfterSetWeight|error =', error);
-          Alert.alert(
-            'Ошибка отправки данных талона',
-            error.message || JSON.stringify(error)
-          );
+          Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
           return;
         }
         break;
@@ -139,7 +136,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     }
 
     // Обновляем состояние компонента: данные загружены
-    setState(prevState => ({
+    setState((prevState) => ({
       ...prevState,
       isKombainerData: true,
       loadingKombainerDataSuccess: true,
@@ -159,10 +156,12 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
    */
   const waitingKombainerDataWithWeightConfirm = async () => {
     if (waitingKombainerDataWithWeightConfirmCtrl.current === null) {
-      console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|controller stopped');
+      console.log(
+        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|controller stopped'
+      );
       return;
     }
-    
+
     let response: any;
     try {
       const result = await handleMessage({
@@ -173,12 +172,18 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       });
       response = result;
     } catch (e) {
-      console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|error=', e);
+      console.error(
+        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|error=',
+        e
+      );
       return;
     }
-    
-    console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response=', response);
-    
+
+    console.log(
+      'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response=',
+      response
+    );
+
     if (response.status === 'empty') {
       // Если данные ещё не получены – продолжаем опрос
       waitingKombainerDataWithWeightConfirmCtrl.current = setTimeout(
@@ -187,7 +192,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       );
       return;
     }
-    
+
     // Останавливаем опрос
     if (waitingKombainerDataWithWeightConfirmCtrl.current) {
       clearTimeout(waitingKombainerDataWithWeightConfirmCtrl.current);
@@ -195,7 +200,10 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     }
 
     if (!response.path) {
-      console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|!response.path|response=', response);
+      console.error(
+        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|!response.path|response=',
+        response
+      );
       Alert.alert(
         'Ошибка подключения к устройству',
         `Не был получен корректный "needRedirect": ${JSON.stringify(response)}`
@@ -212,15 +220,18 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
 
     switch (AuthStoreData.context) {
       case 'voditel':
-        console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response.payload=', response.payload);
+        console.log(
+          'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response.payload=',
+          response.payload
+        );
         (AuthStoreData as any).payloadSetTalonOfKombainer = response.payload;
 
         waitingKombainerDataWithWeight().catch((e: any) => {
-          console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|error=', e);
-          Alert.alert(
-            'Ошибка передачи данных комбайнера',
-            e.message || JSON.stringify(e)
+          console.error(
+            'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|error=',
+            e
           );
+          Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
         });
         return;
       default:
@@ -244,7 +255,10 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       });
       currentUser = response;
     } catch (error: any) {
-      console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser|error =', error);
+      console.error(
+        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser|error =',
+        error
+      );
       Alert.alert(
         'Ошибка получения данных текущего пользователя',
         error.message || JSON.stringify(error)
@@ -252,23 +266,26 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       return;
     }
 
-    console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser=', currentUser);
+    console.log(
+      'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser=',
+      currentUser
+    );
 
-    console.log('VoditelTicketDetailAfterSetWeight|payloadSetTalonOfKombainer=', (AuthStoreData as any).payloadSetTalonOfKombainer);
+    console.log(
+      'VoditelTicketDetailAfterSetWeight|payloadSetTalonOfKombainer=',
+      (AuthStoreData as any).payloadSetTalonOfKombainer
+    );
 
     if (!(AuthStoreData as any).payloadSetTalonOfKombainer?.weight) {
       console.error('VoditelTicketDetailAfterSetWeight|!weight');
-      Alert.alert(
-        'Ошибка получения веса',
-        'Данные о весе не были получены'
-      );
+      Alert.alert('Ошибка получения веса', 'Данные о весе не были получены');
       return;
     }
 
     const { weight } = (AuthStoreData as any).payloadSetTalonOfKombainer;
 
     // Обновляем состояние компонента: данные с весом загружены
-    setState(prevState => ({
+    setState((prevState) => ({
       ...prevState,
       loadingKombainerDataWithWeight: false,
       loadingKombainerDataWithWeightSuccess: true,
@@ -291,22 +308,22 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
         },
         reqId: Date.now().toString(),
       });
-      console.log('VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket_with_weight|response=', response);
+      console.log(
+        'VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket_with_weight|response=',
+        response
+      );
       sendRes = response;
     } catch (error: any) {
-      console.error('VoditelTicketDetailAfterSetWeight|confirmKombainerTicketWithWeight|error =', error);
-      Alert.alert(
-        'Ошибка отправки данных талона',
-        error.message || JSON.stringify(error)
+      console.error(
+        'VoditelTicketDetailAfterSetWeight|confirmKombainerTicketWithWeight|error =',
+        error
       );
+      Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
       return;
     }
 
     if (sendRes.status !== 'ok') {
-      Alert.alert(
-        'Ошибка подтверждения талона',
-        JSON.stringify(sendRes)
-      );
+      Alert.alert('Ошибка подтверждения талона', JSON.stringify(sendRes));
       return;
     }
 
@@ -334,22 +351,16 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       sendRes = response;
     } catch (error: any) {
       console.error('VoditelTicketDetailAfterSetWeight|confirmKombainerTicket|error =', error);
-      Alert.alert(
-        'Ошибка отправки данных талона',
-        error.message || JSON.stringify(error)
-      );
+      Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
       return;
     }
 
     if (sendRes.status !== 'ok') {
-      Alert.alert(
-        'Ошибка подтверждения талона',
-        JSON.stringify(sendRes)
-      );
+      Alert.alert('Ошибка подтверждения талона', JSON.stringify(sendRes));
       return;
     }
 
-    setState(prevState => ({
+    setState((prevState) => ({
       ...prevState,
       isKombainerData: false,
       loadingKombainerDataSuccess: false,
@@ -439,10 +450,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       {isKombainerData && (
         <>
           {loadingKombainerDataSuccess ? (
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={confirmKombainerTicket}
-            >
+            <TouchableOpacity style={styles.submitButton} onPress={confirmKombainerTicket}>
               <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
             </TouchableOpacity>
           ) : (
@@ -472,10 +480,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
         </>
       )}
 
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={handleCancelClick}
-      >
+      <TouchableOpacity style={styles.cancelButton} onPress={handleCancelClick}>
         <Text style={styles.cancelButtonText}>Отмена</Text>
       </TouchableOpacity>
     </ScrollView>

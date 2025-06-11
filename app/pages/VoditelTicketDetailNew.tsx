@@ -52,7 +52,7 @@ const VoditelTicketDetail: React.FC = () => {
   const [data, setData] = useState<ISendPostResponseCurrentUser | null>(null);
 
   /**
-   * Метод для получения данных текущего пользователя и отправки TCP-запроса 
+   * Метод для получения данных текущего пользователя и отправки TCP-запроса
    * для получения данных комбайнера.
    */
   const getKombainerData = async () => {
@@ -106,7 +106,6 @@ const VoditelTicketDetail: React.FC = () => {
           setData(updatedUser);
           setLoading(false);
           console.log('VoditelTicketDetail|updatedUser=', updatedUser);
-
         } catch (error: any) {
           console.error('VoditelTicketDetail|error=', error);
           Alert.alert(
@@ -153,10 +152,10 @@ const VoditelTicketDetail: React.FC = () => {
       if (tcpResponse.resType !== 'resolve') {
         throw new Error('Failed to confirm kombainer ticket');
       }
-      
+
       const tcpData = tcpResponse.res as ISendTcpResponse;
       const sendRes = tcpData.data as ITcpResponseConfirmKombainerTicket;
-      
+
       if (sendRes.status !== 'ok') {
         Alert.alert('Ошибка', 'Ошибка подтверждения талона: ' + JSON.stringify(sendRes));
         return;
@@ -164,7 +163,6 @@ const VoditelTicketDetail: React.FC = () => {
 
       // Переходим на страницу ожидания данных от комбайнера
       navigation.navigate('VoditelWaitKombainerDataScreen');
-      
     } catch (error: any) {
       console.error('VoditelTicketDetail|confirmKombainerTicket|error=', error);
       Alert.alert(
@@ -233,23 +231,13 @@ const VoditelTicketDetail: React.FC = () => {
         ))}
 
         {/* Кнопка подтверждения */}
-        <TouchableOpacity 
-          style={styles.submitButton}
-          onPress={confirmKombainerTicket}
-        >
-          <Text style={styles.submitButtonText}>
-            Подтвердить данные талона
-          </Text>
+        <TouchableOpacity style={styles.submitButton} onPress={confirmKombainerTicket}>
+          <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
         </TouchableOpacity>
 
         {/* Кнопка "Назад" */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-        >
-          <Text style={styles.backButtonText}>
-            Назад
-          </Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Text style={styles.backButtonText}>Назад</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

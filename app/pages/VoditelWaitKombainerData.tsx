@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
 import { ISendPostResponseCurrentUser, ISendTcpResponse } from '../../global';
@@ -54,7 +47,7 @@ const VoditelWaitKombainerData: React.FC = () => {
             type: 'sendTcpRequest',
             data: {
               type: 'get_kombainer_data',
-            }
+            },
           },
           reqId: 'check_kombainer_weight_' + Date.now(),
         });
@@ -70,11 +63,12 @@ const VoditelWaitKombainerData: React.FC = () => {
         // Имитация проверки веса (в настоящей реализации мы бы правильно проверяли наличие веса)
         // В зависимости от состояния приложения имитируем наличие или отсутствие веса
         // В реальном приложении нужна будет логика проверки наличия веса в данных от комбайнера
-        if (Math.random() > 0.5) { // Имитация случайного определения наличия веса
+        if (Math.random() > 0.5) {
+          // Имитация случайного определения наличия веса
           // Этот код имитирует получение веса, реальную логику нужно будет реализовать
           setHasKombainerWeight(true);
           setWeight('1000'); // Имитируем вес в кг
-          
+
           // Останавливаем интервал проверки
           if (checkIntervalId) {
             clearInterval(checkIntervalId);
@@ -111,7 +105,7 @@ const VoditelWaitKombainerData: React.FC = () => {
           type: 'sendTcpRequest',
           data: {
             type: 'confirm_kombainer_ticket_with_weight',
-          }
+          },
         },
         reqId: 'confirm_kombainer_weight_' + Date.now(),
       });
@@ -121,19 +115,15 @@ const VoditelWaitKombainerData: React.FC = () => {
       }
 
       const tcpData = response.res as ISendTcpResponse;
-      
+
       // В реальном приложении здесь была бы проверка успешности операции
       if (tcpData) {
-        Alert.alert(
-          'Успешно',
-          'Вес успешно подтвержден',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('VoditelCreateTripScreen')
-            }
-          ]
-        );
+        Alert.alert('Успешно', 'Вес успешно подтвержден', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('VoditelCreateTripScreen'),
+          },
+        ]);
       } else {
         throw new Error('Сервер вернул ошибку');
       }
@@ -157,11 +147,9 @@ const VoditelWaitKombainerData: React.FC = () => {
   return (
     <View style={styles.container}>
       <VectorLogo />
-      
+
       <Text style={styles.title}>
-        {hasKombainerWeight 
-          ? 'Комбайнер указал вес' 
-          : 'Ожидание ввода веса комбайнером'}
+        {hasKombainerWeight ? 'Комбайнер указал вес' : 'Ожидание ввода веса комбайнером'}
       </Text>
 
       {loading ? (
@@ -172,7 +160,7 @@ const VoditelWaitKombainerData: React.FC = () => {
             <View style={styles.weightContainer}>
               <Text style={styles.weightLabel}>Вес указанный комбайнером:</Text>
               <Text style={styles.weightValue}>{weight} кг</Text>
-              
+
               <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
                 <Text style={styles.confirmButtonText}>Подтвердить вес</Text>
               </TouchableOpacity>
@@ -180,15 +168,14 @@ const VoditelWaitKombainerData: React.FC = () => {
           ) : (
             <View style={styles.messageContainer}>
               <Text style={styles.message}>
-                Комбайнер указывает вес собранного урожая.
-                Пожалуйста, подождите...
+                Комбайнер указывает вес собранного урожая. Пожалуйста, подождите...
               </Text>
               <ActivityIndicator size="large" color="#5a7d2b" style={styles.inlineLoader} />
             </View>
           )}
         </>
       )}
-      
+
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
         <Text style={styles.backButtonText}>Вернуться назад</Text>
       </TouchableOpacity>

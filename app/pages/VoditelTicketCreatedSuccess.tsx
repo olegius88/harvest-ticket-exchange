@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { VectorLogo } from '../components/VectorLogo';
 
@@ -18,15 +13,10 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
   return (
     <View style={styles.container}>
       <VectorLogo />
-      
-      <Text style={styles.successText}>
-        Талон успешно создан
-      </Text>
-      
-      <TouchableOpacity
-        style={styles.okButton}
-        onPress={handleOkPress}
-      >
+
+      <Text style={styles.successText}>Талон успешно создан</Text>
+
+      <TouchableOpacity style={styles.okButton} onPress={handleOkPress}>
         <Text style={styles.okButtonText}>ОК</Text>
       </TouchableOpacity>
     </View>
