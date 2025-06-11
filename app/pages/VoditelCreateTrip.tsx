@@ -70,7 +70,7 @@ const VoditelCreateTrip: React.FC = () => {
           disabled={isLoading}
         >
           <Text style={styles.createButtonText}>
-            {isLoading ? 'Загрузка камеры, ожидайте' : 'Создать Поездку'}
+            {isLoading ? 'Загрузка камеры, ожидайте' : 'Создать Поездку 1'}
           </Text>
           {isLoading && (
             <ActivityIndicator size="small" color="#ffffff" style={{ marginLeft: 8 }} />

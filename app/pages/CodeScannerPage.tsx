@@ -1,5 +1,3 @@
-// Файл: front/src/pages/CodeScannerPage.tsx
-
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
@@ -40,7 +38,7 @@ const parseWifiCredentials = (value: string): { ssid: string; password: string }
   return ssid && password ? { ssid, password } : null;
 };
 
-type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
+type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
 export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   // Используем заднюю камеру
   const device = useCameraDevice('back');
@@ -95,7 +93,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
             navigation.reset({
               index: 0,
-              routes: [{ name: 'WebViewScreen' }],
+              routes: [{ name: 'MainScreen' }],
             });
           })
           .catch((err: any) => {

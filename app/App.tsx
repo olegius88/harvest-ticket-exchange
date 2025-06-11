@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { Routes } from './Routes';
-import { CodeScannerPage } from './pages/kombainer/CodeScannerPage';
+import { CodeScannerPage } from './pages/CodeScannerPage';
 import Login from './pages/Login';
 import Registration from './pages/Registration';
 import Main from './pages/Main';
