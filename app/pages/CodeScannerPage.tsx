@@ -12,9 +12,9 @@ import type { Routes } from '../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from '../views/ScanningOverlay';
-import { setNeedRedirect } from '../webviews/onMessage';
 import { JoinHotspotResponse } from '../../global';
 import { setHotspotDisabled } from '../wifi/hotspot';
+import { setNeedRedirect } from '../services/MessageHandler';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 

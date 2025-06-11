@@ -2,7 +2,7 @@
 
 import { ISendTcpRequestData } from '../../global';
 import { ToastAndroid } from 'react-native';
-import { setNeedRedirect } from '../webviews/onMessage';
+import { setNeedRedirect } from '../services/MessageHandler';
 import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';

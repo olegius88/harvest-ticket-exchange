@@ -14,6 +14,7 @@ import KombainerRegistration from './pages/kombainer/KombainerRegistration';
 import KombainerQRCode from './pages/kombainer/KombainerQRCode';
 import KombainerTicketDetail from './pages/kombainer/KombainerTicketDetail';
 import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
+import KombainerWaitTicketConfirm from './pages/kombainer/KombainerWaitTicketConfirm';
 import { RootStackParamList } from '../global';
 import VoditelRegistration from './pages/VoditelRegistration';
 import VoditelCreateTrip from './pages/VoditelCreateTrip';
@@ -58,6 +59,9 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="KombainerRegistrationScreen" component={KombainerRegistration} />
           <Stack.Screen name="KombainerTicketDetailScreen" component={KombainerTicketDetail} />
           <Stack.Screen name="KombainerCreateTicketScreen" component={KombainerCreateTicket} />
+          <Stack.Screen name="KombainerWaitTicketConfirmScreen">
+            {(props) => <KombainerWaitTicketConfirm {...props} />}
+          </Stack.Screen>
           <Stack.Screen name="KombainerQRCodeScreen">
             {(props) => <KombainerQRCode {...props} />}
           </Stack.Screen>
