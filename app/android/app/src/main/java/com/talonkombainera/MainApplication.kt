@@ -20,7 +20,7 @@ class MainApplication : Application(), ReactApplication {
             override fun getPackages(): List<ReactPackage> =
                 PackageList(this).packages.apply {
                     // Добавьте ваш кастомный пакет сюда:
-                    add(CustomWebViewPackage())
+  
                     add(MainPackage())
 
                     // Добавляем наш HotspotBridgePackage
