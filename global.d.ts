@@ -379,6 +379,11 @@ export interface ITestTcpConnectEstablished {
   type: 'test';
 }
 
+export interface IHeartbeatTcp {
+  type: 'heartbeat';
+  timestamp: number;
+}
+
 export interface ISendTcpSetVoditelData {
   type: 'set_voditel_data';
   voditelData: ICreateVoditelParams;
@@ -448,6 +453,7 @@ export interface ITcpResponseConfirmKombainerWeight {
  */
 export type ISendTcpRequestData =
   | ITestTcpConnectEstablished
+  | IHeartbeatTcp
   | ISendTcpSetVoditelData
   | ISendTcpSetKombainerData
   | ISendTcpGetKombainerData

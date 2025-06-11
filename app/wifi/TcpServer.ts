@@ -6,9 +6,33 @@ import { IIsTcpServerSendResponse, ISendTcpRequestData, ISendTcpResponseData } f
 import { onTcpMessage } from './onTcpMessage';
 import Socket from 'react-native-tcp-socket/lib/types/Socket';
 
-let server: Server = null;
+let server: Server | null = null;
 // Массив для хранения активных соединений (подключён может быть только один клиент)
 let activeSockets: TcpSocket.Socket[] = [];
+
+// Интерфейс для сообщений с ID
+interface IMessageWithId {
+  messageId?: string;
+  [key: string]: any;
+}
+
+// Map для хранения pending запросов от сервера к клиенту
+const pendingServerRequests = new Map<
+  string,
+  {
+    resolve: (value: ISendTcpResponseData) => void;
+    reject: (reason?: any) => void;
+    timeout: NodeJS.Timeout;
+  }
+>();
+
+// Функция для генерации уникального ID
+const generateMessageId = (): string => {
+  return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Таймаут для запросов (30 секунд)
+const REQUEST_TIMEOUT = 30000;
 
 /**
  * Запускает TCP-сервер на порту 3290.
@@ -30,17 +54,13 @@ export const startTcpServer = (): Promise<string> => {
       activeSockets.push(socket);
 
       // Обработка полученных данных от клиента
-      socket.on('data', async (data: Buffer) => {
-        const dataString = data.toString();
+      socket.on('data', async (data: string | Buffer) => {
+        const dataString = typeof data === 'string' ? data : data.toString();
         console.log('startTcpServer|socket|on|data=', dataString);
-        ToastAndroid.show(`startTcpServer|socket|on|data`, ToastAndroid.SHORT);
-        let message: ISendTcpRequestData;
+
+        let message: IMessageWithId;
         try {
           message = JSON.parse(dataString);
-          if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
-            console.log('startTcpServer|isTcpServerSendResponse|message=', message);
-            return;
-          }
         } catch (error) {
           console.error('startTcpServer|Ошибка парсинга JSON:', error);
           ToastAndroid.show(
@@ -50,9 +70,25 @@ export const startTcpServer = (): Promise<string> => {
           return;
         }
 
+        // Проверяем, является ли это ответом на запрос от сервера
+        if (message.messageId && pendingServerRequests.has(message.messageId)) {
+          const pendingRequest = pendingServerRequests.get(message.messageId)!;
+          clearTimeout(pendingRequest.timeout);
+          pendingServerRequests.delete(message.messageId);
+          pendingRequest.resolve(message as ISendTcpResponseData);
+          return;
+        }
+
+        // Проверяем, является ли это ответом сервера (для обратной совместимости)
+        if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
+          console.log('startTcpServer|isTcpServerSendResponse|message=', message);
+          return;
+        }
+
+        // Обрабатываем обычное сообщение
         let res;
         try {
-          res = await onTcpMessage(message);
+          res = await onTcpMessage(message as ISendTcpRequestData);
         } catch (error) {
           console.error('startTcpServer|onTcpMessage|error=', error);
           ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
@@ -61,9 +97,12 @@ export const startTcpServer = (): Promise<string> => {
 
         console.log('startTcpServer|onTcpMessage|res=', res);
         try {
-          socket.write(
-            JSON.stringify({ ...res, ...{ from: 'TcpServer.ts-TcpSocket.createServer-on-data' } })
-          );
+          const response = {
+            ...res,
+            messageId: message.messageId, // Возвращаем ID сообщения если он был
+            from: 'TcpServer.ts-TcpSocket.createServer-on-data',
+          };
+          socket.write(JSON.stringify(response));
         } catch (error) {
           console.error('startTcpServer|socket|write|error=', error);
           ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
@@ -90,12 +129,14 @@ export const startTcpServer = (): Promise<string> => {
     });
 
     server.listen({ port: 3290, host: '0.0.0.0', reuseAddress: true }, () => {
-      const address = server.address();
-      console.log('startTcpServer|TCP-сервер запущен на порту 3290', address);
-      ToastAndroid.show(
-        `startTcpServer|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
-        ToastAndroid.SHORT
-      );
+      if (server) {
+        const address = server.address();
+        console.log('startTcpServer|TCP-сервер запущен на порту 3290', address);
+        ToastAndroid.show(
+          `startTcpServer|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
+          ToastAndroid.SHORT
+        );
+      }
       resolve('startTcpServer|TCP-сервер успешно запущен');
     });
   });
@@ -112,6 +153,13 @@ export const stopTcpServer = (): Promise<string> => {
       resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
+
+    // Отклоняем все pending запросы
+    pendingServerRequests.forEach(({ reject, timeout }) => {
+      clearTimeout(timeout);
+      reject(new Error('stopTcpServer|Сервер остановлен'));
+    });
+    pendingServerRequests.clear();
 
     // Закрываем все активные соединения
     activeSockets.forEach((socket) => {
@@ -149,39 +197,65 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
       ToastAndroid.show(errMsg, ToastAndroid.SHORT);
       return reject(new Error(errMsg));
     }
-    const socket = activeSockets[0];
-    const messageString = JSON.stringify({
-      ...message,
-      ...{ fromTcpServerSendRequest: true, from: 'tcpServerSendRequest-once-data' },
-    });
 
-    // Устанавливаем одноразовый обработчик для получения ответа от клиента
-    socket.once('data', (data: Buffer) => {
-      const dataString = data.toString();
-      console.log('tcpServerSendRequest|sendMessage|Получен ответ от клиента:', dataString);
-      try {
-        const response = JSON.parse(dataString);
-        resolve(response);
-      } catch (error) {
-        console.error('tcpServerSendRequest|sendMessage|Ошибка парсинга ответа:', error);
-        ToastAndroid.show(
-          `tcpServerSendRequest|sendMessage|Ошибка парсинга ответа`,
-          ToastAndroid.SHORT
-        );
-        reject(error);
+    const socket = activeSockets[0];
+    const messageId = generateMessageId();
+
+    // Создаем таймаут для запроса
+    const timeout = setTimeout(() => {
+      if (pendingServerRequests.has(messageId)) {
+        pendingServerRequests.delete(messageId);
+        reject(new Error('tcpServerSendRequest|Таймаут ожидания ответа'));
       }
-    });
+    }, REQUEST_TIMEOUT);
+
+    // Сохраняем информацию о pending запросе
+    pendingServerRequests.set(messageId, { resolve, reject, timeout });
+
+    const messageWithId = {
+      ...message,
+      messageId,
+      fromTcpServerSendRequest: true,
+      from: 'tcpServerSendRequest',
+    };
 
     try {
+      const messageString = JSON.stringify(messageWithId);
       socket.write(messageString);
-      console.log('tcpServerSendRequest|sendMessage|Сообщение отправлено:', messageString);
+      console.log('tcpServerSendRequest|Сообщение отправлено:', messageString);
     } catch (error) {
-      console.error('tcpServerSendRequest|sendMessage|Ошибка при отправке сообщения:', error);
-      ToastAndroid.show(
-        `tcpServerSendRequest|sendMessage|Ошибка при отправке сообщения`,
-        ToastAndroid.SHORT
-      );
+      clearTimeout(timeout);
+      pendingServerRequests.delete(messageId);
+      console.error('tcpServerSendRequest|Ошибка при отправке сообщения:', error);
+      ToastAndroid.show(`tcpServerSendRequest|Ошибка при отправке сообщения`, ToastAndroid.SHORT);
       reject(error);
     }
   });
+};
+
+/**
+ * Проверяет, запущен ли TCP-сервер
+ */
+export const isTcpServerRunning = (): boolean => {
+  return server !== null;
+};
+
+/**
+ * Получает количество подключенных клиентов
+ */
+export const getConnectedClientsCount = (): number => {
+  return activeSockets.length;
+};
+
+/**
+ * Отправляет heartbeat сообщение для проверки соединения
+ */
+export const sendHeartbeat = async (): Promise<boolean> => {
+  try {
+    await tcpServerSendRequest({ type: 'heartbeat', timestamp: Date.now() });
+    return true;
+  } catch (error) {
+    console.error('sendHeartbeat|error=', error);
+    return false;
+  }
 };

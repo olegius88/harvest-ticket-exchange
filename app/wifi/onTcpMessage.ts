@@ -57,7 +57,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       const {} = message;
 
       const currentUserId = await getConfig('currentUserId');
-      console.log('currentUser|currentUserId=', currentUserId);
+      console.log('get_kombainer_data|currentUserId=', currentUserId);
       if (!currentUserId) {
         ToastAndroid.show(`Ошибка: Не найден ID текущего пользователя`, ToastAndroid.SHORT);
         return { status: 'error' };
@@ -65,12 +65,14 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       let userData: ICreateUsersParams;
       try {
         userData = await getUserById(currentUserId);
-        console.log('currentUser|userData=', userData);
+        console.log('get_kombainer_data|userData=', userData);
       } catch (e) {
+        console.error('get_kombainer_data|getUserById|e=', e);
         if (!(e instanceof NotFoundError)) throw e;
         return { status: 'error' };
       }
       if (!userData) {
+        console.error('get_kombainer_data|Не найдены данные комбайнера у пользователя');
         ToastAndroid.show(
           `Ошибка: не найдены данные комбайнера у пользователя`,
           ToastAndroid.SHORT
@@ -78,7 +80,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
         return { status: 'error' };
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
-      console.log('currentUser|kombainerData=', kombainerData);
+      console.log('get_kombainer_data|kombainerData=', kombainerData);
 
       // Получаем номер последнего талона комбайнера, если есть
       let talonNumber = '';
@@ -94,7 +96,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
             talonNumber = latestTalon.talonNumber || '';
           }
         } catch (error) {
-          console.error('Ошибка при получении номера талона:', error);
+          console.error('get_kombainer_data|error=', error);
         }
       }
 
@@ -102,11 +104,23 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'set_talon_of_kombainer': {
-      const { kombainerData, userData, weight, talonNumber } = message;
+      const { kombainerData, userData, weight } = message;
+      const talonNumber = (message as any).talonNumber || '';
 
       setNeedRedirect('voditel', { kombainerData, userData, weight, talonNumber });
 
       return { status: 'ok' };
+    }
+
+    case 'heartbeat': {
+      const { timestamp } = message;
+      console.log('onTcpMessage|heartbeat received|timestamp=', timestamp);
+      return {
+        status: 'ok',
+        type: 'heartbeat_response',
+        originalTimestamp: timestamp,
+        responseTimestamp: Date.now(),
+      };
     }
 
     default:
