@@ -1,5 +1,6 @@
 // Файл: /global.d.ts
 
+import { ICreateTalonsParams } from './app/db/talons_of_combainers';
 import { ICreateUsersParams } from './app/db/users';
 
 /**
