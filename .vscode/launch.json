@@ -2,20 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug React Frontend",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/front",
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*"
-      },
-      "preLaunchTask": "react dev",
-      "console": "integratedTerminal",
-      "outputCapture": "console",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
       "name": "Debug React Native",
       "type": "reactnative",
       "request": "launch",
@@ -70,34 +56,12 @@
       "internalConsoleOptions": "neverOpen"
     },
     {
-      "name": "build react",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/front",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "build"],
-      "console": "integratedTerminal",
-      "outputCapture": "console",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
       "name": "npx-react-native-start",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "npx-react-native-start"],
-      "console": "integratedTerminal",
-      "outputCapture": "console",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "name": "react dev",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/front",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
       "console": "integratedTerminal",
       "outputCapture": "console",
       "internalConsoleOptions": "neverOpen"
@@ -120,7 +84,6 @@
       "cwd": "${workspaceFolder}/app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "build:android:inc-ver:win"],
-      "preLaunchTask": "build react",
       "console": "integratedTerminal",
       "outputCapture": "console",
       "internalConsoleOptions": "neverOpen"
@@ -132,7 +95,6 @@
       "cwd": "${workspaceFolder}/app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "build:android:win"],
-      "preLaunchTask": "build react",
       "console": "integratedTerminal",
       "outputCapture": "console",
       "internalConsoleOptions": "neverOpen"

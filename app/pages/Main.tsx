@@ -238,8 +238,7 @@ const Main = () => {
               return;
             }
 
-            // В React Native версии используем WebView для навигации к странице водителя
-            navigation.navigate('MainScreen');
+            navigation.navigate('VoditelTicketDetailAfterSetWeightScreen');
             return;
           }
 
