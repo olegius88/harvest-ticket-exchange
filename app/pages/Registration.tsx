@@ -15,14 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
-import { IRegistrationForm, IOption } from '../../global';
-
-type RootStackParamList = {
-  LoginScreen: undefined;
-  WebViewScreen: undefined;
-  CodeScannerPage: undefined;
-  RegistrationScreen: undefined;
-};
+import { IRegistrationForm, IOption, RootStackParamList } from '../../global';
 
 const positionOptions: IOption[] = [
   { value: 'kombainer', label: 'Комбайнер' },

@@ -60,6 +60,14 @@ export interface IEditVoditelParams {
   updated_at?: number;
 }
 
+export interface IVoditelData {
+  id: string;
+  userId: string;
+  transport: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
 /**
  * Интерфейс для ответа currentUser.
  */
@@ -422,6 +430,18 @@ export interface ITcpResponseKombainerData {
   kombainerData: ICreateKombainerParams;
 }
 
+// Интерфейсы для проверки и подтверждения веса комбайнера
+export interface ITcpResponseCheckKombainerWeight {
+  status: string;
+  weight?: number;
+  message?: string;
+}
+
+export interface ITcpResponseConfirmKombainerWeight {
+  status: string;
+  message?: string;
+}
+
 /**
  *
  */
@@ -728,6 +748,7 @@ export interface IPayloadVoditelConnectSuccess {
 export interface IPayloadConfirmKombainerTicket {
   voditelData: ICreateVoditelParams;
   userData: ICreateUsersParams;
+  status: 'ok';
 }
 export interface IPayloadSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
@@ -908,14 +929,24 @@ export interface ISendPostResponseUpdateUserProfile {
   status: 'ok';
 }
 
+// Обновленный тип для навигации
 export type RootStackParamList = {
+  MainScreen: undefined;
   LoginScreen: undefined;
   RegistrationScreen: undefined;
-  MainScreen: undefined;
-  WebViewScreen: undefined;
-  CodeScannerPageScreen: undefined;
   KombainerRegistrationScreen: undefined;
-  KombainerTicketDetailScreen: undefined;
-  KombainerQRCodeScreen: undefined;
   KombainerCreateTicketScreen: undefined;
+  KombainerQRCodeScreen: undefined;
+  KombainerTicketDetailScreen: undefined;
+  KombainerTicketCreatedSuccessScreen: undefined;
+  KombainerTicketDetailAfterVoditelConfirmScreen: undefined;
+  KombainerWaitTicketConfirmScreen: undefined;
+  KombainerWaitTicketWithWeightConfirmScreen: undefined;
+  VoditelRegistrationScreen: undefined;
+  VoditelCreateTripScreen: undefined;
+  VoditelTicketDetailScreen: undefined;
+  VoditelWaitKombainerDataScreen: undefined;
+  VoditelTicketDetailAfterSetWeightScreen: undefined;
+  VoditelTicketCreatedSuccessScreen: undefined;
+  CodeScannerPageScreen: undefined;
 };

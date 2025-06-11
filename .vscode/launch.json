@@ -64,7 +64,7 @@
       "cwd": "${workspaceFolder}/app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "android"],
-      "preLaunchTask": "build react",
+      // "preLaunchTask": "build react",
       "console": "integratedTerminal",
       "outputCapture": "console",
       "internalConsoleOptions": "neverOpen"

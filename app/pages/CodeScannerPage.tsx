@@ -5,18 +5,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
-import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../../Constants';
-import { useIsForeground } from '../../hooks/useIsForeground';
-import { StatusBarBlurBackground } from '../../views/StatusBarBlurBackground';
+import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../Constants';
+import { useIsForeground } from '../hooks/useIsForeground';
+import { StatusBarBlurBackground } from '../views/StatusBarBlurBackground';
 import { PressableOpacity } from 'react-native-pressable-opacity';
 import IonIcon from 'react-native-vector-icons/Ionicons';
-import type { Routes } from '../../Routes';
+import type { Routes } from '../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
-import ScanningOverlay from '../../views/ScanningOverlay';
-import { setNeedRedirect } from '../../webviews/onMessage';
-import { JoinHotspotResponse } from '../../../global';
-import { setHotspotDisabled } from '../../wifi/hotspot';
+import ScanningOverlay from '../views/ScanningOverlay';
+import { setNeedRedirect } from '../webviews/onMessage';
+import { JoinHotspotResponse } from '../../global';
+import { setHotspotDisabled } from '../wifi/hotspot';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -40,8 +40,7 @@ const parseWifiCredentials = (value: string): { ssid: string; password: string }
   return ssid && password ? { ssid, password } : null;
 };
 
-type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
-
+type Props = NativeStackScreenProps<Routes, 'CodeScannerPage'>;
 export function CodeScannerPage({ navigation }: Props): React.ReactElement {
   // Используем заднюю камеру
   const device = useCameraDevice('back');
@@ -96,7 +95,7 @@ export function CodeScannerPage({ navigation }: Props): React.ReactElement {
 
             navigation.reset({
               index: 0,
-              routes: [{ name: 'MainScreen' }],
+              routes: [{ name: 'WebViewScreen' }],
             });
           })
           .catch((err: any) => {

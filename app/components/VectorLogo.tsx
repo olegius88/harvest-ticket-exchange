@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 
 /**
- * Простая заглушка логотипа для React Native
+ * Векторный логотип для React Native приложения
  */
 export const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
   width = 120,

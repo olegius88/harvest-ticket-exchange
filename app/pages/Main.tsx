@@ -18,19 +18,8 @@ import {
   ITcpResponseConnectEstablishedOk,
   JoinHotspotResponse,
   PositionOptionValue,
+  RootStackParamList,
 } from '../../global';
-
-type RootStackParamList = {
-  LoginScreen: undefined;
-  RegistrationScreen: undefined;
-  WebViewScreen: undefined;
-  CodeScannerPage: undefined;
-  MainScreen: undefined;
-  EditProfileScreen: undefined;
-  KombainerRegistrationScreen: undefined;
-  KombainerCreateTicketScreen: undefined;
-  KombainerQRCodeScreen: undefined;
-};
 
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
   width = 120,
@@ -250,7 +239,7 @@ const Main = () => {
             }
 
             // В React Native версии используем WebView для навигации к странице водителя
-            navigation.navigate('WebViewScreen');
+            navigation.navigate('MainScreen');
             return;
           }
 
@@ -312,12 +301,12 @@ const Main = () => {
               return;
             case 'voditel':
               if (currentUserResponse.voditelData) {
-                // В React Native версии переходим на WebView
-                navigation.navigate('WebViewScreen');
+                // В React Native версии переходим на создание поездки
+                navigation.navigate('VoditelCreateTripScreen');
                 return;
               }
-              // Если нет данных водителя, нужна регистрация
-              navigation.navigate('RegistrationScreen');
+              // Если нет данных водителя, нужна специальная регистрация водителя
+              navigation.navigate('VoditelRegistrationScreen');
               return;
             case 'bunkerist':
               // В React Native версии переходим на WebView
@@ -345,7 +334,7 @@ const Main = () => {
 
   const handleEditUserClick = () => {
     // TODO: Implement EditProfile screen or navigate to WebView with edit profile URL
-    navigation.navigate('WebViewScreen');
+    navigation.navigate('EditProfileScreen');
   };
 
   if (checkingRegistration) {

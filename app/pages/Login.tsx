@@ -13,19 +13,12 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
-import { ISendPostMessageRequest, ISendPostResponse } from '../../global';
+import { ISendPostMessageRequest, ISendPostResponse, RootStackParamList } from '../../global';
 
 interface ILoginForm {
   phone: string;
   password: string;
 }
-
-type RootStackParamList = {
-  LoginScreen: undefined;
-  WebViewScreen: undefined;
-  CodeScannerPage: undefined;
-  RegistrationScreen: undefined;
-};
 
 const Login = () => {
   const [form, setForm] = useState<ILoginForm>({ phone: '', password: '' });
@@ -75,7 +68,7 @@ const Login = () => {
             text: 'OK',
             onPress: () => {
               // TODO: Navigate to appropriate screen based on user role
-              navigation.navigate('WebViewScreen');
+              navigation.navigate('MainScreen');
             },
           },
         ]

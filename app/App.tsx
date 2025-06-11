@@ -5,7 +5,6 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
-import WebViewV1 from './webviews/WebViewV1';
 import { Routes } from './Routes';
 import { CodeScannerPage } from './pages/kombainer/CodeScannerPage';
 import Login from './pages/Login';
@@ -16,6 +15,12 @@ import KombainerQRCode from './pages/kombainer/KombainerQRCode';
 import KombainerTicketDetail from './pages/kombainer/KombainerTicketDetail';
 import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
 import { RootStackParamList } from '../global';
+import VoditelRegistration from './pages/VoditelRegistration';
+import VoditelCreateTrip from './pages/VoditelCreateTrip';
+import VoditelTicketDetail from './pages/VoditelTicketDetailNew';
+import VoditelWaitKombainerData from './pages/VoditelWaitKombainerData';
+import VoditelTicketDetailAfterSetWeight from './pages/VoditelTicketDetailAfterSetWeight';
+import VoditelTicketCreatedSuccess from './pages/VoditelTicketCreatedSuccess';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,6 +62,21 @@ export default function App(): React.ReactElement {
             {(props) => <KombainerQRCode {...props} />}
           </Stack.Screen>
           <Stack.Screen name="CodeScannerPageScreen" component={CodeScannerPage} />
+          <Stack.Screen name="VoditelRegistrationScreen" component={VoditelRegistration} />
+          <Stack.Screen name="VoditelCreateTripScreen" component={VoditelCreateTrip} />
+          <Stack.Screen name="VoditelTicketDetailScreen" component={VoditelTicketDetail} />
+          <Stack.Screen
+            name="VoditelWaitKombainerDataScreen"
+            component={VoditelWaitKombainerData}
+          />
+          <Stack.Screen
+            name="VoditelTicketDetailAfterSetWeightScreen"
+            component={VoditelTicketDetailAfterSetWeight}
+          />
+          <Stack.Screen
+            name="VoditelTicketCreatedSuccessScreen"
+            component={VoditelTicketCreatedSuccess}
+          />
         </Stack.Navigator>
       </GestureHandlerRootView>
     </NavigationContainer>

@@ -18,17 +18,8 @@ import {
   IEditKombainerParams,
   IKombainerForm,
   ISendPostResponseCurrentUser,
+  RootStackParamList,
 } from '../../../global';
-
-type RootStackParamList = {
-  LoginScreen: undefined;
-  RegistrationScreen: undefined;
-  MainScreen: undefined;
-  WebViewScreen: undefined;
-  CodeScannerPage: undefined;
-  KombainerRegistrationScreen: undefined;
-  KombainerCreateTicketScreen: undefined;
-};
 
 const KombainerRegistration: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();

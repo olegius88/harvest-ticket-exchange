@@ -57,6 +57,11 @@ const KombainerTicketDetail: React.FC = () => {
     navigation.navigate('KombainerQRCodeScreen');
   };
 
+  // Функция для перехода на экран успешного создания талона
+  const handleTicketSuccess = () => {
+    navigation.navigate('KombainerTicketCreatedSuccessScreen');
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>

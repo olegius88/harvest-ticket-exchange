@@ -331,7 +331,6 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       );
       return;
     }
-
     switch (AuthStoreData.context) {
       case 'kombainer':
         // В React Native навигация происходит через navigation prop
@@ -339,8 +338,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           {
             text: 'OK',
             onPress: () => {
-              // Переходим на следующий экран (например, WebView или специальный экран ожидания)
-              this.props.navigation.navigate('WebViewScreen');
+              // Переходим на экран ожидания подтверждения данных водителем
+              this.props.navigation.navigate('KombainerWaitTicketConfirmScreen');
             },
           },
         ]);
