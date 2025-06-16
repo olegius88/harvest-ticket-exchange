@@ -361,8 +361,8 @@ export interface ISendTcpRequest {
 }
 
 export interface ISendTcpRequestData {
-  type: string;
   [key: string]: unknown;
+  talonNumber?: string;
 }
 
 export interface ISendTcpResponse {
@@ -1041,8 +1041,7 @@ export interface PushUserIdResponse {
 }
 
 export interface JoinHotspotResponse {
-  type: 'joinHotspot';
-  status: 'joining';
+  ip: string;
 }
 
 export interface UserDataResponse {
