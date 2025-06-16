@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
+import { sendTcpRequest } from '../../wifi/TcpClient';
 import {
   CurrentUserResponse,
   ICreateKombainerParams,
@@ -102,24 +103,13 @@ class VoditelTicketDetail extends Component<
       // В зависимости от контекста (для водителя) отправляем запрос за данными комбайнера
       if (AuthStoreData.context === 'voditel') {
         try {
-          const tcpResponse = await handleMessage({
-            req: {
-              type: 'sendTcpRequest',
-              data: {
-                type: 'get_kombainer_data',
-              },
-            },
-            reqId: 'sendTcpRequest_get_kombainer_data_' + Date.now(),
+          const data = await sendTcpRequest({
+            type: 'get_kombainer_data',
           });
+          console.log('VoditelTicketDetail|sendTcpRequest|data=', data);
 
-          if (tcpResponse.type !== 'sendTcpRequest') {
-            throw new Error('Failed to get kombainer data');
-          }
-
-          console.log('VoditelTicketDetail|tcpResponse=', tcpResponse.data);
-          const tcpData = tcpResponse as SendTcpRequestResponse;
-          const kombainerData = (tcpData.data as ITcpResponseKombainerData).kombainerData;
-          const kombainerUserData = (tcpData.data as ITcpResponseKombainerData).kombainerUserData;
+          const kombainerData = (data as ITcpResponseKombainerData).kombainerData;
+          const kombainerUserData = (data as ITcpResponseKombainerData).kombainerUserData;
 
           // Обновляем данные текущего пользователя, подставляя полученные данные комбайнера
           const updatedUser: CurrentUserResponse = {
@@ -162,24 +152,14 @@ class VoditelTicketDetail extends Component<
         return;
       }
 
-      const tcpResponse = await handleMessage({
-        req: {
-          type: 'sendTcpRequest',
-          data: {
-            type: 'confirm_kombainer_ticket',
-            voditelData: this.state.data.voditelData,
-            userData: this.state.data.userData,
-          },
-        },
-        reqId: 'sendTcpRequest_confirm_kombainer_ticket_' + Date.now(),
+      const data = await sendTcpRequest({
+        type: 'confirm_kombainer_ticket',
+        voditelData: this.state.data.voditelData,
+        userData: this.state.data.userData,
       });
+      console.log('VoditelTicketDetail|sendTcpRequest|data=', data);
 
-      if (tcpResponse.type !== 'sendTcpRequest') {
-        throw new Error('Failed to confirm kombainer ticket');
-      }
-
-      const tcpData = tcpResponse as SendTcpRequestResponse;
-      const sendRes = tcpData.data as ITcpResponseConfirmKombainerTicket;
+      const sendRes = data as ITcpResponseConfirmKombainerTicket;
 
       if (sendRes.status !== 'ok') {
         Alert.alert('Ошибка', 'Ошибка подтверждения талона: ' + JSON.stringify(sendRes));

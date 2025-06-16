@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
+import { sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import { ICreateUsersParams } from '../../db/users';
@@ -110,18 +111,12 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     switch (AuthStoreData.context) {
       case 'voditel': {
         try {
-          const response = await handleMessage({
-            req: {
-              type: 'sendTcpRequest',
-              data: {
-                type: 'get_kombainer_data',
-              },
-            },
-            reqId: Date.now().toString(),
+          const data = await sendTcpRequest({
+            type: 'get_kombainer_data',
           });
-          console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|response=', response);
+          console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|data=', data);
 
-          tcpResponse = response as SendTcpRequestResponse;
+          tcpResponse = { type: 'sendTcpRequest', data };
           console.log(
             'VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=',
             tcpResponse
@@ -316,20 +311,14 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
   const confirmKombainerTicketWithWeight = async () => {
     let sendRes: any;
     try {
-      const response = await handleMessage({
-        req: {
-          type: 'sendTcpRequest',
-          data: {
-            type: 'confirm_kombainer_ticket_with_weight',
-          },
-        },
-        reqId: Date.now().toString(),
+      const data = await sendTcpRequest({
+        type: 'confirm_kombainer_ticket_with_weight',
       });
       console.log(
-        'VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket_with_weight|response=',
-        response
+        'VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket_with_weight|data=',
+        data
       );
-      sendRes = response;
+      sendRes = data;
     } catch (error: any) {
       console.error(
         'VoditelTicketDetailAfterSetWeight|confirmKombainerTicketWithWeight|error =',
@@ -358,19 +347,13 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
 
     let sendRes: any;
     try {
-      const response = await handleMessage({
-        req: {
-          type: 'sendTcpRequest',
-          data: {
-            type: 'confirm_kombainer_ticket',
-            voditelData: state.voditelData,
-            userData: state.userData,
-          },
-        },
-        reqId: Date.now().toString(),
+      const data = await sendTcpRequest({
+        type: 'confirm_kombainer_ticket',
+        voditelData: state.voditelData,
+        userData: state.userData,
       });
-      console.log('VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket|response=', response);
-      sendRes = response;
+      console.log('VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket|data=', data);
+      sendRes = data;
     } catch (error: any) {
       console.error('VoditelTicketDetailAfterSetWeight|confirmKombainerTicket|error =', error);
       Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));

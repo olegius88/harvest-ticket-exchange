@@ -434,17 +434,6 @@ const _handleReqMessage = async (
       KeepAwake.deactivate();
       return { type };
     }
-
-    case 'sendTcpRequest': {
-      try {
-        const data: ISendTcpResponseData = await sendTcpRequest(req.data);
-        console.log('sendTcpRequest|data=', data);
-        return { type, data };
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMessage);
-      }
-    }
     case 'createTalon': {
       const talonData = req.data as ICreateTalonParams;
       console.log('createTalon|req.data=', talonData);

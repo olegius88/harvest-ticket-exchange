@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
-import { connectToTcpServer } from '../wifi/TcpClient';
+import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 import { AuthStoreData } from '../stores/AuthStore';
 import {
   CurrentUserResponse,
@@ -136,20 +136,11 @@ const Main = () => {
         let tcpResponse: SendTcpRequestResponse;
         try {
           // Отправляем запрос на подключение к TCP-серверу
-          const tcpResponseResult = await handleMessage({
-            req: {
-              type: 'sendTcpRequest',
-              data: {
-                type: 'test',
-              },
-            },
-            reqId: 'sendTcpRequest_' + Date.now(),
+          const data = await sendTcpRequest({
+            type: 'test',
           });
-
-          if (tcpResponseResult.type !== 'sendTcpRequest') {
-            throw new Error('TCP request failed');
-          }
-          tcpResponse = tcpResponseResult;
+          console.log('sendTcpRequest|data=', data);
+          tcpResponse = { type: 'sendTcpRequest', data };
         } catch (error: unknown) {
           console.error('Main|needRedirect|tcp test error =', error);
           const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
@@ -217,17 +208,12 @@ const Main = () => {
 
             try {
               // Отправляем запрос на подключение к TCP-серверу
-              await handleMessage({
-                req: {
-                  type: 'sendTcpRequest',
-                  data: {
-                    type: 'set_voditel_data',
-                    voditelData: currentUser.voditelData,
-                    voditelUserData: currentUser.userData,
-                  },
-                },
-                reqId: 'set_voditel_data_' + Date.now(),
+              const data = await sendTcpRequest({
+                type: 'set_voditel_data',
+                voditelData: currentUser.voditelData,
+                voditelUserData: currentUser.userData,
               });
+              console.log('sendTcpRequest|data=', data);
             } catch (error: any) {
               console.error('Main|needRedirect|set_voditel_data error =', error);
               Alert.alert(
