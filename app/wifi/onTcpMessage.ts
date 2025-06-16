@@ -126,7 +126,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'set_talon_of_kombainer': {
       const { kombainerData, userData, weight } = message;
-      const talonNumber = 'talonNumber' in message ? (message as any).talonNumber || '' : '';
+      const talonNumber = message.talonNumber || '';
 
       const payload: IPayloadSetTalonOfKombainer = {
         kombainerData,

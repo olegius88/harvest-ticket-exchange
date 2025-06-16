@@ -121,11 +121,12 @@ class VoditelTicketDetail extends Component<
           // Обновляем состояние компонента
           this.setState({ loading: false, data: updatedUser });
           console.log('VoditelTicketDetail|updatedUser=', updatedUser);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('VoditelTicketDetail|error=', error);
           Alert.alert(
             'Ошибка',
-            'Ошибка получения данных комбайнера: ' + (error.message || JSON.stringify(error))
+            'Ошибка получения данных комбайнера: ' +
+              (error instanceof Error ? error.message : String(error))
           );
           this.setState({ loading: false });
         }

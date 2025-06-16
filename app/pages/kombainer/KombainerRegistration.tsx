@@ -211,13 +211,13 @@ const KombainerRegistration: React.FC = () => {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Ошибка отправки данных:', error);
       Alert.alert(
         editing ? 'Ошибка обновления данных' : 'Ошибка регистрации',
         `Произошла ошибка при ${
           editing ? 'обновлении данных комбайнера' : 'регистрации данных комбайнера'
-        }. Пожалуйста, попробуйте еще раз.\n\n${error.message || ''}`
+        }. Пожалуйста, попробуйте еще раз.\n\n${error instanceof Error ? error.message : String(error)}`
       );
     } finally {
       setSubmitting(false);

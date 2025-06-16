@@ -12,9 +12,17 @@ import type { Routes } from '../../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from '../../views/ScanningOverlay';
-import { JoinHotspotResponse, JoinHotspotPayload } from '../../../global';
+import {
+  JoinHotspotResponse,
+  JoinHotspotPayload,
+  SendTcpRequestResponse,
+  ITcpResponseConnectEstablishedOk,
+  CurrentUserResponse,
+} from '../../../global';
 import { setHotspotDisabled } from '../../wifi/hotspot';
-import { setNeedRedirect } from '../../services/MessageHandler';
+import { handleMessage, setNeedRedirect } from '../../services/MessageHandler';
+import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
+import { AuthStoreData } from '../../stores/AuthStore';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -87,6 +95,8 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
             }
             console.log('onCodeScanned|joinData=', joinData);
 
+            handleNeedRedirect(joinData);
+
             // // Если подключение успешно, возвращается IP-адрес
             // // Можно, например, сохранить его или передать в другой модуль
             // const joinPayload: JoinHotspotPayload = {
@@ -99,8 +109,11 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
             //   routes: [{ name: 'MainScreen' }],
             // });
           })
-          .catch((err: any) => {
-            Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');
+          .catch((err: unknown) => {
+            Alert.alert(
+              'Ошибка',
+              err instanceof Error ? err.message : 'Не удалось подключиться к сети'
+            );
             isProcessing.current = false;
             setProcessing(false);
           });
@@ -111,6 +124,106 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     },
     [navigation]
   );
+
+  const handleNeedRedirect = async (joinData: JoinHotspotResponse) => {
+    console.log('Main|needRedirect|joinData=', joinData);
+
+    try {
+      // Отправляем запрос на подключение к TCP-серверу
+      const message = await connectToTcpServer({
+        ip: joinData.ip,
+      });
+      console.log('connectToTcpServer|message=', message);
+    } catch (error: unknown) {
+      console.error('Main|needRedirect|error=', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка подключения к устройству', errorMessage);
+      return;
+    }
+
+    let tcpResponse: SendTcpRequestResponse;
+    try {
+      // Отправляем запрос на подключение к TCP-серверу
+      const data = await sendTcpRequest({
+        type: 'test',
+      });
+      console.log('sendTcpRequest|data=', data);
+      tcpResponse = { type: 'sendTcpRequest', data };
+    } catch (error: unknown) {
+      console.error('Main|needRedirect|tcp test error =', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка подключения к устройству', errorMessage);
+      return;
+    }
+
+    console.log('Main|needRedirect|tcpResponse =', tcpResponse);
+
+    if ((tcpResponse.data as ITcpResponseConnectEstablishedOk).status !== 'ok') {
+      Alert.alert(
+        'Ошибка подключения к устройству',
+        `При подключении к устройству, получен некорректный ответ: ${JSON.stringify(tcpResponse)}`
+      );
+      return;
+    }
+
+    AuthStoreData.context = 'voditel'; // Устанавливаем контекст пользователя
+
+    if (!AuthStoreData.context) {
+      Alert.alert(
+        'Не определен контекст',
+        "Не определен контекст пользователя 'AuthStoreData.context'"
+      );
+      return;
+    }
+
+    let currentUser: CurrentUserResponse;
+    try {
+      // Отправляем запрос на получение данных текущего пользователя
+      const currentUserResponse = await handleMessage({
+        req: {
+          type: 'currentUser',
+          data: { context: AuthStoreData.context },
+        },
+        reqId: 'currentUser_' + Date.now(),
+      });
+      console.log('Main|needRedirect|currentUserResponse=', currentUserResponse);
+
+      currentUser = currentUserResponse as CurrentUserResponse;
+    } catch (error: unknown) {
+      console.error('Main|needRedirect|currentUser|error =', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка получения данных текущего пользователя', errorMessage);
+      return;
+    }
+
+    Alert.alert('Подключение к устройству прошло успешно', '', [
+      {
+        text: 'OK',
+        onPress: () => {},
+      },
+    ]);
+
+    if (!currentUser.voditelData || !currentUser.userData) {
+      Alert.alert('Ошибка', 'Отсутствуют данные водителя');
+      return;
+    }
+
+    try {
+      // Отправляем запрос на подключение к TCP-серверу
+      const data = await sendTcpRequest({
+        type: 'set_voditel_data',
+        voditelData: currentUser.voditelData,
+        voditelUserData: currentUser.userData,
+      });
+      console.log('sendTcpRequest|data=', data);
+    } catch (error: any) {
+      console.error('Main|needRedirect|set_voditel_data error =', error);
+      Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
+      return;
+    }
+
+    navigation.navigate('VoditelTicketDetailAfterSetWeightScreen');
+  };
 
   // Инициализация сканера с поддержкой QR и штрих‑кодов (ean‑13)
   const codeScanner = useCodeScanner({

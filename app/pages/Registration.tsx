@@ -114,12 +114,12 @@ const Registration = () => {
       } else {
         throw new Error('Ошибка регистрации');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
       Alert.alert(
         'Ошибка регистрации',
         `Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.\n\n${
-          error.message || ''
+          error instanceof Error ? error.message : String(error)
         }`
       );
     } finally {

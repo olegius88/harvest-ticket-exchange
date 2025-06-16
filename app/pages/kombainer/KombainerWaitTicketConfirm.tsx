@@ -79,9 +79,9 @@ class KombainerWaitTicketConfirm extends React.Component<
     );
 
     // Запускаем получение и отправку данных комбайнера
-    this.setKombainerData().catch((e: any) => {
+    this.setKombainerData().catch((e: unknown) => {
       console.error('KombainerWaitTicketConfirm|setKombainerData|error=', e);
-      Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
+      Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
   }
 

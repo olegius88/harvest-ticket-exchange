@@ -72,9 +72,9 @@ class KombainerWaitTicketWithWeightConfirm extends React.Component<
       .then(() => console.log('Экран не будет гаснуть'))
       .catch((error) => console.error('Ошибка при включении функции не гаснущего экрана:', error));
 
-    this.getKombainerData().catch((e: any) => {
+    this.getKombainerData().catch((e: unknown) => {
       console.error('KombainerWaitTicketWithWeightConfirm|setKombainerData|error=', e);
-      Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
+      Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
   }
 

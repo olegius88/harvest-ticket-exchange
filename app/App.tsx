@@ -22,6 +22,7 @@ import VoditelTicketDetail from './pages/voditel/VoditelTicketDetailNew';
 import VoditelWaitKombainerData from './pages/voditel/VoditelWaitKombainerData';
 import VoditelTicketDetailAfterSetWeight from './pages/voditel/VoditelTicketDetailAfterSetWeight';
 import VoditelTicketCreatedSuccess from './pages/voditel/VoditelTicketCreatedSuccess';
+import KombainerTicketDetailAfterVoditelConfirm from './pages/kombainer/KombainerTicketDetailAfterVoditelConfirm';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,6 +60,9 @@ export default function App(): React.ReactElement {
 
           <Stack.Screen name="KombainerRegistrationScreen" component={KombainerRegistration} />
           <Stack.Screen name="KombainerTicketDetailScreen" component={KombainerTicketDetail} />
+          <Stack.Screen name="KombainerTicketDetailAfterVoditelConfirmScreen">
+            {(props) => <KombainerTicketDetailAfterVoditelConfirm {...props} />}
+          </Stack.Screen>
           <Stack.Screen name="KombainerCreateTicketScreen" component={KombainerCreateTicket} />
           <Stack.Screen name="KombainerWaitTicketConfirmScreen">
             {(props) => <KombainerWaitTicketConfirm {...props} />}

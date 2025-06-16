@@ -103,10 +103,10 @@ const VoditelWaitKombainerData: React.FC = () => {
         console.error('Не удалось подтвердить вес: ответ от сервера пустой');
         throw new Error('Сервер вернул ошибку');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert(
         'Ошибка',
-        'Не удалось подтвердить вес: ' + (error.message || JSON.stringify(error))
+        'Не удалось подтвердить вес: ' + (error instanceof Error ? error.message : String(error))
       );
     } finally {
       setLoading(false);

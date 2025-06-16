@@ -66,9 +66,9 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
   });
 
   useEffect(() => {
-    getKombainerData().catch((e: any) => {
+    getKombainerData().catch((e: unknown) => {
       console.error('VoditelTicketDetailAfterSetWeight|getKombainerData|error=', e);
-      Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
+      Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
 
     // Cleanup function для очистки таймера при размонтировании компонента
