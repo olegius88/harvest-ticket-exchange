@@ -241,7 +241,7 @@ export interface ISendPostMessageOpenQRScanner {
  */
 export interface ISendPostMessageUserPushId {
   type: 'pushUserId';
-  status: string;
+  data: { userId: string };
 }
 
 /**
@@ -572,7 +572,7 @@ export type ISendPostResponse =
       reqId: string;
       type: 'sendPostResponse';
       resType: 'reject';
-      error: any; // Обязательно при 'reject'
+      error: { message: string }; // Убираем any, делаем строгую типизацию
       res?: undefined; // При 'reject' не используем поле 'res'
     }
   | {
@@ -597,14 +597,14 @@ export type ISendPostResponse =
             kombainerUserData: null;
             voditelData: null;
           };
-      error?: any; // При 'resolve' не используем поле 'error'
+      error?: undefined; // При 'resolve' не используем поле 'error'
     }
   // Игнорируемые сообщения
   | {
       type: 'webpackOk' | 'webpackClose' | 'webpackErrors' | 'webpackInvalid' | 'webpackHot';
       reqId?: string;
       resType?: 'reject';
-      error?: any;
+      error?: { message: string }; // Убираем any
     };
 
 /**
@@ -612,7 +612,7 @@ export type ISendPostResponse =
  */
 export interface IPostMessageCallback {
   resolve: (value: unknown) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: Error | string) => void; // Убираем any, добавляем конкретные типы
   timerId: NodeJS.Timeout | number;
 }
 
@@ -739,7 +739,7 @@ export interface RolesRoutesMap {
   bunkerist: BunkeristRoutes;
 }
 
-export interface JoinHotspotResponse {
+export interface JoinHotspotPayload {
   ip: string;
 }
 
@@ -764,7 +764,7 @@ export interface IPayloadSetTalonOfKombainer {
 }
 
 export type TNeedRedirectPayload =
-  | JoinHotspotResponse
+  | JoinHotspotPayload
   | IPayloadVoditelData
   | IPayloadConfirmKombainerTicket
   | IPayloadSetTalonOfKombainer;
@@ -957,3 +957,203 @@ export type RootStackParamList = {
   VoditelTicketCreatedSuccessScreen: undefined;
   CodeScannerPageScreen: undefined;
 };
+
+// Упрощённые типы ответов для _handleReqMessage (без обёртки ISendPostResponse)
+export interface LoginResponse {
+  type: 'login';
+  userId: string;
+}
+
+export interface RegistrationResponse {
+  type: 'registration';
+  userId: string;
+}
+
+export interface CreateKombainerResponse {
+  type: 'createKombainer';
+}
+
+export interface EditKombainerResponse {
+  type: 'editKombainer';
+}
+
+export interface CreateVoditelResponse {
+  type: 'createVoditel';
+}
+
+export interface EditVoditelResponse {
+  type: 'editVoditel';
+}
+
+export interface CheckPermissionsHotspotResponse {
+  type: 'checkPermissionsHotspot';
+}
+
+export interface CurrentUserResponse {
+  type: 'currentUser';
+  status: 'authOk' | 'noAuth' | 'noUser';
+  userData: ICreateUsersParams | null;
+  kombainerData: ICreateKombainerParams | null;
+  voditelData: ICreateVoditelParams | null;
+  kombainerUserData: ICreateUsersParams | null;
+}
+
+export interface NeedRedirectResponse {
+  type: 'needRedirect';
+  status: 'ok' | 'error' | 'empty';
+  path: string;
+  payload?: TNeedRedirectPayload;
+}
+
+export interface OpenCodeScannerResponse {
+  type: 'openCodeScannerPage';
+  status: 'scannerOpened';
+}
+
+export interface IsHotspotEnabledResponse {
+  type: 'isHotspotEnabled';
+  status: 'stopped' | 'running';
+}
+
+export interface SetHotspotEnabledResponse {
+  type: 'setHotspotEnabled';
+  status: 'running' | 'error';
+  ssid?: string;
+  password?: string;
+  error?: string;
+}
+
+export interface SetHotspotDisabledResponse {
+  type: 'setHotspotDisabled';
+  state: 'stopped' | 'error';
+}
+
+export interface PushUserIdResponse {
+  type: 'pushUserId';
+  success: boolean;
+}
+
+export interface JoinHotspotResponse {
+  type: 'joinHotspot';
+  status: 'joining';
+}
+
+export interface UserDataResponse {
+  type: 'userData';
+  userData: ICreateUsersParams;
+}
+
+export interface EnableKeepAwakeResponse {
+  type: 'enableKeepAwake';
+}
+
+export interface DisableKeepAwakeResponse {
+  type: 'disableKeepAwake';
+}
+
+export interface StartTcpServerResponse {
+  type: 'startTcpServer';
+  message: string;
+}
+
+export interface StopTcpServerResponse {
+  type: 'stopTcpServer';
+  message: string;
+}
+
+export interface ConnectToTcpServerResponse {
+  type: 'connectToTcpServer';
+  message: string;
+}
+
+export interface SendTcpRequestResponse {
+  type: 'sendTcpRequest';
+  data: ISendTcpResponseData;
+}
+
+export interface CreateTalonResponse {
+  type: 'createTalon';
+  talonId: string;
+}
+
+export interface EditTalonResponse {
+  type: 'editTalon';
+  talonId: string;
+}
+
+export interface AssignDriverToTalonResponse {
+  type: 'assignDriverToTalon';
+  talonId: string;
+}
+
+export interface UpdateTalonStatusResponse {
+  type: 'updateTalonStatus';
+  talonId: string;
+}
+
+export interface UpdateTalonWeightResponse {
+  type: 'updateTalonWeight';
+  talonId: string;
+}
+
+export interface GetTalonByIdResponse {
+  type: 'getTalonById';
+  talon: ICreateTalonsParams;
+}
+
+export interface GetTalonsByKombainerIdResponse {
+  type: 'getTalonsByKombainerId';
+  talons: ICreateTalonsParams[];
+}
+
+export interface GetTalonsByVoditelIdResponse {
+  type: 'getTalonsByVoditelId';
+  talons: ICreateTalonsParams[];
+}
+
+export interface CheckUserRegistrationResponse {
+  type: 'checkUserRegistration';
+  isRegistered: boolean;
+  userData?: ICreateUsersParams;
+}
+
+export interface UpdateUserProfileResponse {
+  type: 'updateUserProfile';
+  userId: string;
+  status: 'ok';
+}
+
+// Объединённый тип всех упрощённых ответов
+export type HandleReqMessageResponse =
+  | LoginResponse
+  | RegistrationResponse
+  | CreateKombainerResponse
+  | EditKombainerResponse
+  | CreateVoditelResponse
+  | EditVoditelResponse
+  | CheckPermissionsHotspotResponse
+  | CurrentUserResponse
+  | NeedRedirectResponse
+  | OpenCodeScannerResponse
+  | IsHotspotEnabledResponse
+  | SetHotspotEnabledResponse
+  | SetHotspotDisabledResponse
+  | PushUserIdResponse
+  | JoinHotspotResponse
+  | UserDataResponse
+  | EnableKeepAwakeResponse
+  | DisableKeepAwakeResponse
+  | StartTcpServerResponse
+  | StopTcpServerResponse
+  | ConnectToTcpServerResponse
+  | SendTcpRequestResponse
+  | CreateTalonResponse
+  | EditTalonResponse
+  | AssignDriverToTalonResponse
+  | UpdateTalonStatusResponse
+  | UpdateTalonWeightResponse
+  | GetTalonByIdResponse
+  | GetTalonsByKombainerIdResponse
+  | GetTalonsByVoditelIdResponse
+  | CheckUserRegistrationResponse
+  | UpdateUserProfileResponse;

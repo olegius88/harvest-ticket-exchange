@@ -23,8 +23,11 @@ import {
   ILoginUserParams,
   ISendPostMessageRequest,
   ISendPostResponse,
+  ISendPostResponseRes,
   ISendTcpResponseData,
   TalonStatus,
+  HandleReqMessageResponse,
+  TNeedRedirectPayload,
 } from '../../global';
 import {
   createUser,
@@ -52,20 +55,25 @@ import {
   updateTalonStatus,
   updateTalonWeight,
 } from '../db/talons_of_combainers';
-import { NotFoundError, VoidAndNotError } from '../exceptions/exceptionsClasses';
+import {
+  NotFoundError,
+  VoidAndNotError,
+  AppError,
+  SendError,
+} from '../exceptions/exceptionsClasses';
 import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/TcpServer';
 import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
 
 // Глобальные переменные для перенаправления
 export let needRedirect: string | null;
 export let needRedirectStatus: 'ok' | 'error' | 'empty' = 'empty';
-export let needRedirectPayload: any;
+export let needRedirectPayload: TNeedRedirectPayload | null;
 
-export const setNeedRedirect = (data: string, payload?: any): void => {
+export const setNeedRedirect = (data: string, payload?: TNeedRedirectPayload): void => {
   console.log('setNeedRedirect|data=', data);
   needRedirect = data;
   needRedirectStatus = 'ok';
-  needRedirectPayload = payload;
+  needRedirectPayload = payload || null;
 };
 
 /**
@@ -115,10 +123,11 @@ const checkCameraAudioPermissions = async (): Promise<boolean> => {
 
 /**
  * Обработчик сообщений запроса.
+ * Возвращает упрощённые типы без обёртки ISendPostResponse.
  */
 const _handleReqMessage = async (
   eventData: ISendPostMessageRequest
-): Promise<ISendPostResponse> => {
+): Promise<HandleReqMessageResponse> => {
   const { req, reqId } = eventData;
   console.log('_handleReqMessage|req.type=', req.type, req);
   const type = req.type;
@@ -141,45 +150,25 @@ const _handleReqMessage = async (
         console.error('login|setConfig|error=', error);
         throw new Error('Ошибка установки конфигурации');
       }
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, userId },
-      };
+      return { type, userId };
     }
     case 'checkPermissionsHotspot': {
       await checkPermissionsHotspot();
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'checkPermissionsHotspot' },
-      };
+      return { type: 'checkPermissionsHotspot' };
     }
     case 'registration': {
       const userData = req.data as ICreateUsersParams;
       console.log('registration|req.data=', userData);
       const userId = await createUser(userData);
       console.log('registration|userId=', userId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, userId },
-      };
+      return { type, userId };
     }
     case 'createKombainer': {
       const kombainerData = req.data as ICreateKombainerParams;
       console.log('createKombainer|req.data=', kombainerData);
       const userId = await createKombainer(kombainerData);
       console.log('createKombainer|userId=', userId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type },
-      };
+      return { type };
     }
     case 'editKombainer': {
       const editData = req.data as IEditKombainerParams;
@@ -193,24 +182,14 @@ const _handleReqMessage = async (
       }
       const updatedId = await editKombainer(editData);
       console.log('editKombainer|updatedId=', updatedId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type },
-      };
+      return { type };
     }
     case 'createVoditel': {
       const voditelData = req.data as ICreateVoditelParams;
       console.log('createVoditel|req.data=', voditelData);
       const userId = await createVoditel(voditelData);
       console.log('createVoditel|userId=', userId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type },
-      };
+      return { type };
     }
     case 'editVoditel': {
       const editData = req.data as IEditVoditelParams;
@@ -219,12 +198,7 @@ const _handleReqMessage = async (
       console.log('editVoditel|voditelData=', voditelRecord);
       const updatedId = await editVoditel(editData);
       console.log('editVoditel|updatedId=', updatedId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type },
-      };
+      return { type };
     }
     case 'needRedirect': {
       const path = needRedirect;
@@ -234,15 +208,10 @@ const _handleReqMessage = async (
       needRedirectPayload = null;
       needRedirectStatus = 'empty';
       return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: {
-          type,
-          status,
-          path: path || '', // Provide empty string as fallback when path is null
-          payload,
-        },
+        type,
+        status,
+        path: path || '',
+        payload: payload || undefined,
       };
     }
     case 'currentUser': {
@@ -250,17 +219,12 @@ const _handleReqMessage = async (
       console.log('currentUser|currentUserId=', currentUserId);
       if (!currentUserId) {
         return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type,
-            status: 'noAuth',
-            userData: null,
-            kombainerData: null,
-            kombainerUserData: null,
-            voditelData: null,
-          },
+          type,
+          status: 'noAuth' as const,
+          userData: null,
+          kombainerData: null,
+          kombainerUserData: null,
+          voditelData: null,
         };
       }
       let userData: ICreateUsersParams;
@@ -270,17 +234,12 @@ const _handleReqMessage = async (
       } catch (e) {
         if (!(e instanceof NotFoundError)) throw e;
         return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type,
-            status: 'noAuth',
-            userData: null,
-            kombainerData: null,
-            kombainerUserData: null,
-            voditelData: null,
-          },
+          type,
+          status: 'noAuth' as const,
+          userData: null,
+          kombainerData: null,
+          kombainerUserData: null,
+          voditelData: null,
         };
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
@@ -288,40 +247,23 @@ const _handleReqMessage = async (
       const voditelData = await getVoditelByUserId(currentUserId);
       console.log('currentUser|voditelData=', voditelData);
       return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: {
-          type,
-          status: 'authOk',
-          userData,
-          kombainerData,
-          kombainerUserData: userData,
-          voditelData,
-        },
+        type,
+        status: 'authOk' as const,
+        userData,
+        kombainerData,
+        kombainerUserData: userData,
+        voditelData,
       };
     }
-    // Открытие сканера QR
     case 'openCodeScannerPage': {
       console.log('openCodeScannerPage|req.data=', req);
       const hasCameraAudioPermissions = await checkCameraAudioPermissions();
       if (!hasCameraAudioPermissions) {
         console.error('openCodeScannerPage|Нет разрешений для камеры и аудио');
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: 'Нет разрешений для камеры и аудио' },
-        };
+        throw new Error('Нет разрешений для камеры и аудио');
       }
-      // Отправляем событие, которое можно отловить в главном компоненте приложения для навигации на экран сканера QR
       DeviceEventEmitter.emit('openCodeScannerPage');
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, status: 'scannerOpened' },
-      };
+      return { type, status: 'scannerOpened' };
     }
     case 'isHotspotEnabled': {
       console.log('isHotspotEnabled|Checking hotspot status for React Native');
@@ -330,22 +272,12 @@ const _handleReqMessage = async (
 
         if (!HotspotBridge) {
           console.log('isHotspotEnabled|HotspotBridge not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'isHotspotEnabled', status: 'stopped' },
-          };
+          return { type: 'isHotspotEnabled', status: 'stopped' };
         }
 
         if (!HotspotBridge.getHotspotStatus) {
           console.log('isHotspotEnabled|HotspotBridge.getHotspotStatus not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'isHotspotEnabled', status: 'stopped' },
-          };
+          return { type: 'isHotspotEnabled', status: 'stopped' };
         }
 
         // Вызываем нативный метод getHotspotStatus
@@ -353,20 +285,10 @@ const _handleReqMessage = async (
         const statusRes = JSON.parse(statusResStr);
         console.log('isHotspotEnabled|statusRes=', statusRes);
 
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'isHotspotEnabled', status: statusRes.status },
-        };
+        return { type: 'isHotspotEnabled', status: statusRes.status };
       } catch (error) {
         console.error('isHotspotEnabled error:', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve', // Возвращаем resolve, а не reject для обратной совместимости
-          res: { type: 'isHotspotEnabled', status: 'stopped' },
-        };
+        return { type: 'isHotspotEnabled', status: 'stopped' };
       }
     }
     case 'setHotspotEnabled': {
@@ -376,21 +298,11 @@ const _handleReqMessage = async (
 
         if (!HotspotBridge) {
           console.log('setHotspotEnabled|HotspotBridge not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            error: { message: 'HotspotBridge not available' },
-          };
+          throw new Error('HotspotBridge not available');
         }
         if (!HotspotBridge.startHotspot) {
           console.log('setHotspotEnabled|HotspotBridge.startHotspot not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            error: { message: 'HotspotBridge.startHotspot not available' },
-          };
+          throw new Error('HotspotBridge.startHotspot not available');
         }
 
         // Вызываем нативный метод startHotspot
@@ -401,36 +313,21 @@ const _handleReqMessage = async (
         // Обрабатываем ответ так же, как в WebView-версии
         if (startRes.status === 'error') {
           return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            res: {
-              type: 'setHotspotEnabled',
-              status: startRes.status,
-              error: startRes.error,
-            },
+            type: 'setHotspotEnabled',
+            status: startRes.status,
+            error: startRes.error,
           };
         } else {
           return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: {
-              type: 'setHotspotEnabled',
-              status: startRes.status,
-              ssid: startRes.ssid,
-              password: startRes.password,
-            },
+            type: 'setHotspotEnabled',
+            status: startRes.status,
+            ssid: startRes.ssid,
+            password: startRes.password,
           };
         }
       } catch (error) {
         console.error('setHotspotEnabled error:', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || 'Ошибка при включении hotspot' },
-        };
+        throw new Error(error.message || 'Ошибка при включении hotspot');
       }
     }
     case 'setHotspotDisabled': {
@@ -440,22 +337,12 @@ const _handleReqMessage = async (
 
         if (!HotspotBridge) {
           console.log('setHotspotDisabled|HotspotBridge not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'setHotspotDisabled', state: 'stopped' },
-          };
+          return { type: 'setHotspotDisabled', state: 'stopped' };
         }
 
         if (!HotspotBridge.stopHotspot) {
           console.log('setHotspotDisabled|HotspotBridge.stopHotspot not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'setHotspotDisabled', state: 'stopped' },
-          };
+          return { type: 'setHotspotDisabled', state: 'stopped' };
         }
 
         // Вызываем нативный метод stopHotspot
@@ -463,20 +350,10 @@ const _handleReqMessage = async (
         const stopRes = JSON.parse(stopResStr);
         console.log('setHotspotDisabled|stopRes=', stopRes);
 
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'setHotspotDisabled', state: stopRes.status },
-        };
+        return { type: 'setHotspotDisabled', state: stopRes.status };
       } catch (error) {
         console.error('setHotspotDisabled error:', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve', // Возвращаем resolve, а не reject для обратной совместимости
-          res: { type: 'setHotspotDisabled', state: 'error' },
-        };
+        return { type: 'setHotspotDisabled', state: 'error' };
       }
     }
     case 'pushUserId': {
@@ -487,42 +364,22 @@ const _handleReqMessage = async (
 
         if (!HotspotBridge) {
           console.log('pushUserId|HotspotBridge not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'pushUserId', success: false },
-          };
+          return { type: 'pushUserId', success: false };
         }
 
         if (!HotspotBridge.setUserId) {
           console.log('pushUserId|HotspotBridge.setUserId not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'resolve',
-            res: { type: 'pushUserId', success: false },
-          };
+          return { type: 'pushUserId', success: false };
         }
 
         // Вызываем нативный метод setUserId
         await HotspotBridge.setUserId(userId);
         console.log('pushUserId|User ID set successfully:', userId);
 
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'pushUserId', success: true },
-        };
+        return { type: 'pushUserId', success: true };
       } catch (error) {
         console.error('pushUserId error:', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'pushUserId', success: false },
-        };
+        return { type: 'pushUserId', success: false };
       }
     }
     // Присоединение к существующему хотспоту
@@ -534,22 +391,12 @@ const _handleReqMessage = async (
 
         if (!HotspotBridge) {
           console.log('joinHotspot|HotspotBridge not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            error: { message: 'HotspotBridge not available' },
-          };
+          throw new Error('HotspotBridge not available');
         }
 
         if (!HotspotBridge.joinHotspot) {
           console.log('joinHotspot|HotspotBridge.joinHotspot not available');
-          return {
-            reqId,
-            type: 'sendPostResponse',
-            resType: 'reject',
-            error: { message: 'HotspotBridge.joinHotspot not available' },
-          };
+          throw new Error('HotspotBridge.joinHotspot not available');
         }
 
         // Вызываем нативный метод joinHotspot
@@ -557,20 +404,12 @@ const _handleReqMessage = async (
         const joinRes = JSON.parse(joinResStr);
         console.log('joinHotspot|joinRes=', joinRes);
 
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'joinHotspot', status: 'joining' },
-        };
+        return { type: 'joinHotspot', status: 'joining' };
       } catch (error) {
         console.error('joinHotspot error:', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || 'Ошибка при присоединении к hotspot' },
-        };
+        const errorMessage =
+          error instanceof Error ? error.message : 'Ошибка при присоединении к hotspot';
+        throw new Error(errorMessage);
       }
     }
     case 'userData': {
@@ -583,124 +422,54 @@ const _handleReqMessage = async (
       console.log('userData|data=', userData);
       const kombainerData = await getKombainerByUserId(currentUserId);
       console.log('userData|kombainerData=', kombainerData);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, userData },
-      };
+      return { type, userData };
     }
     case 'enableKeepAwake': {
       console.log('enableKeepAwake|активация удержания экрана');
       KeepAwake.activate();
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'enableKeepAwake' },
-      };
+      return { type };
     }
     case 'disableKeepAwake': {
       console.log('disableKeepAwake|деактивация удержания экрана');
       KeepAwake.deactivate();
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'disableKeepAwake' },
-      };
+      return { type };
     }
     case 'startTcpServer': {
       try {
         const message = await startTcpServer();
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'startTcpServer', message },
-        };
-      } catch (error: any) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        return { type, message };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMessage);
       }
     }
     case 'stopTcpServer': {
       try {
         const message = await stopTcpServer();
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'stopTcpServer', message },
-        };
-      } catch (error: any) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        return { type, message };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMessage);
       }
     }
     case 'connectToTcpServer': {
       try {
         const message = await connectToTcpServer({ ip: req.ip });
         console.log('connectToTcpServer|message=', message);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'connectToTcpServer', message },
-        };
-      } catch (error: any) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        return { type, message };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMessage);
       }
     }
     case 'sendTcpRequest': {
       try {
         const data: ISendTcpResponseData = await sendTcpRequest(req.data);
         console.log('sendTcpRequest|data=', data);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'sendTcpRequest', data },
-        };
-      } catch (error: any) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
-      }
-    }
-    case 'tcpServerSendRequest': {
-      try {
-        const data: ISendTcpResponseData = await tcpServerSendRequest(req.data);
-        console.log('sendTcpRequest|data=', data);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: { type: 'sendTcpRequest', data },
-        };
-      } catch (error: any) {
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        return { type, data };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMessage);
       }
     }
     case 'createTalon': {
@@ -708,154 +477,86 @@ const _handleReqMessage = async (
       console.log('createTalon|req.data=', talonData);
       const talonId = await createTalon(talonData);
       console.log('createTalon|talonId=', talonId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talonId },
-      };
+      return { type, talonId };
     }
-
     case 'editTalon': {
       const editData = req.data as IEditTalonParams;
       console.log('editTalon|req.data=', editData);
       const talonId = await editTalon(editData);
       console.log('editTalon|talonId=', talonId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talonId },
-      };
+      return { type, talonId };
     }
-
     case 'assignDriverToTalon': {
       const { talonId, voditelId } = req.data as { talonId: string; voditelId: string };
       console.log('assignDriverToTalon|req.data=', { talonId, voditelId });
       const updatedTalonId = await assignDriverToTalon(talonId, voditelId);
       console.log('assignDriverToTalon|updatedTalonId=', updatedTalonId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talonId: updatedTalonId },
-      };
+      return { type, talonId: updatedTalonId };
     }
-
     case 'updateTalonStatus': {
       const { talonId, status } = req.data as { talonId: string; status: TalonStatus };
       console.log('updateTalonStatus|req.data=', { talonId, status });
       const updatedTalonId = await updateTalonStatus(talonId, status);
       console.log('updateTalonStatus|updatedTalonId=', updatedTalonId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talonId: updatedTalonId },
-      };
+      return { type, talonId: updatedTalonId };
     }
-
     case 'updateTalonWeight': {
       const { talonId, weight } = req.data as { talonId: string; weight: number };
       console.log('updateTalonWeight|req.data=', { talonId, weight });
       const updatedTalonId = await updateTalonWeight(talonId, weight);
       console.log('updateTalonWeight|updatedTalonId=', updatedTalonId);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talonId: updatedTalonId },
-      };
+      return { type, talonId: updatedTalonId };
     }
-
     case 'getTalonById': {
       const { talonId } = req.data as { talonId: string };
       console.log('getTalonById|req.data=', { talonId });
       const talon = await getTalonById(talonId);
       console.log('getTalonById|talon=', talon);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'getTalonById', talon },
-      };
+      return { type: 'getTalonById', talon };
     }
-
     case 'getTalonsByKombainerId': {
       const { kombainerId } = req.data as { kombainerId: string };
       console.log('getTalonsByKombainerId|req.data=', { kombainerId });
       const talons = await getTalonsByKombainerId(kombainerId);
       console.log('getTalonsByKombainerId|talons.length=', talons.length);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type: 'getTalonsByKombainerId', talons },
-      };
+      return { type: 'getTalonsByKombainerId', talons };
     }
-
     case 'getTalonsByVoditelId': {
       const { voditelId } = req.data as { voditelId: string };
       console.log('getTalonsByVoditelId|req.data=', { voditelId });
       const talons = await getTalonsByVoditelId(voditelId);
       console.log('getTalonsByVoditelId|talons.length=', talons.length);
-      return {
-        reqId,
-        type: 'sendPostResponse',
-        resType: 'resolve',
-        res: { type, talons },
-      };
+      return { type, talons };
     }
-
     case 'checkUserRegistration': {
-      // Проверка, зарегистрирован ли пользователь
       try {
         const currentUserId = await getConfig('currentUserId');
         console.log('checkUserRegistration|currentUserId=', currentUserId);
 
-        // Если ID пользователя есть в конфигурации, проверяем существование записи
         if (currentUserId) {
           try {
             const userData = await getUserById(currentUserId);
             return {
-              reqId,
-              type: 'sendPostResponse',
-              resType: 'resolve',
-              res: {
-                type,
-                isRegistered: true,
-                userData,
-              },
+              type,
+              isRegistered: true,
+              userData,
             };
           } catch (error) {
-            // Если пользователь не найден, сбрасываем ID в конфигурации
             if (error instanceof NotFoundError) {
               await setConfig({ key: 'currentUserId', value: null });
             }
           }
         }
 
-        // Если пользователь не найден или ID отсутствует
         return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type,
-            isRegistered: false,
-          },
+          type,
+          isRegistered: false,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('checkUserRegistration|error=', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        throw error;
       }
     }
-
     case 'updateUserProfile': {
       try {
         const { userId, fio, phone, position } = req.data as {
@@ -867,32 +568,27 @@ const _handleReqMessage = async (
 
         console.log('updateUserProfile|req.data=', { userId, fio, phone, position });
 
-        // Проверяем существование пользователя
         await getUserById(userId);
-
-        // Обновляем данные пользователя
         const updatedUserId = await editUser(userId, fio, phone, position);
         console.log('updateUserProfile|updatedUserId=', updatedUserId);
 
         return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'resolve',
-          res: {
-            type,
-            userId: updatedUserId,
-            status: 'ok',
-          },
+          type,
+          userId: updatedUserId,
+          status: 'ok' as const,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('updateUserProfile|error=', error);
-        return {
-          reqId,
-          type: 'sendPostResponse',
-          resType: 'reject',
-          error: { message: error.message || JSON.stringify(error) },
-        };
+        throw error;
       }
+    }
+    case 'setNeedRedirect': {
+      const { data } = req;
+      console.log('setNeedRedirect|data=', data);
+      needRedirect = data;
+      needRedirectStatus = 'ok';
+      needRedirectPayload = null;
+      return { type };
     }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
@@ -924,17 +620,24 @@ export const handleMessage = async (
 
   try {
     const res = await _handleReqMessage(messageData);
-    return res;
-  } catch (error: any) {
+    // Оборачиваем упрощённый ответ в полную структуру ISendPostResponse
+    return {
+      reqId,
+      type: 'sendPostResponse',
+      resType: 'resolve',
+      res: res as never,
+    };
+  } catch (error: unknown) {
     if (error instanceof VoidAndNotError) {
       throw error;
     }
     console.error('_handleReqMessage error:', error);
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
     return {
       reqId,
       type: 'sendPostResponse',
       resType: 'reject',
-      error: { message: error.message || JSON.stringify(error) },
+      error: { message: errorMessage },
     };
   }
 };

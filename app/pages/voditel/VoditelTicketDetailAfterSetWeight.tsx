@@ -112,6 +112,8 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
             },
             reqId: Date.now().toString(),
           });
+          console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|response=', response);
+
           tcpResponse = response;
           console.log(
             'VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=',
