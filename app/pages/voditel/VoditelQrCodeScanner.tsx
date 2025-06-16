@@ -87,17 +87,17 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
             }
             console.log('onCodeScanned|joinData=', joinData);
 
-            // Если подключение успешно, возвращается IP-адрес
-            // Можно, например, сохранить его или передать в другой модуль
-            const joinPayload: JoinHotspotPayload = {
-              ip: joinDataRes, // используем исходную строку с IP
-            };
-            setNeedRedirect('voditel', joinPayload);
+            // // Если подключение успешно, возвращается IP-адрес
+            // // Можно, например, сохранить его или передать в другой модуль
+            // const joinPayload: JoinHotspotPayload = {
+            //   ip: joinDataRes, // используем исходную строку с IP
+            // };
+            // setNeedRedirect('voditel', joinPayload);
 
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'MainScreen' }],
-            });
+            // navigation.reset({
+            //   index: 0,
+            //   routes: [{ name: 'MainScreen' }],
+            // });
           })
           .catch((err: any) => {
             Alert.alert('Ошибка', err.message || 'Не удалось подключиться к сети');

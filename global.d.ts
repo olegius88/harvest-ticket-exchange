@@ -360,6 +360,11 @@ export interface ISendTcpRequest {
   data: ISendTcpRequestData;
 }
 
+export interface ISendTcpRequestData {
+  type: string;
+  [key: string]: unknown;
+}
+
 export interface ISendTcpResponse {
   type: 'sendTcpRequest';
   data: ISendTcpResponseData;

@@ -30,6 +30,7 @@ import {
   SendTcpRequestResponse,
   ICreateUserParams,
 } from '../../../global';
+import { sendTcpRequest } from '../../wifi/TcpClient';
 
 interface KombainerTicketDetailAfterVoditelConfirmProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -240,25 +241,14 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
 
     try {
-      // Отправляем запрос на подключение к TCP-серверу
-      const tcpResult = await handleMessage({
-        req: {
-          type: 'sendTcpRequest',
-          data: {
-            type: 'set_talon_of_kombainer',
-            kombainerData: data.kombainerData,
-            userData: data.userData,
-            weight: parseFloat(weightValue),
-          },
-        },
-        reqId: 'set_talon_of_kombainer_' + Date.now(),
+      // Отправляем запрос через TCP
+      const tcpResponse = await sendTcpRequest({
+        type: 'set_talon_of_kombainer',
+        kombainerData: data.kombainerData,
+        userData: data.userData,
+        weight: parseFloat(weightValue),
       });
 
-      if (tcpResult.type !== 'sendTcpRequest') {
-        throw new Error('TCP request failed');
-      }
-
-      const tcpResponse = tcpResult as SendTcpRequestResponse;
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
 
       // Успешно отправили данные - переходим на экран ожидания подтверждения веса водителем

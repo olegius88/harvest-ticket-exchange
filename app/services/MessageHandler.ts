@@ -60,7 +60,7 @@ import {
   SendError,
 } from '../exceptions/exceptionsClasses';
 import { startTcpServer, stopTcpServer, tcpServerSendRequest } from '../wifi/TcpServer';
-import { connectToTcpServer, sendTcpRequest } from '../wifi/TcpClient';
+import { connectToTcpServer } from '../wifi/TcpClient';
 
 // Глобальные переменные для перенаправления
 export let needRedirect: string | null;

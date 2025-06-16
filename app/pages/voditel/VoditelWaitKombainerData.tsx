@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { handleMessage } from '../../services/MessageHandler';
-import {
-  ISendPostResponseCurrentUser,
-  ISendTcpResponse,
-  SendTcpRequestResponse,
-} from '../../../global';
+import { sendTcpRequest } from '../../wifi/TcpClient';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
@@ -46,22 +41,10 @@ const VoditelWaitKombainerData: React.FC = () => {
     // Функция для проверки статуса подтверждения от комбайнера
     const checkKombainerConfirmation = async () => {
       try {
-        const response = await handleMessage({
-          req: {
-            type: 'sendTcpRequest',
-            data: {
-              type: 'get_kombainer_data',
-            },
-          },
-          reqId: 'check_kombainer_weight_' + Date.now(),
+        const tcpData = await sendTcpRequest({
+          type: 'get_kombainer_data',
         });
 
-        if (response.type !== 'sendTcpRequest') {
-          console.log('Ожидание данных от комбайнера...');
-          return;
-        }
-
-        const tcpData = response as SendTcpRequestResponse;
         console.log('VoditelWaitKombainerData|get_kombainer_data|tcpData=', tcpData);
 
         // Имитация проверки веса (в настоящей реализации мы бы правильно проверяли наличие веса)
@@ -104,21 +87,9 @@ const VoditelWaitKombainerData: React.FC = () => {
   const handleConfirm = async () => {
     try {
       setLoading(true);
-      const response = await handleMessage({
-        req: {
-          type: 'sendTcpRequest',
-          data: {
-            type: 'confirm_kombainer_ticket_with_weight',
-          },
-        },
-        reqId: 'confirm_kombainer_weight_' + Date.now(),
+      const tcpData = await sendTcpRequest({
+        type: 'confirm_kombainer_ticket_with_weight',
       });
-
-      if (response.type !== 'sendTcpRequest') {
-        throw new Error('Не удалось подтвердить вес');
-      }
-
-      const tcpData = response as SendTcpRequestResponse;
 
       // В реальном приложении здесь была бы проверка успешности операции
       if (tcpData) {
@@ -129,6 +100,7 @@ const VoditelWaitKombainerData: React.FC = () => {
           },
         ]);
       } else {
+        console.error('Не удалось подтвердить вес: ответ от сервера пустой');
         throw new Error('Сервер вернул ошибку');
       }
     } catch (error: any) {
