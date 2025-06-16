@@ -12,7 +12,11 @@ import {
   Linking,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { checkPermissionsHotspot, handleMessage } from '../../services/MessageHandler';
+import {
+  checkPermissionsHotspot,
+  handleMessage,
+  isHotspotEnabled,
+} from '../../services/MessageHandler';
 import { stopTcpServer, startTcpServer } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
@@ -67,20 +71,6 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       retryInProgress: false,
     };
   }
-
-  // Проверка включения точки доступа через API
-  isHotspotEnabled = async (): Promise<ISendPostResponseIsHotspotEnabled> => {
-    console.log('isHotspotEnabled|init');
-    const response = await handleMessage({
-      req: {
-        type: 'isHotspotEnabled',
-      },
-      reqId: 'isHotspotEnabled_' + Date.now(),
-    });
-
-    console.log('isHotspotEnabled|response=', response);
-    return response as ISendPostResponseIsHotspotEnabled;
-  };
 
   // Включение точки доступа через API
   setHotspotEnabled = async (): Promise<SetHotspotEnabledResponse> => {
@@ -148,7 +138,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     let iheRes: ISendPostResponseIsHotspotEnabled;
 
     try {
-      iheRes = await this.isHotspotEnabled();
+      iheRes = await isHotspotEnabled();
       console.log('generateQRCode|isHotspotEnabled|iheRes=', iheRes);
     } catch (e) {
       console.error('Ошибка при проверке точки доступа:', e);

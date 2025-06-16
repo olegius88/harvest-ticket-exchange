@@ -1,18 +1,20 @@
 // Файл: app/wifi/hotspot.ts
 
 import HotspotManager, { Network } from '@react-native-tethering/hotspot';
+import { isHotspotEnabled as checkHotspotStatus } from '../services/MessageHandler';
 
 export const isHotspotEnabled = async () => {
   try {
-    const state = await HotspotManager.isHotspotEnabled();
-    console.log('isHotspotEnabled|state=', state);
+    const result = await checkHotspotStatus();
+    console.log('isHotspotEnabled|state=', result.status);
     // ToastAndroid.show(`isHotspotEnabled state: ${state}`, ToastAndroid.SHORT);
-    return state;
+    return result.status === 'started';
   } catch (error) {
     // if (error instanceof TetheringError) {
     //   ToastAndroid.show(error.message, ToastAndroid.LONG);
     // }
     console.error('isHotspotEnabled|error=', error);
+    return false;
   }
 };
 

@@ -26,6 +26,7 @@ import {
   TalonStatus,
   HandleReqMessageResponse,
   TNeedRedirectPayload,
+  ISendPostResponseIsHotspotEnabled,
 } from '../../global';
 import {
   createUser,
@@ -117,6 +118,37 @@ const checkCameraAudioPermissions = async (): Promise<boolean> => {
   );
   console.log('checkCameraAudioPermissions|allGranted=', allGranted);
   return allGranted;
+};
+
+/**
+ * Проверяет статус Wi-Fi точки доступа (hotspot).
+ * @returns Информацию о статусе точки доступа
+ */
+export const isHotspotEnabled = async (): Promise<ISendPostResponseIsHotspotEnabled> => {
+  console.log('isHotspotEnabled|Checking hotspot status for React Native');
+  try {
+    const { HotspotBridge } = NativeModules;
+
+    if (!HotspotBridge) {
+      console.log('isHotspotEnabled|HotspotBridge not available');
+      return { type: 'isHotspotEnabled', status: 'stopped' };
+    }
+
+    if (!HotspotBridge.getHotspotStatus) {
+      console.log('isHotspotEnabled|HotspotBridge.getHotspotStatus not available');
+      return { type: 'isHotspotEnabled', status: 'stopped' };
+    }
+
+    // Вызываем нативный метод getHotspotStatus
+    const statusResStr = await HotspotBridge.getHotspotStatus();
+    const statusRes = JSON.parse(statusResStr);
+    console.log('isHotspotEnabled|statusRes=', statusRes);
+
+    return { type: 'isHotspotEnabled', status: statusRes.status };
+  } catch (error) {
+    console.error('isHotspotEnabled error:', error);
+    return { type: 'isHotspotEnabled', status: 'stopped' };
+  }
 };
 
 /**
@@ -264,30 +296,7 @@ const _handleReqMessage = async (
       return { type, status: 'scannerOpened' };
     }
     case 'isHotspotEnabled': {
-      console.log('isHotspotEnabled|Checking hotspot status for React Native');
-      try {
-        const { HotspotBridge } = NativeModules;
-
-        if (!HotspotBridge) {
-          console.log('isHotspotEnabled|HotspotBridge not available');
-          return { type: 'isHotspotEnabled', status: 'stopped' };
-        }
-
-        if (!HotspotBridge.getHotspotStatus) {
-          console.log('isHotspotEnabled|HotspotBridge.getHotspotStatus not available');
-          return { type: 'isHotspotEnabled', status: 'stopped' };
-        }
-
-        // Вызываем нативный метод getHotspotStatus
-        const statusResStr = await HotspotBridge.getHotspotStatus(reqId);
-        const statusRes = JSON.parse(statusResStr);
-        console.log('isHotspotEnabled|statusRes=', statusRes);
-
-        return { type: 'isHotspotEnabled', status: statusRes.status };
-      } catch (error) {
-        console.error('isHotspotEnabled error:', error);
-        return { type: 'isHotspotEnabled', status: 'stopped' };
-      }
+      return await isHotspotEnabled();
     }
     case 'setHotspotEnabled': {
       console.log('setHotspotEnabled|req=', req);
