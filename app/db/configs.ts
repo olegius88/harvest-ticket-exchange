@@ -81,9 +81,7 @@ export async function setConfig({ key, value }: IConfigParams): Promise<string> 
 export async function getConfig(key: IGetConfigParam['key']): Promise<string | null> {
   return database.read(async () => {
     const collection = database.collections.get<IConfigsParams>(Configs.table);
-    const existingConfigs = (await collection
-      .query(Q.where('key', key))
-      .fetch()) as unknown as IConfigParams[];
+    const existingConfigs = await collection.query(Q.where('key', key)).fetch();
     if (existingConfigs.length > 0) {
       return existingConfigs[0].value;
     }

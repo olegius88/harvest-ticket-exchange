@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
-import { ISendPostMessageRequest, ISendPostResponse, RootStackParamList } from '../../global';
+import { ISendPostMessageRequest, RootStackParamList } from '../../global';
 
 interface ILoginForm {
   phone: string;
@@ -73,12 +73,13 @@ const Login = () => {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
       Alert.alert(
         'Ошибка входа',
-        error?.message ||
-          'Произошла ошибка при входе. Пожалуйста, проверьте свои данные и попробуйте снова.'
+        error instanceof Error
+          ? error.message
+          : 'Произошла ошибка при входе. Пожалуйста, проверьте свои данные и попробуйте снова.'
       );
     } finally {
       setLoading(false);

@@ -12,7 +12,7 @@ import type { Routes } from '../../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from '../../views/ScanningOverlay';
-import { JoinHotspotResponse } from '../../../global';
+import { JoinHotspotResponse, JoinHotspotPayload } from '../../../global';
 import { setHotspotDisabled } from '../../wifi/hotspot';
 import { setNeedRedirect } from '../../services/MessageHandler';
 
@@ -89,7 +89,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
             // Если подключение успешно, возвращается IP-адрес
             // Можно, например, сохранить его или передать в другой модуль
-            setNeedRedirect('voditel', joinData);
+            const joinPayload: JoinHotspotPayload = {
+              ip: joinDataRes, // используем исходную строку с IP
+            };
+            setNeedRedirect('voditel', joinPayload);
 
             navigation.reset({
               index: 0,

@@ -15,6 +15,9 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { AuthStoreData } from '../../stores/AuthStore';
 import {
+  CreateKombainerResponse,
+  CurrentUserResponse,
+  EditKombainerResponse,
   IEditKombainerParams,
   IKombainerForm,
   ISendPostResponseCurrentUser,
@@ -56,11 +59,11 @@ const KombainerRegistration: React.FC = () => {
           reqId: 'getCurrentUser_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'currentUser') {
           throw new Error('Failed to get current user');
         }
 
-        const currentUser = response.res as ISendPostResponseCurrentUser;
+        const currentUser = response as CurrentUserResponse;
 
         if (currentUser.kombainerData) {
           setEditing(true);
@@ -137,11 +140,11 @@ const KombainerRegistration: React.FC = () => {
         reqId: 'getCurrentUserForSubmit_' + Date.now(),
       });
 
-      if (currentUserResponse.resType !== 'resolve') {
+      if (currentUserResponse.type !== 'currentUser') {
         throw new Error('Failed to get current user for submit');
       }
 
-      const currentUser = currentUserResponse.res as ISendPostResponseCurrentUser;
+      const currentUser = currentUserResponse as CurrentUserResponse;
       const { userData, kombainerData } = currentUser;
 
       if (!userData) {
@@ -169,7 +172,7 @@ const KombainerRegistration: React.FC = () => {
           reqId: 'editKombainer_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'editKombainer') {
           throw new Error('Failed to edit kombainer');
         }
 
@@ -184,7 +187,7 @@ const KombainerRegistration: React.FC = () => {
           reqId: 'createKombainer_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'createKombainer') {
           throw new Error('Failed to create kombainer');
         }
 

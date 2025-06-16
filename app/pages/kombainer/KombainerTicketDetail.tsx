@@ -11,11 +11,7 @@ import {
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
-import {
-  ISendPostResponseCurrentUser,
-  PositionOptionValue,
-  RootStackParamList,
-} from '../../../global';
+import { CurrentUserResponse, PositionOptionValue, RootStackParamList } from '../../../global';
 
 /**
  * Страница "Талон комбайнера N"
@@ -23,7 +19,7 @@ import {
 const KombainerTicketDetail: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ISendPostResponseCurrentUser | null>(null);
+  const [data, setData] = useState<CurrentUserResponse | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,14 +33,15 @@ const KombainerTicketDetail: React.FC = () => {
           reqId: 'getCurrentUser_' + Date.now(),
         });
 
-        if (response.resType === 'resolve') {
-          setData(response.res as ISendPostResponseCurrentUser);
+        if (response.type === 'currentUser') {
+          setData(response);
         } else {
           throw new Error('Failed to get current user');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Ошибка загрузки данных:', error);
-        Alert.alert('Ошибка', 'Не удалось загрузить данные комбайнера. Попробуйте еще раз.');
+        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+        Alert.alert('Ошибка', `Не удалось загрузить данные комбайнера. ${errorMessage}`);
       } finally {
         setLoading(false);
       }

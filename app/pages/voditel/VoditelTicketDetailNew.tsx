@@ -11,6 +11,7 @@ import {
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import {
+  CurrentUserResponse,
   ICreateKombainerParams,
   ICreateUserParams,
   ISendPostResponseCurrentUser,
@@ -18,6 +19,7 @@ import {
   ITcpResponseConfirmKombainerTicket,
   ITcpResponseKombainerData,
   RootStackParamList,
+  SendTcpRequestResponse,
 } from '../../../global';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -49,7 +51,7 @@ const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
 const VoditelTicketDetail: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ISendPostResponseCurrentUser | null>(null);
+  const [data, setData] = useState<CurrentUserResponse | null>(null);
 
   /**
    * Метод для получения данных текущего пользователя и отправки TCP-запроса
@@ -66,11 +68,11 @@ const VoditelTicketDetail: React.FC = () => {
         reqId: 'currentUser_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'currentUser') {
         throw new Error('Failed to fetch current user');
       }
 
-      const currentUser = response.res as ISendPostResponseCurrentUser;
+      const currentUser = response as CurrentUserResponse;
       console.log('VoditelTicketDetail|currentUser=', currentUser);
 
       // В зависимости от контекста (для водителя) отправляем запрос за данными комбайнера
@@ -86,17 +88,17 @@ const VoditelTicketDetail: React.FC = () => {
             reqId: 'sendTcpRequest_get_kombainer_data_' + Date.now(),
           });
 
-          if (tcpResponse.resType !== 'resolve') {
+          if (tcpResponse.type !== 'sendTcpRequest') {
             throw new Error('Failed to get kombainer data');
           }
 
-          console.log('VoditelTicketDetail|tcpResponse=', tcpResponse.res);
-          const tcpData = tcpResponse.res as ISendTcpResponse;
+          console.log('VoditelTicketDetail|tcpResponse=', tcpResponse.data);
+          const tcpData = tcpResponse as SendTcpRequestResponse;
           const kombainerData = (tcpData.data as ITcpResponseKombainerData).kombainerData;
           const kombainerUserData = (tcpData.data as ITcpResponseKombainerData).kombainerUserData;
 
           // Обновляем данные текущего пользователя, подставляя полученные данные комбайнера
-          const updatedUser: ISendPostResponseCurrentUser = {
+          const updatedUser: CurrentUserResponse = {
             ...currentUser,
             kombainerData,
             kombainerUserData,
@@ -149,11 +151,11 @@ const VoditelTicketDetail: React.FC = () => {
         reqId: 'sendTcpRequest_confirm_kombainer_ticket_' + Date.now(),
       });
 
-      if (tcpResponse.resType !== 'resolve') {
+      if (tcpResponse.type !== 'sendTcpRequest') {
         throw new Error('Failed to confirm kombainer ticket');
       }
 
-      const tcpData = tcpResponse.res as ISendTcpResponse;
+      const tcpData = tcpResponse as SendTcpRequestResponse;
       const sendRes = tcpData.data as ITcpResponseConfirmKombainerTicket;
 
       if (sendRes.status !== 'ok') {

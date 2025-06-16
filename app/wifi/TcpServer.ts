@@ -13,7 +13,7 @@ let activeSockets: TcpSocket.Socket[] = [];
 // Интерфейс для сообщений с ID
 interface IMessageWithId {
   messageId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Map для хранения pending запросов от сервера к клиенту
@@ -75,7 +75,7 @@ export const startTcpServer = (): Promise<string> => {
           const pendingRequest = pendingServerRequests.get(message.messageId)!;
           clearTimeout(pendingRequest.timeout);
           pendingServerRequests.delete(message.messageId);
-          pendingRequest.resolve(message as ISendTcpResponseData);
+          pendingRequest.resolve(message as unknown as ISendTcpResponseData);
           return;
         }
 
@@ -88,7 +88,7 @@ export const startTcpServer = (): Promise<string> => {
         // Обрабатываем обычное сообщение
         let res;
         try {
-          res = await onTcpMessage(message as ISendTcpRequestData);
+          res = await onTcpMessage(message as unknown as ISendTcpRequestData);
         } catch (error) {
           console.error('startTcpServer|onTcpMessage|error=', error);
           ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);

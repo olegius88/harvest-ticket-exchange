@@ -12,10 +12,12 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
 import { AuthStoreData } from '../stores/AuthStore';
 import {
-  ISendPostResponseCurrentUser,
-  ISendPostResponseNeedRedirect,
-  ISendTcpResponse,
+  CurrentUserResponse,
+  NeedRedirectResponse,
+  SendTcpRequestResponse,
   ITcpResponseConnectEstablishedOk,
+  CheckUserRegistrationResponse,
+  JoinHotspotPayload,
   JoinHotspotResponse,
   PositionOptionValue,
   RootStackParamList,
@@ -69,13 +71,13 @@ const Main = () => {
           reqId: 'checkUserRegistration_' + Date.now(),
         });
 
-        if (response.resType === 'resolve') {
-          const result = response.res as { isRegistered: boolean; userData?: any };
+        if (response.type === 'checkUserRegistration') {
+          const result = response as CheckUserRegistrationResponse;
           setIsUserRegistered(!!result.isRegistered);
         } else {
           setIsUserRegistered(false);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Ошибка при проверке регистрации пользователя:', error);
         setIsUserRegistered(false);
       } finally {
@@ -97,23 +99,22 @@ const Main = () => {
           reqId: 'needRedirect_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'needRedirect') {
           console.error('Main|needRedirect|error response:', response);
           return;
         }
 
-        const redirectResponse = response.res as ISendPostResponseNeedRedirect;
-        console.log('Main|needRedirect|response =', redirectResponse);
+        console.log('Main|needRedirect|response =', response);
 
-        if (redirectResponse.status === 'empty') {
+        if (response.status === 'empty') {
           return;
         }
 
-        if (!redirectResponse.path) {
-          console.error('Main|needRedirect|!response.path|response=', redirectResponse);
+        if (!response.path) {
+          console.error('Main|needRedirect|!response.path|response=', response);
           Alert.alert(
             'Ошибка подключения к устройству',
-            `Не был получен корректный 'needRedirect': ${JSON.stringify(redirectResponse)}`
+            `Не был получен корректный 'needRedirect': ${JSON.stringify(response)}`
           );
           return;
         }
@@ -123,17 +124,18 @@ const Main = () => {
           await handleMessage({
             req: {
               type: 'connectToTcpServer',
-              ip: (redirectResponse.payload as JoinHotspotResponse).ip,
+              ip: (response.payload as JoinHotspotPayload).ip,
             },
             reqId: 'connectToTcpServer_' + Date.now(),
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Main|needRedirect|error =', error);
-          Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
+          const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+          Alert.alert('Ошибка подключения к устройству', errorMessage);
           return;
         }
 
-        let tcpResponse;
+        let tcpResponse: SendTcpRequestResponse;
         try {
           // Отправляем запрос на подключение к TCP-серверу
           const tcpResponseResult = await handleMessage({
@@ -146,13 +148,14 @@ const Main = () => {
             reqId: 'sendTcpRequest_' + Date.now(),
           });
 
-          if (tcpResponseResult.resType !== 'resolve') {
+          if (tcpResponseResult.type !== 'sendTcpRequest') {
             throw new Error('TCP request failed');
           }
-          tcpResponse = tcpResponseResult.res as ISendTcpResponse;
-        } catch (error: any) {
+          tcpResponse = tcpResponseResult;
+        } catch (error: unknown) {
           console.error('Main|needRedirect|tcp test error =', error);
-          Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
+          const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+          Alert.alert('Ошибка подключения к устройству', errorMessage);
           return;
         }
 
@@ -168,7 +171,7 @@ const Main = () => {
           return;
         }
 
-        AuthStoreData.context = redirectResponse.path as PositionOptionValue;
+        AuthStoreData.context = response.path as PositionOptionValue;
 
         if (!AuthStoreData.context) {
           Alert.alert(
@@ -178,7 +181,7 @@ const Main = () => {
           return;
         }
 
-        let currentUser: ISendPostResponseCurrentUser;
+        let currentUser: CurrentUserResponse;
         try {
           // Отправляем запрос на получение данных текущего пользователя
           const currentUserResponse = await handleMessage({
@@ -189,16 +192,14 @@ const Main = () => {
             reqId: 'currentUser_' + Date.now(),
           });
 
-          if (currentUserResponse.resType !== 'resolve') {
+          if (currentUserResponse.type !== 'currentUser') {
             throw new Error('Current user request failed');
           }
-          currentUser = currentUserResponse.res as ISendPostResponseCurrentUser;
-        } catch (error: any) {
+          currentUser = currentUserResponse;
+        } catch (error: unknown) {
           console.error('Main|needRedirect|currentUser|error =', error);
-          Alert.alert(
-            'Ошибка получения данных текущего пользователя',
-            error.message || JSON.stringify(error)
-          );
+          const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+          Alert.alert('Ошибка получения данных текущего пользователя', errorMessage);
           return;
         }
 
@@ -273,15 +274,14 @@ const Main = () => {
         reqId: 'currentUser_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'currentUser') {
         throw new Error('Current user request failed');
       }
 
-      const currentUserResponse = response.res as ISendPostResponseCurrentUser;
-      console.log('handleClick|currentUser|response=', currentUserResponse);
+      console.log('handleClick|currentUser|response=', response);
       console.log('handleClick|currentUser|context=', context);
 
-      switch (currentUserResponse.status) {
+      switch (response.status) {
         case 'noAuth':
           navigation.navigate('LoginScreen');
           return;
@@ -291,7 +291,7 @@ const Main = () => {
         case 'authOk': {
           switch (context) {
             case 'kombainer':
-              if (currentUserResponse.kombainerData) {
+              if (response.kombainerData) {
                 navigation.navigate('KombainerCreateTicketScreen');
                 return;
               }
@@ -299,7 +299,7 @@ const Main = () => {
               navigation.navigate('KombainerRegistrationScreen');
               return;
             case 'voditel':
-              if (currentUserResponse.voditelData) {
+              if (response.voditelData) {
                 // В React Native версии переходим на создание поездки
                 navigation.navigate('VoditelCreateTripScreen');
                 return;
@@ -308,23 +308,22 @@ const Main = () => {
               navigation.navigate('VoditelRegistrationScreen');
               return;
             case 'bunkerist':
-              // В React Native версии переходим на WebView
-              navigation.navigate('WebViewScreen');
+              // В React Native версии пока не реализован экран для бункериста
+              Alert.alert('Информация', 'Экран для бункериста находится в разработке');
               return;
           }
           return;
         }
         default:
-          Alert.alert('Неизвестный response.status', JSON.stringify(currentUserResponse));
+          Alert.alert('Неизвестный response.status', JSON.stringify(response));
           return;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('handleClick|error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert(
         'Ошибка авторизации',
-        `Произошла ошибка при проверке авторизации. Пожалуйста, попробуйте еще раз.\n\n${
-          error.message || ''
-        }`
+        `Произошла ошибка при проверке авторизации. Пожалуйста, попробуйте еще раз.\n\n${errorMessage}`
       );
     } finally {
       setLoading(false);
@@ -333,7 +332,7 @@ const Main = () => {
 
   const handleEditUserClick = () => {
     // TODO: Implement EditProfile screen or navigate to WebView with edit profile URL
-    navigation.navigate('EditProfileScreen');
+    Alert.alert('Информация', 'Экран редактирования профиля находится в разработке');
   };
 
   if (checkingRegistration) {

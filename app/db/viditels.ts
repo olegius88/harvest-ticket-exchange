@@ -22,10 +22,10 @@ export interface ICreateVoditeliParams extends Model, ICreateVoditelParams {
 export class Voditeli extends Model {
   static table = 'voditeli';
 
-  @field('userId') userId: string;
-  @field('transport') transport: string;
-  @field('created_at') created_at: number;
-  @field('updated_at') updated_at: number;
+  @field('userId') userId!: string;
+  @field('transport') transport!: string;
+  @field('created_at') created_at!: number;
+  @field('updated_at') updated_at!: number;
 
   static get tableSchema() {
     return tableSchema({

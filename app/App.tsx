@@ -27,7 +27,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App(): React.ReactElement {
   // Создаем реф для навигации
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   // Определение URL: сначала пытаемся взять из переменной окружения, если её нет – используем локальный файл
   const url = process.env.API_URL || 'file:///android_asset/web/index.html';

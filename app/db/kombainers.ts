@@ -22,13 +22,13 @@ export interface ICreateKombainersParams extends Model, ICreateKombainerParams {
 export class Kombainers extends Model {
   static table = 'kombainers';
 
-  @field('userId') userId: string;
-  @field('combine') combine: string;
-  @field('brigade') brigade: string;
-  @field('culture') culture: string;
-  @field('field') field: string;
-  @field('created_at') created_at: number;
-  @field('updated_at') updated_at: number;
+  @field('userId') userId!: string;
+  @field('combine') combine!: string;
+  @field('brigade') brigade!: string;
+  @field('culture') culture!: string;
+  @field('field') field!: string;
+  @field('created_at') created_at!: number;
+  @field('updated_at') updated_at!: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -130,7 +130,9 @@ export async function getKombainerById(kombainerId: string): Promise<ICreateKomb
 /**
  * Получить запись для конкретного userId.
  */
-export async function getKombainerByUserId(userId: string): Promise<ICreateKombainersParams> {
+export async function getKombainerByUserId(
+  userId: string
+): Promise<ICreateKombainersParams | null> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateKombainersParams>(Kombainers.table);
     const results = await collection.query(Q.where('userId', userId)).fetch();

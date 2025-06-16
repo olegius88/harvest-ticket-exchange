@@ -22,8 +22,6 @@ import {
   IEditVoditelParams,
   ILoginUserParams,
   ISendPostMessageRequest,
-  ISendPostResponse,
-  ISendPostResponseRes,
   ISendTcpResponseData,
   TalonStatus,
   HandleReqMessageResponse,
@@ -123,7 +121,7 @@ const checkCameraAudioPermissions = async (): Promise<boolean> => {
 
 /**
  * Обработчик сообщений запроса.
- * Возвращает упрощённые типы без обёртки ISendPostResponse.
+ * Возвращает упрощённые типы напрямую без обёртки.
  */
 const _handleReqMessage = async (
   eventData: ISendPostMessageRequest
@@ -325,9 +323,11 @@ const _handleReqMessage = async (
             password: startRes.password,
           };
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('setHotspotEnabled error:', error);
-        throw new Error(error.message || 'Ошибка при включении hotspot');
+        const errorMessage =
+          error instanceof Error ? error.message : 'Ошибка при включении hotspot';
+        throw new Error(errorMessage);
       }
     }
     case 'setHotspotDisabled': {
@@ -582,14 +582,6 @@ const _handleReqMessage = async (
         throw error;
       }
     }
-    case 'setNeedRedirect': {
-      const { data } = req;
-      console.log('setNeedRedirect|data=', data);
-      needRedirect = data;
-      needRedirectStatus = 'ok';
-      needRedirectPayload = null;
-      return { type };
-    }
     default:
       console.error('_handleReqMessage|eventData|switch|default|eventData=', eventData);
       throw new Error(
@@ -600,11 +592,11 @@ const _handleReqMessage = async (
 
 /**
  * Основная функция обработки сообщений для React Native.
- * Принимает ISendPostMessageRequest и возвращает ISendPostResponse.
+ * Принимает ISendPostMessageRequest и возвращает HandleReqMessageResponse напрямую без обёртки.
  */
 export const handleMessage = async (
   messageData: ISendPostMessageRequest
-): Promise<ISendPostResponse> => {
+): Promise<HandleReqMessageResponse> => {
   console.log('handleMessage|messageData=', messageData);
 
   if (!messageData) {
@@ -620,24 +612,13 @@ export const handleMessage = async (
 
   try {
     const res = await _handleReqMessage(messageData);
-    // Оборачиваем упрощённый ответ в полную структуру ISendPostResponse
-    return {
-      reqId,
-      type: 'sendPostResponse',
-      resType: 'resolve',
-      res: res as never,
-    };
+    return res;
   } catch (error: unknown) {
     if (error instanceof VoidAndNotError) {
       throw error;
     }
     console.error('_handleReqMessage error:', error);
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    return {
-      reqId,
-      type: 'sendPostResponse',
-      resType: 'reject',
-      error: { message: errorMessage },
-    };
+    throw new Error(errorMessage);
   }
 };

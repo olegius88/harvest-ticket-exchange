@@ -23,16 +23,16 @@ export interface ICreateTalonsParams extends Model, ICreateTalonParams {
 export class TalonsOfCombainers extends Model {
   static table = 'talons_of_combainers';
 
-  @field('kombainerId') kombainerId: string;
-  @field('voditelId') voditelId: string;
-  @field('status') status: string;
-  @field('startTime') startTime: number;
-  @field('endTime') endTime: number;
-  @field('weight') weight: number;
-  @field('comment') comment: string;
-  @field('talonNumber') readonly talonNumber: string;
-  @field('created_at') created_at: number;
-  @field('updated_at') updated_at: number;
+  @field('kombainerId') kombainerId!: string;
+  @field('voditelId') voditelId?: string | null;
+  @field('status') status!: string;
+  @field('startTime') startTime!: number;
+  @field('endTime') endTime?: number | null;
+  @field('weight') weight?: number | null;
+  @field('comment') comment?: string | null;
+  @field('talonNumber') talonNumber!: string;
+  @field('created_at') created_at!: number;
+  @field('updated_at') updated_at!: number;
 
   static get tableSchema() {
     return tableSchema({
@@ -105,16 +105,15 @@ export async function createTalon({
     const talonNumber = `${sequentialNumber}`;
 
     const now = Date.now();
-    const newTalon = await collection.create((record) => {
+    const newTalon = await collection.create((record: any) => {
       record._raw.id = uuid.v4();
       record.kombainerId = kombainerId.trim();
-      record.voditelId = voditelId ? voditelId.trim() : null;
+      record.voditelId = voditelId ? voditelId.trim() : undefined;
       record.status = status;
       record.startTime = startTime;
-      record.endTime = endTime || null;
-      record.weight = weight || null;
-      record.comment = comment ? comment.trim() : null;
-      // @ts-ignore
+      record.endTime = endTime || undefined;
+      record.weight = weight || undefined;
+      record.comment = comment ? comment.trim() : undefined;
       record.talonNumber = talonNumber;
       record.created_at = now;
       record.updated_at = now;
@@ -206,12 +205,12 @@ export async function editTalon({
     const now = Date.now();
     await record.update((r) => {
       r.kombainerId = kombainerId.trim();
-      r.voditelId = voditelId ? voditelId.trim() : null;
+      r.voditelId = voditelId ? voditelId.trim() : undefined;
       r.status = status;
       r.startTime = startTime;
-      r.endTime = endTime || null;
-      r.weight = weight || null;
-      r.comment = comment ? comment.trim() : null;
+      r.endTime = endTime || undefined;
+      r.weight = weight || undefined;
+      r.comment = comment ? comment.trim() : undefined;
       r.updated_at = now;
     });
     return record.id;

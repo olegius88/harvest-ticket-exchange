@@ -15,7 +15,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
-  ISendPostResponseCurrentUser,
+  CurrentUserResponse,
   PositionOptionValue,
   IKombainerForm,
   IEditKombainerParams,

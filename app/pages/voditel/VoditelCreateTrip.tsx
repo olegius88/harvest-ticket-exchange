@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
-import { RootStackParamList } from '../../../global';
+import { RootStackParamList, OpenCodeScannerResponse } from '../../../global';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
@@ -39,18 +39,19 @@ const VoditelCreateTrip: React.FC = () => {
         reqId: 'openCodeScannerPage_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type === 'openCodeScannerPage' && response.status === 'scannerOpened') {
+        // Переходим на страницу сканера QR-кода
+        navigation.navigate('CodeScannerPageScreen');
+      } else {
         throw new Error('Не удалось открыть сканер QR-кода');
       }
-
-      // Переходим на страницу сканера QR-кода
-      navigation.navigate('CodeScannerPageScreen');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Ошибка открытия сканера:', error);
-      Alert.alert(
-        'Ошибка',
-        error.message || 'Произошла неизвестная ошибка при открытии сканера QR.'
-      );
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Произошла неизвестная ошибка при открытии сканера QR.';
+      Alert.alert('Ошибка', errorMessage);
     } finally {
       // Задержка для отображения состояния загрузки
       setTimeout(() => {

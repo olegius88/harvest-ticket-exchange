@@ -417,6 +417,7 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
+  talonNumber?: string;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -761,6 +762,7 @@ export interface IPayloadSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
+  talonNumber?: string;
 }
 
 export type TNeedRedirectPayload =

@@ -1,7 +1,7 @@
 // Файл: app/wifi/TcpClient.ts
 import TcpSocket from 'react-native-tcp-socket';
 import { ToastAndroid } from 'react-native';
-import { ISendTcpResponseData } from '../../global';
+import { ISendTcpResponseData, ISendTcpRequestData } from '../../global';
 import { onTcpMessage } from './onTcpMessage';
 
 let client: TcpSocket.Socket | null = null;
@@ -9,7 +9,7 @@ let client: TcpSocket.Socket | null = null;
 // Интерфейс для сообщений с ID
 interface IMessageWithId {
   messageId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Map для хранения pending запросов от клиента к серверу
@@ -70,14 +70,14 @@ export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string
         const pendingRequest = pendingClientRequests.get(message.messageId)!;
         clearTimeout(pendingRequest.timeout);
         pendingClientRequests.delete(message.messageId);
-        pendingRequest.resolve(message as ISendTcpResponseData);
+        pendingRequest.resolve(message as unknown as ISendTcpResponseData);
         return;
       }
 
       // Обрабатываем обычное сообщение от сервера
       try {
         // Передаём полученное сообщение в onTcpMessage для обработки
-        const response = await onTcpMessage(message as any);
+        const response = await onTcpMessage(message as unknown as ISendTcpRequestData);
         // Отправляем ответ обратно на сервер
         if (client) {
           const responseWithId = {

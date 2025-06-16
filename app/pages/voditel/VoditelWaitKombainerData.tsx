@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
-import { ISendPostResponseCurrentUser, ISendTcpResponse } from '../../../global';
+import {
+  ISendPostResponseCurrentUser,
+  ISendTcpResponse,
+  SendTcpRequestResponse,
+} from '../../../global';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
@@ -52,12 +56,12 @@ const VoditelWaitKombainerData: React.FC = () => {
           reqId: 'check_kombainer_weight_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'sendTcpRequest') {
           console.log('Ожидание данных от комбайнера...');
           return;
         }
 
-        const tcpData = response.res as ISendTcpResponse;
+        const tcpData = response as SendTcpRequestResponse;
         console.log('VoditelWaitKombainerData|get_kombainer_data|tcpData=', tcpData);
 
         // Имитация проверки веса (в настоящей реализации мы бы правильно проверяли наличие веса)
@@ -110,11 +114,11 @@ const VoditelWaitKombainerData: React.FC = () => {
         reqId: 'confirm_kombainer_weight_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'sendTcpRequest') {
         throw new Error('Не удалось подтвердить вес');
       }
 
-      const tcpData = response.res as ISendTcpResponse;
+      const tcpData = response as SendTcpRequestResponse;
 
       // В реальном приложении здесь была бы проверка успешности операции
       if (tcpData) {

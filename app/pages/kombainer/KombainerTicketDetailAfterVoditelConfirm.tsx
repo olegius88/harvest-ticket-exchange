@@ -15,14 +15,18 @@ import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
 import { AuthStoreData } from '../../stores/AuthStore';
+import { ICreateUsersParams } from '../../db/users';
 import {
+  CurrentUserResponse,
   ICreateVoditelParams,
   IPayloadConfirmKombainerTicket,
   ISendPostResponseCurrentUser,
   ISendPostResponseNeedRedirect,
   ISendTcpResponse,
+  NeedRedirectResponse,
   PositionOptionValue,
   RootStackParamList,
+  SendTcpRequestResponse,
   ICreateUserParams,
 } from '../../../global';
 
@@ -34,7 +38,7 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   loading: boolean;
   confirmDataError: boolean;
   connectDataError: boolean;
-  data: ISendPostResponseCurrentUser | null;
+  data: CurrentUserResponse | null;
   voditelData: ICreateVoditelParams | null;
   voditelUserData: ICreateUserParams | null;
   isVoditelTalonConfirm: boolean;
@@ -59,6 +63,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   previousWeight: string = '';
   // Контроллер для периодического опроса данных (например, для needRedirect)
   waitingVoditelTalonConfirmCtrl: number | null = null;
+  // Контроллер для ожидания подтверждения веса водителем
+  waitingVoditelWeightConfirmCtrl: number | null = null;
 
   constructor(props: KombainerTicketDetailAfterVoditelConfirmProps) {
     super(props);
@@ -115,16 +121,20 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         reqId: 'getCurrentUser_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'currentUser') {
         throw new Error('Failed to get current user');
       }
 
       // Получаем данные водителя
-      const { voditelData, voditelUserData } = AuthStoreData.payloadVoditelConnectSuccess;
+      const payloadData = AuthStoreData.payloadVoditelConnectSuccess;
+      if (!payloadData) {
+        throw new Error('No voditel connect data available');
+      }
+      const { voditelData, voditelUserData } = payloadData;
       AuthStoreData.payloadVoditelConnectSuccess = null;
 
       this.setState({
-        data: response.res as ISendPostResponseCurrentUser,
+        data: response as CurrentUserResponse,
         voditelData,
         voditelUserData,
       });
@@ -159,15 +169,15 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         reqId: 'needRedirect_' + Date.now(),
       });
 
-      if (result.resType !== 'resolve') {
+      if (result.type !== 'needRedirect') {
         throw new Error('Failed to get needRedirect');
       }
 
-      const response = result.res as ISendPostResponseNeedRedirect;
+      const response = result as NeedRedirectResponse;
 
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|response=', response);
 
-      if (response.status === 'empty') {
+      if (!response.payload) {
         // Если данные ещё не получены – продолжаем опрос
         this.waitingVoditelTalonConfirmCtrl = setTimeout(
           () => this.waitingVoditelConfirm(),
@@ -243,11 +253,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         reqId: 'set_talon_of_kombainer_' + Date.now(),
       });
 
-      if (tcpResult.resType !== 'resolve') {
+      if (tcpResult.type !== 'sendTcpRequest') {
         throw new Error('TCP request failed');
       }
 
-      const tcpResponse = tcpResult.res as ISendTcpResponse;
+      const tcpResponse = tcpResult as SendTcpRequestResponse;
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
 
       // Успешно отправили данные - переходим на экран ожидания подтверждения веса водителем
@@ -275,18 +285,18 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         reqId: 'needRedirect_' + Date.now(),
       });
 
-      if (result.resType !== 'resolve') {
+      if (result.type !== 'needRedirect') {
         throw new Error('Failed to get needRedirect');
       }
 
-      const response = result.res as ISendPostResponseNeedRedirect;
+      const response = result as NeedRedirectResponse;
 
       console.log(
         'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|response=',
         response
       );
 
-      if (response.status === 'empty') {
+      if (!response.payload) {
         // Если данные ещё не получены – продолжаем опрос
         this.waitingVoditelWeightConfirmCtrl = setTimeout(
           () => this.waitingVoditelWeightConfirm(),

@@ -19,9 +19,12 @@ import {
   ISendPostResponseIsHotspotEnabled,
   ISendPostResponseSetHotspotEnabled,
   ISendPostResponseNeedRedirect,
+  NeedRedirectResponse,
   PositionOptionValue,
   IPayloadVoditelConnectSuccess,
   RootStackParamList,
+  SetHotspotDisabledResponse,
+  SetHotspotEnabledResponse,
 } from '../../../global';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
@@ -74,16 +77,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       reqId: 'isHotspotEnabled_' + Date.now(),
     });
 
-    if (response.resType !== 'resolve') {
-      throw new Error('Failed to check hotspot status');
-    }
-
     console.log('isHotspotEnabled|response=', response);
-    return response.res as ISendPostResponseIsHotspotEnabled;
+    return response as ISendPostResponseIsHotspotEnabled;
   };
 
   // Включение точки доступа через API
-  setHotspotEnabled = async (): Promise<ISendPostResponseSetHotspotEnabled> => {
+  setHotspotEnabled = async (): Promise<SetHotspotEnabledResponse> => {
     console.log('setHotspotEnabled|init');
     const response = await handleMessage({
       req: {
@@ -92,16 +91,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       reqId: 'setHotspotEnabled_' + Date.now(),
     });
 
-    if (response.resType !== 'resolve') {
-      throw new Error('Failed to enable hotspot');
-    }
-
     console.log('setHotspotEnabled|response=', response);
-    return response.res as ISendPostResponseSetHotspotEnabled;
+    return response as SetHotspotEnabledResponse;
   };
 
   // Отключение точки доступа через API
-  setHotspotDisabled = async (): Promise<ISendPostResponseSetHotspotEnabled> => {
+  setHotspotDisabled = async (): Promise<SetHotspotDisabledResponse> => {
     console.log('setHotspotDisabled|init');
     const response = await handleMessage({
       req: {
@@ -110,12 +105,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       reqId: 'setHotspotDisabled_' + Date.now(),
     });
 
-    if (response.resType !== 'resolve') {
+    if (response.type !== 'setHotspotDisabled') {
       throw new Error('Failed to disable hotspot');
     }
 
     console.log('setHotspotDisabled|response=', response);
-    return response.res as ISendPostResponseSetHotspotEnabled;
+    return response as SetHotspotDisabledResponse;
   };
 
   // Функция, вызываемая при покидании страницы (размонтировании компонента)
@@ -153,7 +148,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       });
     }
 
-    let sheRes: ISendPostResponseSetHotspotEnabled;
+    let sheRes: SetHotspotEnabledResponse;
     let iheRes: ISendPostResponseIsHotspotEnabled;
 
     try {
@@ -181,6 +176,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       if (!sheRes || !sheRes.ssid || !sheRes.password) {
         throw new Error('Получены неполные данные Wi-Fi (отсутствует SSID или пароль)');
       }
+
+      // Теперь можно безопасно использовать sheRes.ssid и sheRes.password
     } catch (e) {
       console.error('generateQRCode|setHotspotEnabled|error=', e);
       this.handleRetryIfNeeded('Ошибка при включении точки доступа');
@@ -282,7 +279,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       return;
     }
 
-    let response: ISendPostResponseNeedRedirect;
+    let response: NeedRedirectResponse;
     try {
       const res = await handleMessage({
         req: {
@@ -291,11 +288,11 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         reqId: 'needRedirect_' + Date.now(),
       });
 
-      if (res.resType !== 'resolve') {
+      if (res.type !== 'needRedirect') {
         throw new Error('Failed to get needRedirect');
       }
 
-      response = res.res as ISendPostResponseNeedRedirect;
+      response = res as NeedRedirectResponse;
     } catch (e) {
       console.error('KombainerQRCode|waitingVoditelData|error=', e);
       return;

@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
+import { RootStackParamList } from '../../../global';
 
 const VoditelTicketCreatedSuccess: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const handleOkPress = () => {
     navigation.navigate('VoditelCreateTripScreen');

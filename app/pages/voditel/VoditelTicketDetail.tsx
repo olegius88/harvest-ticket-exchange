@@ -8,9 +8,10 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import {
+  CurrentUserResponse,
   ICreateKombainerParams,
   ICreateUserParams,
   ISendPostResponseCurrentUser,
@@ -18,6 +19,7 @@ import {
   ITcpResponseConfirmKombainerTicket,
   ITcpResponseKombainerData,
   RootStackParamList,
+  SendTcpRequestResponse,
 } from '../../../global';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -51,22 +53,29 @@ interface NavigationProps {
 // Интерфейс состояния компонента
 interface VoditelTicketDetailState {
   loading: boolean;
-  data: ISendPostResponseCurrentUser | null;
+  data: CurrentUserResponse | null;
   weight: string;
 }
 
 /**
  * Страница "Талон комбайнера" для React Native
  */
-const VoditelTicketDetail: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [loading, setLoading] = React.useState(true);
-  const [data, setData] = React.useState<ISendPostResponseCurrentUser | null>(null);
-  const [weight, setWeight] = React.useState('');
+class VoditelTicketDetail extends Component<
+  { navigation: NavigationProp<RootStackParamList> },
+  VoditelTicketDetailState
+> {
+  constructor(props: { navigation: NavigationProp<RootStackParamList> }) {
+    super(props);
+    this.state = {
+      loading: true,
+      data: null,
+      weight: '',
+    };
+  }
 
-  React.useEffect(() => {
-    getKombainerData();
-  }, []);
+  componentDidMount() {
+    this.getKombainerData();
+  }
 
   /**
    * Метод для получения данных текущего пользователя и отправки TCP-запроса
@@ -83,11 +92,11 @@ const VoditelTicketDetail: React.FC = () => {
         reqId: 'currentUser_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'currentUser') {
         throw new Error('Failed to fetch current user');
       }
 
-      const currentUser = response.res as ISendPostResponseCurrentUser;
+      const currentUser = response as CurrentUserResponse;
       console.log('VoditelTicketDetail|currentUser=', currentUser);
 
       // В зависимости от контекста (для водителя) отправляем запрос за данными комбайнера
@@ -103,17 +112,17 @@ const VoditelTicketDetail: React.FC = () => {
             reqId: 'sendTcpRequest_get_kombainer_data_' + Date.now(),
           });
 
-          if (tcpResponse.resType !== 'resolve') {
+          if (tcpResponse.type !== 'sendTcpRequest') {
             throw new Error('Failed to get kombainer data');
           }
 
-          console.log('VoditelTicketDetail|tcpResponse=', tcpResponse.res);
-          const tcpData = tcpResponse.res as ISendTcpResponse;
+          console.log('VoditelTicketDetail|tcpResponse=', tcpResponse.data);
+          const tcpData = tcpResponse as SendTcpRequestResponse;
           const kombainerData = (tcpData.data as ITcpResponseKombainerData).kombainerData;
           const kombainerUserData = (tcpData.data as ITcpResponseKombainerData).kombainerUserData;
 
           // Обновляем данные текущего пользователя, подставляя полученные данные комбайнера
-          const updatedUser: ISendPostResponseCurrentUser = {
+          const updatedUser: CurrentUserResponse = {
             ...currentUser,
             kombainerData,
             kombainerUserData,
@@ -122,7 +131,6 @@ const VoditelTicketDetail: React.FC = () => {
           // Обновляем состояние компонента
           this.setState({ loading: false, data: updatedUser });
           console.log('VoditelTicketDetail|updatedUser=', updatedUser);
-
         } catch (error: any) {
           console.error('VoditelTicketDetail|error=', error);
           Alert.alert(
@@ -166,11 +174,11 @@ const VoditelTicketDetail: React.FC = () => {
         reqId: 'sendTcpRequest_confirm_kombainer_ticket_' + Date.now(),
       });
 
-      if (tcpResponse.resType !== 'resolve') {
+      if (tcpResponse.type !== 'sendTcpRequest') {
         throw new Error('Failed to confirm kombainer ticket');
       }
 
-      const tcpData = tcpResponse.res as ISendTcpResponse;
+      const tcpData = tcpResponse as SendTcpRequestResponse;
       const sendRes = tcpData.data as ITcpResponseConfirmKombainerTicket;
 
       if (sendRes.status !== 'ok') {
@@ -180,7 +188,6 @@ const VoditelTicketDetail: React.FC = () => {
 
       // Переходим на страницу ожидания данных от комбайнера
       this.props.navigation.navigate('VoditelWaitKombainerDataScreen');
-
     } catch (error: any) {
       console.error('VoditelTicketDetail|confirmKombainerTicket|error=', error);
       Alert.alert(
@@ -248,23 +255,13 @@ const VoditelTicketDetail: React.FC = () => {
           ))}
 
           {/* Кнопка подтверждения */}
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={this.confirmKombainerTicket}
-          >
-            <Text style={styles.submitButtonText}>
-              Подтвердить данные талона
-            </Text>
+          <TouchableOpacity style={styles.submitButton} onPress={this.confirmKombainerTicket}>
+            <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
           </TouchableOpacity>
 
           {/* Кнопка "Назад" */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={this.handleBack}
-          >
-            <Text style={styles.backButtonText}>
-              Назад
-            </Text>
+          <TouchableOpacity style={styles.backButton} onPress={this.handleBack}>
+            <Text style={styles.backButtonText}>Назад</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

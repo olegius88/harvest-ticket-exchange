@@ -1,6 +1,12 @@
 // app/wifi/onTcpMessage.ts
 
-import { ISendTcpRequestData } from '../../global';
+import {
+  ISendTcpRequestData,
+  IPayloadVoditelConnectSuccess,
+  IPayloadConfirmKombainerTicket,
+  IPayloadSetTalonOfKombainer,
+  ICreateKombainerParams,
+} from '../../global';
 import { ToastAndroid } from 'react-native';
 import { setNeedRedirect } from '../services/MessageHandler';
 import { getConfig } from '../db/configs';
@@ -24,7 +30,10 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     case 'set_voditel_data': {
       const { voditelData, voditelUserData } = message;
 
-      setNeedRedirect('kombainer', { voditelData, voditelUserData });
+      setNeedRedirect('kombainer', {
+        voditelData,
+        voditelUserData,
+      } as IPayloadVoditelConnectSuccess);
 
       return { status: 'ok' };
     }
@@ -32,7 +41,14 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     case 'set_kombainer_data': {
       const { kombainerData } = message;
 
-      setNeedRedirect('voditel', kombainerData);
+      // Создаем payload с правильной структурой для передачи данных комбайнера
+      const payload: IPayloadSetTalonOfKombainer = {
+        kombainerData,
+        userData: {} as ICreateUsersParams, // Будет заполнено позже
+        weight: 0, // Будет заполнено позже
+      };
+
+      setNeedRedirect('voditel', payload);
 
       return { status: 'ok' };
     }
@@ -40,7 +56,11 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     case 'confirm_kombainer_ticket': {
       const { voditelData, userData } = message;
 
-      setNeedRedirect('kombainer', { voditelData, userData });
+      setNeedRedirect('kombainer', {
+        voditelData,
+        userData,
+        status: 'ok',
+      } as IPayloadConfirmKombainerTicket);
 
       return { status: 'ok' };
     }
@@ -48,7 +68,8 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     case 'confirm_kombainer_ticket_with_weight': {
       // const { voditelData, userData } = message;
 
-      setNeedRedirect('kombainer', {});
+      // Передаем undefined для случая подтверждения с весом без конкретных данных
+      setNeedRedirect('kombainer', undefined);
 
       return { status: 'ok' };
     }
@@ -105,9 +126,16 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'set_talon_of_kombainer': {
       const { kombainerData, userData, weight } = message;
-      const talonNumber = (message as any).talonNumber || '';
+      const talonNumber = 'talonNumber' in message ? (message as any).talonNumber || '' : '';
 
-      setNeedRedirect('voditel', { kombainerData, userData, weight, talonNumber });
+      const payload: IPayloadSetTalonOfKombainer = {
+        kombainerData,
+        userData,
+        weight,
+        talonNumber,
+      };
+
+      setNeedRedirect('voditel', payload);
 
       return { status: 'ok' };
     }

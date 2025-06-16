@@ -12,7 +12,13 @@ import {
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { handleMessage } from '../../services/MessageHandler';
-import { IEditVoditelParams, RootStackParamList } from '../../../global';
+import {
+  IEditVoditelParams,
+  RootStackParamList,
+  CurrentUserResponse,
+  CreateVoditelResponse,
+  EditVoditelResponse,
+} from '../../../global';
 
 // Компонент логотипа
 const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
@@ -60,11 +66,11 @@ const VoditelRegistration: React.FC = () => {
           reqId: 'currentUser_' + Date.now(),
         });
 
-        if (response.resType !== 'resolve') {
+        if (response.type !== 'currentUser') {
           throw new Error('Failed to fetch current user');
         }
 
-        const currentUser = response.res;
+        const currentUser = response as CurrentUserResponse;
 
         // Устанавливаем ФИО из userData
         if (currentUser.userData) {
@@ -73,16 +79,14 @@ const VoditelRegistration: React.FC = () => {
 
         if (currentUser.voditelData) {
           setEditing(true);
-          setVoditelId(currentUser.voditelData.id);
+          setVoditelId(currentUser.voditelData.id || null);
           // Предзаполнение формы данными для редактирования
           setTransport(currentUser.voditelData.transport || '');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Ошибка получения данных текущего пользователя:', error);
-        Alert.alert(
-          'Ошибка',
-          'Не удалось загрузить данные пользователя. Пожалуйста, попробуйте еще раз.'
-        );
+        const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+        Alert.alert('Ошибка', `Не удалось загрузить данные пользователя: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -117,21 +121,21 @@ const VoditelRegistration: React.FC = () => {
         reqId: 'currentUser_for_submit_' + Date.now(),
       });
 
-      if (response.resType !== 'resolve') {
+      if (response.type !== 'currentUser') {
         throw new Error('Failed to fetch current user');
       }
 
-      const currentUser = response.res;
+      const currentUser = response as CurrentUserResponse;
       const userData = currentUser.userData;
       const voditelData = currentUser.voditelData;
 
-      if (editing && voditelId) {
+      if (editing && voditelId && userData) {
         // Отправляем запрос на обновление данных водителя
         const requestData: IEditVoditelParams = {
           voditelId,
           userId: userData.id,
           transport,
-          created_at: voditelData.created_at, // используем существующее значение created_at
+          created_at: voditelData?.created_at, // используем существующее значение created_at
           updated_at: Date.now(),
         };
 
@@ -143,12 +147,12 @@ const VoditelRegistration: React.FC = () => {
           reqId: 'editVoditel_' + Date.now(),
         });
 
-        if (editResponse.resType !== 'resolve') {
+        if (editResponse.type !== 'editVoditel') {
           throw new Error('Не удалось обновить данные водителя');
         }
 
-        console.log('Response from editVoditel:', editResponse.res);
-      } else {
+        console.log('Response from editVoditel:', editResponse);
+      } else if (userData) {
         // Отправляем запрос на создание водителя
         const createResponse = await handleMessage({
           req: {
@@ -158,11 +162,13 @@ const VoditelRegistration: React.FC = () => {
           reqId: 'createVoditel_' + Date.now(),
         });
 
-        if (createResponse.resType !== 'resolve') {
+        if (createResponse.type !== 'createVoditel') {
           throw new Error('Не удалось создать водителя');
         }
 
-        console.log('Response from createVoditel:', createResponse.res);
+        console.log('Response from createVoditel:', createResponse);
+      } else {
+        throw new Error('Данные пользователя не найдены');
       }
 
       Alert.alert(
@@ -181,13 +187,14 @@ const VoditelRegistration: React.FC = () => {
           },
         ]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Ошибка отправки данных:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert(
         editing ? 'Ошибка обновления данных' : 'Ошибка регистрации',
         `Произошла ошибка при ${
           editing ? 'обновлении данных водителя' : 'регистрации водителя'
-        }. Пожалуйста, попробуйте еще раз.\n\n${error.message || ''}`
+        }. Пожалуйста, попробуйте еще раз.\n\n${errorMessage}`
       );
     }
   };

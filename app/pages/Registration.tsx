@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
-import { IRegistrationForm, IOption, RootStackParamList } from '../../global';
+import { IRegistrationForm, IOption, RegistrationResponse, RootStackParamList } from '../../global';
 
 const positionOptions: IOption[] = [
   { value: 'kombainer', label: 'Комбайнер' },
@@ -98,7 +98,7 @@ const Registration = () => {
 
       console.log('Response from handleMessage:', response);
 
-      if (response.resType === 'resolve') {
+      if (response.type === 'registration') {
         Alert.alert(
           'Успешная регистрация',
           'Регистрация прошла успешно. Нажмите OK для перехода на страницу авторизации.',
@@ -112,7 +112,7 @@ const Registration = () => {
           ]
         );
       } else {
-        throw new Error(response.error?.message || 'Ошибка регистрации');
+        throw new Error('Ошибка регистрации');
       }
     } catch (error: any) {
       console.error('Error sending message:', error);

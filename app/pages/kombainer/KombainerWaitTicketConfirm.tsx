@@ -5,9 +5,11 @@ import { VectorLogo } from '../../components/VectorLogo';
 import { handleMessage } from '../../services/MessageHandler';
 import { AuthStoreData } from '../../stores/AuthStore';
 import {
+  CurrentUserResponse,
   IPayloadConfirmKombainerTicket,
   ISendPostResponseCurrentUser,
   ISendPostResponseNeedRedirect,
+  NeedRedirectResponse,
   PositionOptionValue,
   RootStackParamList,
 } from '../../../global';
@@ -130,11 +132,11 @@ class KombainerWaitTicketConfirm extends React.Component<
         reqId: 'getCurrentUser_' + Date.now(),
       });
 
-      if (result.resType !== 'resolve') {
+      if (result.type !== 'currentUser') {
         throw new Error('Failed to get current user');
       }
 
-      const currentUser = result.res as ISendPostResponseCurrentUser;
+      const currentUser = result as CurrentUserResponse;
       console.log('KombainerWaitTicketConfirm|currentUser=', currentUser);
 
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|init');
@@ -169,11 +171,11 @@ class KombainerWaitTicketConfirm extends React.Component<
         reqId: 'needRedirect_' + Date.now(),
       });
 
-      if (result.resType !== 'resolve') {
+      if (result.type !== 'needRedirect') {
         throw new Error('Failed to get needRedirect response');
       }
 
-      const response = result.res as ISendPostResponseNeedRedirect;
+      const response = result as NeedRedirectResponse;
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|response=', response);
 
       if (response.status === 'empty') {

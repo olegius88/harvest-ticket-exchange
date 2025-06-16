@@ -12,6 +12,15 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
+import { ICreateUsersParams } from '../../db/users';
+import {
+  CurrentUserResponse,
+  SendTcpRequestResponse,
+  ICreateKombainerParams,
+  ICreateVoditelParams,
+  ITcpResponseKombainerData,
+  RootStackParamList,
+} from '../../../global';
 
 interface VoditelTicketDetailAfterSetWeightState {
   isKombainerData: boolean;
@@ -25,14 +34,14 @@ interface VoditelTicketDetailAfterSetWeightState {
   loadingKombainerDataWithWeightError: boolean;
 
   weight: number | null;
-  kombainerUserData: any | null;
-  userData: any | null;
-  voditelData: any | null;
-  kombainerData: any | null;
+  kombainerUserData: ICreateUsersParams | null;
+  userData: ICreateUsersParams | null;
+  voditelData: ICreateVoditelParams | null;
+  kombainerData: ICreateKombainerParams | null;
 }
 
 const VoditelTicketDetailAfterSetWeight: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   // Контроллер для периодического опроса данных
   const waitingKombainerDataWithWeightConfirmCtrl = useRef<NodeJS.Timeout | null>(null);
@@ -74,7 +83,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
    * Метод для получения данных текущего пользователя и отправки TCP-запроса для получения данных комбайнера.
    */
   const getKombainerData = async () => {
-    let currentUser: any;
+    let currentUser: CurrentUserResponse;
     try {
       const response = await handleMessage({
         req: {
@@ -83,21 +92,19 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
         },
         reqId: Date.now().toString(),
       });
-      currentUser = response;
-    } catch (error: any) {
+      currentUser = response as CurrentUserResponse;
+    } catch (error: unknown) {
       console.error('VoditelTicketDetailAfterSetWeight|currentUser|error =', error);
-      Alert.alert(
-        'Ошибка получения данных текущего пользователя',
-        error.message || JSON.stringify(error)
-      );
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка получения данных текущего пользователя', errorMessage);
       return;
     }
 
     console.log('VoditelTicketDetailAfterSetWeight|currentUser=', currentUser);
 
-    let tcpResponse;
-    let kombainerData: any;
-    let kombainerUserData: any;
+    let tcpResponse: SendTcpRequestResponse;
+    let kombainerData: ICreateKombainerParams;
+    let kombainerUserData: ICreateUsersParams;
 
     // В зависимости от контекста отправляем TCP-запрос за данными комбайнера
     switch (AuthStoreData.context) {
@@ -114,16 +121,24 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
           });
           console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|response=', response);
 
-          tcpResponse = response;
+          tcpResponse = response as SendTcpRequestResponse;
           console.log(
             'VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=',
             tcpResponse
           );
-          kombainerData = (tcpResponse.data as any).kombainerData;
-          kombainerUserData = (tcpResponse.data as any).kombainerUserData;
-        } catch (error: any) {
+
+          // Проверяем, что данные имеют правильную структуру
+          if (tcpResponse.type === 'sendTcpRequest' && tcpResponse.data) {
+            const tcpData = tcpResponse.data as ITcpResponseKombainerData;
+            kombainerData = tcpData.kombainerData;
+            kombainerUserData = tcpData.kombainerUserData;
+          } else {
+            throw new Error('Неверная структура ответа TCP');
+          }
+        } catch (error: unknown) {
           console.error('VoditelTicketDetailAfterSetWeight|error =', error);
-          Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
+          const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+          Alert.alert('Ошибка отправки данных талона', errorMessage);
           return;
         }
         break;
@@ -336,6 +351,11 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
    * Подтверждение талона без веса
    */
   const confirmKombainerTicket = async () => {
+    if (!state.voditelData || !state.userData) {
+      Alert.alert('Ошибка', 'Данные водителя или пользователя не найдены');
+      return;
+    }
+
     let sendRes: any;
     try {
       const response = await handleMessage({
