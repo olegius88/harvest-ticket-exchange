@@ -139,8 +139,8 @@ export const isHotspotEnabled = async (): Promise<ISendPostResponseIsHotspotEnab
       return { type: 'isHotspotEnabled', status: 'stopped' };
     }
 
-    // Вызываем нативный метод getHotspotStatus
-    const statusResStr = await HotspotBridge.getHotspotStatus();
+    // Вызываем нативный метод getHotspotStatus с требуемым аргументом
+    const statusResStr = await HotspotBridge.getHotspotStatus('getStatus_' + Date.now());
     const statusRes = JSON.parse(statusResStr);
     console.log('isHotspotEnabled|statusRes=', statusRes);
 

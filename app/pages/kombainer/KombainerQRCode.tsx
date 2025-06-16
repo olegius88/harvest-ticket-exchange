@@ -17,7 +17,7 @@ import {
   handleMessage,
   isHotspotEnabled,
 } from '../../services/MessageHandler';
-import { stopTcpServer, startTcpServer } from '../../wifi/TcpServer';
+import { stopTcpServer, startTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
@@ -51,6 +51,7 @@ interface KombainerQRCodeState {
   retryCount: number;
   maxRetries: number;
   retryInProgress: boolean;
+  isCancelling: boolean; // Добавляем флаг для отслеживания процесса отмены
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
@@ -69,6 +70,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       retryCount: 0,
       maxRetries: 5, // Максимальное количество попыток
       retryInProgress: false,
+      isCancelling: false, // Инициализация флага отмены
     };
   }
 
@@ -107,6 +109,16 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   // Функция, вызываемая при покидании страницы (размонтировании компонента)
   cancel = async () => {
     console.log('Покидание страницы: вызывается функция cancel');
+
+    // Установим флаг отмены, чтобы предотвратить запуск новых процессов
+    this.setState({ isCancelling: true });
+
+    // Очищаем таймер ожидания данных водителя
+    if (this.waitingVoditelDataCtrl !== null) {
+      clearTimeout(this.waitingVoditelDataCtrl);
+      this.waitingVoditelDataCtrl = null;
+    }
+
     try {
       await this.setHotspotDisabled();
       console.log('Точка доступа отключена при покидании страницы');
@@ -115,9 +127,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
-      // Остановка TCP-сервера при выходе
-      const message = await stopTcpServer();
-      console.log('cancel|stopTcpServer|message=', message);
+      // Проверяем, запущен ли TCP-сервер перед остановкой
+      if (isTcpServerRunning()) {
+        const message = await stopTcpServer();
+        console.log('cancel|stopTcpServer|message=', message);
+      } else {
+        console.log('cancel|TCP-сервер не запущен, пропускаем остановку');
+      }
     } catch (error) {
       console.error('cancel|stopTcpServer|error=', error);
     }
@@ -170,22 +186,56 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       return;
     }
 
-    // Новая часть: запуск TCP-сервера через API
-    try {
-      const message = await stopTcpServer();
-      console.log('generateQRCode|stopTcpServer|message=', message);
+    // Проверяем, запущен ли уже TCP-сервер
+    const isServerRunning = isTcpServerRunning();
+    console.log('generateQRCode|isTcpServerRunning=', isServerRunning);
 
-      const message2 = await startTcpServer();
-      console.log('generateQRCode|startTcpServer|message=', message2);
-    } catch (e) {
-      console.error('generateQRCode|Ошибка при запуске TCP-сервера:', e);
+    if (isServerRunning) {
+      console.log('generateQRCode|TCP-сервер уже запущен, пропускаем перезапуск');
+    } else {
+      // Новая часть: запуск TCP-сервера через API
       try {
-        await this.setHotspotDisabled();
-      } catch (disableError) {
-        console.error('Ошибка при отключении hotspot после ошибки TCP:', disableError);
+        const message = await stopTcpServer();
+        console.log('generateQRCode|stopTcpServer|message=', message);
+      } catch (e) {
+        console.error('generateQRCode|Ошибка при остановке TCP-сервера:', e);
+        // Продолжаем выполнение, так как сервер может быть не запущен
       }
-      this.handleRetryIfNeeded('Ошибка при запуске TCP-сервера');
-      return;
+
+      try {
+        await startTcpServer();
+        console.log('generateQRCode|TCP-сервер успешно запущен');
+      } catch (e) {
+        console.error('generateQRCode|Ошибка при запуске TCP-сервера:', e);
+
+        // Если ошибка связана с занятым портом, пробуем остановить сервер и повторить
+        if (e instanceof Error && e.message.includes('EADDRINUSE')) {
+          console.log('generateQRCode|Порт занят, пытаемся остановить сервер и повторить');
+          try {
+            await stopTcpServer();
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Ждем 1 секунду
+            await startTcpServer();
+            console.log('generateQRCode|TCP-сервер успешно запущен после повторной попытки');
+          } catch (retryError) {
+            console.error('generateQRCode|Ошибка при повторном запуске TCP-сервера:', retryError);
+            try {
+              await this.setHotspotDisabled();
+            } catch (disableError) {
+              console.error('Ошибка при отключении hotspot после ошибки TCP:', disableError);
+            }
+            this.handleRetryIfNeeded('Ошибка при запуске TCP-сервера');
+            return;
+          }
+        } else {
+          try {
+            await this.setHotspotDisabled();
+          } catch (disableError) {
+            console.error('Ошибка при отключении hotspot после ошибки TCP:', disableError);
+          }
+          this.handleRetryIfNeeded('Ошибка при запуске TCP-сервера');
+          return;
+        }
+      }
     }
 
     // Генерация строки для QR-кода Wi-Fi точки доступа
@@ -206,6 +256,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
   // Новый метод для обработки повторных попыток
   handleRetryIfNeeded = async (errorMessage: string) => {
+    // Проверяем флаг отмены перед повторной попыткой
+    if (this.state.isCancelling) {
+      console.log('handleRetryIfNeeded: процесс был отменен');
+      return;
+    }
+
     const { retryCount, maxRetries } = this.state;
 
     if (retryCount < maxRetries) {
@@ -215,7 +271,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
       // Небольшая задержка перед следующей попыткой
       setTimeout(() => {
-        this.generateQRCode(true);
+        // Проверяем флаг отмены перед выполнением повторной попытки
+        if (!this.state.isCancelling) {
+          this.generateQRCode(true);
+        } else {
+          console.log('handleRetryIfNeeded: повторная попытка отменена');
+        }
       }, 1500);
     } else {
       console.error(
@@ -250,6 +311,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   }
 
   waitingVoditelData = async () => {
+    // Проверяем флаг отмены перед началом выполнения
+    if (this.state.isCancelling) {
+      console.log('waitingVoditelData: процесс был отменен');
+      this.waitingVoditelDataCtrl = null;
+      return;
+    }
+
     if (this.waitingVoditelDataCtrl === null) {
       console.log('KombainerQRCode|waitingVoditelData|!this.waitingVoditelDataCtrl');
       return;
@@ -264,6 +332,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         reqId: 'needRedirect_' + Date.now(),
       });
 
+      // Проверяем флаг отмены после получения ответа
+      if (this.state.isCancelling) {
+        console.log('waitingVoditelData: процесс был отменен после получения ответа');
+        this.waitingVoditelDataCtrl = null;
+        return;
+      }
+
       if (res.type !== 'needRedirect') {
         throw new Error('Failed to get needRedirect');
       }
@@ -277,7 +352,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     console.log('KombainerQRCode|waitingVoditelData|response =', response);
 
     if (response.status === 'empty') {
-      this.waitingVoditelDataCtrl = setTimeout(() => this.waitingVoditelData(), 1000);
+      // Проверяем флаг отмены перед установкой нового таймера
+      if (!this.state.isCancelling) {
+        this.waitingVoditelDataCtrl = setTimeout(() => this.waitingVoditelData(), 1000);
+      } else {
+        console.log('waitingVoditelData: новый таймер не установлен из-за отмены');
+        this.waitingVoditelDataCtrl = null;
+      }
       return;
     }
 
@@ -401,6 +482,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   componentWillUnmount() {
+    // Установим флаг отмены для предотвращения запуска новых процессов
+    this.setState({ isCancelling: true });
+
     if (this.waitingVoditelDataCtrl !== null) {
       clearTimeout(this.waitingVoditelDataCtrl);
       this.waitingVoditelDataCtrl = null;
@@ -428,6 +512,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   }
 
   handleCancelClick = async () => {
+    // Сразу устанавливаем флаг отмены, чтобы предотвратить запуск новых процессов
+    this.setState({ isCancelling: true });
+
     // Показываем уведомление о закрытии TCP-соединения
     Alert.alert(
       'Закрытие TCP-соединения',
@@ -436,12 +523,20 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         {
           text: 'Отмена',
           style: 'cancel',
+          // Если пользователь отменил закрытие, снимаем флаг отмены
+          onPress: () => this.setState({ isCancelling: false }),
         },
         {
           text: 'Закрыть',
           style: 'destructive',
           onPress: async () => {
             try {
+              // Очищаем таймер ожидания данных водителя
+              if (this.waitingVoditelDataCtrl !== null) {
+                clearTimeout(this.waitingVoditelDataCtrl);
+                this.waitingVoditelDataCtrl = null;
+              }
+
               await this.cancel();
               console.log('handleCancelClick|Соединения закрыты');
             } catch (error) {

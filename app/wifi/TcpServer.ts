@@ -41,90 +41,103 @@ const REQUEST_TIMEOUT = 30000;
 export const startTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (server) {
+      console.log('startTcpServer|TCP-сервер уже запущен');
       ToastAndroid.show(`startTcpServer|TCP-сервер уже запущен`, ToastAndroid.SHORT);
       resolve('startTcpServer|TCP-сервер уже запущен');
       return;
     }
 
-    server = TcpSocket.createServer((socket: Socket) => {
-      console.log('startTcpServer|Клиент подключился к TCP-серверу');
-      ToastAndroid.show(`startTcpServer|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
+    // Сначала попробуем создать сервер
+    try {
+      server = TcpSocket.createServer((socket: Socket) => {
+        console.log('startTcpServer|Клиент подключился к TCP-серверу');
+        ToastAndroid.show(`startTcpServer|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
 
-      // Добавляем сокет в массив активных соединений
-      activeSockets.push(socket);
+        // Добавляем сокет в массив активных соединений
+        activeSockets.push(socket);
 
-      // Обработка полученных данных от клиента
-      socket.on('data', async (data: string | Buffer) => {
-        const dataString = typeof data === 'string' ? data : data.toString();
-        console.log('startTcpServer|socket|on|data=', dataString);
+        // Обработка полученных данных от клиента
+        socket.on('data', async (data: string | Buffer) => {
+          const dataString = typeof data === 'string' ? data : data.toString();
+          console.log('startTcpServer|socket|on|data=', dataString);
 
-        let message: IMessageWithId;
-        try {
-          message = JSON.parse(dataString);
-        } catch (error) {
-          console.error('startTcpServer|Ошибка парсинга JSON:', error);
-          ToastAndroid.show(
-            `startTcpServer|Ошибка парсинга JSON|${JSON.stringify(error)}`,
-            ToastAndroid.SHORT
-          );
-          return;
-        }
+          let message: IMessageWithId;
+          try {
+            message = JSON.parse(dataString);
+          } catch (error) {
+            console.error('startTcpServer|Ошибка парсинга JSON:', error);
+            ToastAndroid.show(
+              `startTcpServer|Ошибка парсинга JSON|${JSON.stringify(error)}`,
+              ToastAndroid.SHORT
+            );
+            return;
+          }
 
-        // Проверяем, является ли это ответом на запрос от сервера
-        if (message.messageId && pendingServerRequests.has(message.messageId)) {
-          const pendingRequest = pendingServerRequests.get(message.messageId)!;
-          clearTimeout(pendingRequest.timeout);
-          pendingServerRequests.delete(message.messageId);
-          pendingRequest.resolve(message as unknown as ISendTcpResponseData);
-          return;
-        }
+          // Проверяем, является ли это ответом на запрос от сервера
+          if (message.messageId && pendingServerRequests.has(message.messageId)) {
+            const pendingRequest = pendingServerRequests.get(message.messageId)!;
+            clearTimeout(pendingRequest.timeout);
+            pendingServerRequests.delete(message.messageId);
+            pendingRequest.resolve(message as unknown as ISendTcpResponseData);
+            return;
+          }
 
-        // Проверяем, является ли это ответом сервера (для обратной совместимости)
-        if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
-          console.log('startTcpServer|isTcpServerSendResponse|message=', message);
-          return;
-        }
+          // Проверяем, является ли это ответом сервера (для обратной совместимости)
+          if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
+            console.log('startTcpServer|isTcpServerSendResponse|message=', message);
+            return;
+          }
 
-        // Обрабатываем обычное сообщение
-        let res;
-        try {
-          res = await onTcpMessage(message as unknown as ISendTcpRequestData);
-        } catch (error) {
-          console.error('startTcpServer|onTcpMessage|error=', error);
-          ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
-          return;
-        }
+          // Обрабатываем обычное сообщение
+          let res;
+          try {
+            res = await onTcpMessage(message as unknown as ISendTcpRequestData);
+          } catch (error) {
+            console.error('startTcpServer|onTcpMessage|error=', error);
+            ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
+            return;
+          }
 
-        console.log('startTcpServer|onTcpMessage|res=', res);
-        try {
-          const response = {
-            ...res,
-            messageId: message.messageId, // Возвращаем ID сообщения если он был
-            from: 'TcpServer.ts-TcpSocket.createServer-on-data',
-          };
-          socket.write(JSON.stringify(response));
-        } catch (error) {
-          console.error('startTcpServer|socket|write|error=', error);
-          ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
-        }
+          console.log('startTcpServer|onTcpMessage|res=', res);
+          try {
+            const response = {
+              ...res,
+              messageId: message.messageId, // Возвращаем ID сообщения если он был
+              from: 'TcpServer.ts-TcpSocket.createServer-on-data',
+            };
+            socket.write(JSON.stringify(response));
+          } catch (error) {
+            console.error('startTcpServer|socket|write|error=', error);
+            ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
+          }
+        });
+
+        socket.on('error', (error: any) => {
+          console.error('startTcpServer|socket|on|error=', error);
+          ToastAndroid.show(`startTcpServer|socket|on|error`, ToastAndroid.SHORT);
+        });
+
+        socket.on('close', () => {
+          console.log('startTcpServer|socket|close');
+          ToastAndroid.show(`startTcpServer|socket|close`, ToastAndroid.SHORT);
+          // Удаляем сокет из массива активных соединений
+          activeSockets = activeSockets.filter((s) => s !== socket);
+        });
       });
-
-      socket.on('error', (error: any) => {
-        console.error('startTcpServer|socket|on|error=', error);
-        ToastAndroid.show(`startTcpServer|socket|on|error`, ToastAndroid.SHORT);
-      });
-
-      socket.on('close', () => {
-        console.log('startTcpServer|socket|close');
-        ToastAndroid.show(`startTcpServer|socket|close`, ToastAndroid.SHORT);
-        // Удаляем сокет из массива активных соединений
-        activeSockets = activeSockets.filter((s) => s !== socket);
-      });
-    });
+    } catch (error) {
+      console.error('startTcpServer|Ошибка при создании TCP-сервера:', error);
+      ToastAndroid.show(`startTcpServer|Ошибка при создании TCP-сервера`, ToastAndroid.SHORT);
+      reject(error);
+      return;
+    }
 
     server.on('error', (error: any) => {
       console.log('startTcpServer|Ошибка TCP-сервера|error=', error);
       ToastAndroid.show(`startTcpServer|Ошибка TCP-сервера|error`, ToastAndroid.SHORT);
+
+      // Освобождаем ссылку на сервер, чтобы можно было повторить попытку
+      server = null;
+
       reject(error);
     });
 
@@ -150,6 +163,7 @@ export const startTcpServer = (): Promise<string> => {
 export const stopTcpServer = (): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!server) {
+      console.log('stopTcpServer|TCP-сервер не запущен');
       resolve('stopTcpServer|TCP-сервер не запущен');
       return;
     }
@@ -171,13 +185,22 @@ export const stopTcpServer = (): Promise<string> => {
     });
     activeSockets = [];
 
+    // Создаем копию ссылки на сервер и очищаем глобальную переменную
+    const serverToClose = server;
+    server = null;
+
     // Закрываем сервер
-    server.close(() => {
-      console.log('stopTcpServer|TCP-сервер остановлен');
-      ToastAndroid.show(`stopTcpServer|TCP-сервер остановлен`, ToastAndroid.SHORT);
-      server = null;
-      resolve('stopTcpServer|TCP-сервер остановлен');
-    });
+    try {
+      serverToClose.close(() => {
+        console.log('stopTcpServer|TCP-сервер остановлен');
+        ToastAndroid.show(`stopTcpServer|TCP-сервер остановлен`, ToastAndroid.SHORT);
+        resolve('stopTcpServer|TCP-сервер остановлен');
+      });
+    } catch (error) {
+      console.error('stopTcpServer|Ошибка при закрытии сервера:', error);
+      // Даже при ошибке считаем, что сервер остановлен
+      resolve('stopTcpServer|TCP-сервер остановлен (с ошибкой)');
+    }
   });
 };
 

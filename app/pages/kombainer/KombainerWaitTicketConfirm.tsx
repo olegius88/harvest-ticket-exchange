@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } fr
 import { NavigationProp } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { handleMessage } from '../../services/MessageHandler';
-import { stopTcpServer } from '../../wifi/TcpServer';
+import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import {
   CurrentUserResponse,
@@ -55,9 +55,13 @@ class KombainerWaitTicketConfirm extends React.Component<
     }
 
     try {
-      // Остановка TCP-сервера при выходе
-      const message = await stopTcpServer();
-      console.log('cancel|stopTcpServer|message=', message);
+      // Проверяем, запущен ли TCP-сервер перед остановкой
+      if (isTcpServerRunning()) {
+        const message = await stopTcpServer();
+        console.log('cancel|stopTcpServer|message=', message);
+      } else {
+        console.log('cancel|TCP-сервер не запущен, пропускаем остановку');
+      }
     } catch (error) {
       console.error('cancel|stopTcpServer|error=', error);
     }

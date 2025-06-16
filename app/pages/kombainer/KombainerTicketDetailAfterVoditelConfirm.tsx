@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
-import { stopTcpServer } from '../../wifi/TcpServer';
+import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
 import { VectorLogo } from '../../components/VectorLogo';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -390,9 +390,13 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
 
     try {
-      // Остановка TCP-сервера при выходе
-      const message = await stopTcpServer();
-      console.log('cancel|stopTcpServer|message=', message);
+      // Проверяем, запущен ли TCP-сервер перед остановкой
+      if (isTcpServerRunning()) {
+        const message = await stopTcpServer();
+        console.log('cancel|stopTcpServer|message=', message);
+      } else {
+        console.log('cancel|TCP-сервер не запущен, пропускаем остановку');
+      }
     } catch (error) {
       console.error('cancel|stopTcpServer|error=', error);
     }
