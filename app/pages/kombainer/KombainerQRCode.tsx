@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { checkPermissionsHotspot, handleMessage } from '../../services/MessageHandler';
+import { stopTcpServer, startTcpServer } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
@@ -125,13 +126,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
     try {
       // Остановка TCP-сервера при выходе
-      const tcpStopResult = await handleMessage({
-        req: {
-          type: 'stopTcpServer',
-        },
-        reqId: 'stopTcpServer_' + Date.now(),
-      });
-      console.log('cancel|stopTcpServer|result=', tcpStopResult);
+      const message = await stopTcpServer();
+      console.log('cancel|stopTcpServer|message=', message);
     } catch (error) {
       console.error('cancel|stopTcpServer|error=', error);
     }
@@ -186,21 +182,11 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
     // Новая часть: запуск TCP-сервера через API
     try {
-      const tcpStop = await handleMessage({
-        req: {
-          type: 'stopTcpServer',
-        },
-        reqId: 'stopTcpServer_' + Date.now(),
-      });
-      console.log('generateQRCode|stopTcpServer|tcpStop=', tcpStop);
+      const message = await stopTcpServer();
+      console.log('generateQRCode|stopTcpServer|message=', message);
 
-      const tcpRes = await handleMessage({
-        req: {
-          type: 'startTcpServer',
-        },
-        reqId: 'startTcpServer_' + Date.now(),
-      });
-      console.log('generateQRCode|startTcpServer|tcpRes=', tcpRes);
+      const message2 = await startTcpServer();
+      console.log('generateQRCode|startTcpServer|message=', message2);
     } catch (e) {
       console.error('generateQRCode|Ошибка при запуске TCP-сервера:', e);
       try {

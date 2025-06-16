@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../services/MessageHandler';
+import { connectToTcpServer } from '../wifi/TcpClient';
 import { AuthStoreData } from '../stores/AuthStore';
 import {
   CurrentUserResponse,
@@ -121,15 +122,12 @@ const Main = () => {
 
         try {
           // Отправляем запрос на подключение к TCP-серверу
-          await handleMessage({
-            req: {
-              type: 'connectToTcpServer',
-              ip: (response.payload as JoinHotspotPayload).ip,
-            },
-            reqId: 'connectToTcpServer_' + Date.now(),
+          const message = await connectToTcpServer({
+            ip: (response.payload as JoinHotspotPayload).ip,
           });
+          console.log('connectToTcpServer|message=', message);
         } catch (error: unknown) {
-          console.error('Main|needRedirect|error =', error);
+          console.error('Main|needRedirect|error=', error);
           const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
           Alert.alert('Ошибка подключения к устройству', errorMessage);
           return;

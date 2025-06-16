@@ -434,34 +434,7 @@ const _handleReqMessage = async (
       KeepAwake.deactivate();
       return { type };
     }
-    case 'startTcpServer': {
-      try {
-        const message = await startTcpServer();
-        return { type, message };
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMessage);
-      }
-    }
-    case 'stopTcpServer': {
-      try {
-        const message = await stopTcpServer();
-        return { type, message };
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMessage);
-      }
-    }
-    case 'connectToTcpServer': {
-      try {
-        const message = await connectToTcpServer({ ip: req.ip });
-        console.log('connectToTcpServer|message=', message);
-        return { type, message };
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMessage);
-      }
-    }
+
     case 'sendTcpRequest': {
       try {
         const data: ISendTcpResponseData = await sendTcpRequest(req.data);
