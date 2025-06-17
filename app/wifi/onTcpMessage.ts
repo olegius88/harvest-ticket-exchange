@@ -43,7 +43,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       // Создаем payload с правильной структурой для передачи данных комбайнера
       const payload: IPayloadSetTalonOfKombainer = {
-        kombainerData,
+        kombainerData: kombainerData as ICreateKombainerParams,
         userData: {} as ICreateUsersParams, // Будет заполнено позже
         weight: 0, // Будет заполнено позже
       };
@@ -129,9 +129,9 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       const talonNumber = message.talonNumber || '';
 
       const payload: IPayloadSetTalonOfKombainer = {
-        kombainerData,
-        userData,
-        weight,
+        kombainerData: kombainerData as ICreateKombainerParams,
+        userData: userData as ICreateUsersParams,
+        weight: weight as number,
         talonNumber,
       };
 

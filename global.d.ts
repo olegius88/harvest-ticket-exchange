@@ -1041,7 +1041,9 @@ export interface PushUserIdResponse {
 }
 
 export interface JoinHotspotResponse {
-  ip: string;
+  type: 'joinHotspot';
+  status: 'joining' | 'joined' | 'failed';
+  ip?: string;
 }
 
 export interface UserDataResponse {

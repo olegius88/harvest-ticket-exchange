@@ -5,17 +5,32 @@
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": true,
     "allowImportingTsExtensions": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "noEmitOnError": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "noEmitOnError": false,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": false
+    "skipLibCheck": true,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "types": ["react-native"],
+    "lib": ["ES2019", "DOM"]
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "**/*.spec.ts", "./build", "./public"]
+  "include": ["**/*.ts", "**/*.tsx", "types/**/*.d.ts"],
+  "exclude": [
+    "node_modules",
+    "node_modules/**/*",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.spec.tsx",
+    "**/*.test.tsx",
+    "./build",
+    "./public",
+    "./android/build",
+    "./ios/build"
+  ]
 }

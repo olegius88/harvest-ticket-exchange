@@ -49,6 +49,7 @@ export default function App(): React.ReactElement {
     <NavigationContainer ref={navigationRef}>
       <GestureHandlerRootView style={styles.root}>
         <Stack.Navigator
+          id={undefined}
           screenOptions={{
             headerShown: false,
           }}

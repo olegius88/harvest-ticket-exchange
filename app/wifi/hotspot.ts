@@ -8,7 +8,7 @@ export const isHotspotEnabled = async () => {
     const result = await checkHotspotStatus();
     console.log('isHotspotEnabled|state=', result.status);
     // ToastAndroid.show(`isHotspotEnabled state: ${state}`, ToastAndroid.SHORT);
-    return result.status === 'started';
+    return result.status === 'running';
   } catch (error) {
     // if (error instanceof TetheringError) {
     //   ToastAndroid.show(error.message, ToastAndroid.LONG);
