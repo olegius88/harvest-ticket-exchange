@@ -10,8 +10,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
 import { VectorLogo } from '../../components/VectorLogo';
@@ -34,6 +35,7 @@ import { sendTcpRequest } from '../../wifi/TcpClient';
 
 interface KombainerTicketDetailAfterVoditelConfirmProps {
   navigation: NavigationProp<RootStackParamList>;
+  route: RouteProp<RootStackParamList, 'KombainerTicketDetailAfterVoditelConfirmScreen'>;
 }
 
 interface KombainerTicketDetailAfterVoditelConfirmState {
@@ -67,6 +69,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   waitingVoditelTalonConfirmCtrl: number | null = null;
   // Контроллер для ожидания подтверждения веса водителем
   waitingVoditelWeightConfirmCtrl: number | null = null;
+  // Слушатель события подключения водителя
+  voditelConnectedListener: any = null;
 
   constructor(props: KombainerTicketDetailAfterVoditelConfirmProps) {
     super(props);
@@ -90,7 +94,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
   componentDidMount() {
     console.log('KombainerTicketDetailAfterVoditelConfirm|componentDidMount');
-    if (!AuthStoreData.payloadVoditelConnectSuccess) {
+
+    // Получаем данные из параметров навигации
+    const voditelConnectedData = this.props.route?.params?.data;
+
+    if (!voditelConnectedData) {
       this.setState({
         connectDataError: true,
       });
@@ -109,7 +117,17 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       'Необходимо дождаться проверки информации талона водителем'
     );
 
-    this.fetchData();
+    // Сохраняем данные водителя в состоянии компонента
+    this.setState(
+      {
+        voditelData: voditelConnectedData.voditelData,
+        voditelUserData: voditelConnectedData.voditelUserData,
+      },
+      () => {
+        // После обновления состояния загружаем данные комбайнера
+        this.fetchData();
+      }
+    );
   }
 
   // Асинхронный метод загрузки данных текущего пользователя.
@@ -127,85 +145,33 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         throw new Error('Failed to get current user');
       }
 
-      // Получаем данные водителя
-      const payloadData = AuthStoreData.payloadVoditelConnectSuccess;
-      if (!payloadData) {
-        throw new Error('No voditel connect data available');
-      }
-      const { voditelData, voditelUserData } = payloadData;
-      AuthStoreData.payloadVoditelConnectSuccess = null;
-
       this.setState({
         data: response as CurrentUserResponse,
-        voditelData,
-        voditelUserData,
       });
 
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|init');
-      // Запускаем периодический опрос для получения подтверждения от водителя
-      this.waitingVoditelTalonConfirmCtrl = setTimeout(
-        () => this.waitingVoditelConfirm(),
-        1000
-      ) as unknown as number;
+
+      // Добавляем слушатель события подтверждения от водителя
+      this.voditelConnectedListener = DeviceEventEmitter.addListener(
+        'voditelConfirmAfterConnect',
+        this.handleVoditelConfirmAfterConnect
+      );
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     } finally {
       this.setState({ loading: false });
     }
   }
-
-  /**
-   * Метод для периодического опроса ответа needRedirect
-   */
-  waitingVoditelConfirm = async () => {
-    if (this.waitingVoditelTalonConfirmCtrl === null) {
-      console.log(
-        'KombainerWaitTicketConfirm|waitingVoditelConfirm|!waitingVoditelTalonConfirmCtrl'
-      );
-      return;
-    }
-
-    try {
-      const result = await handleMessage({
-        req: { type: 'needRedirect' },
-        reqId: 'needRedirect_' + Date.now(),
-      });
-
-      if (result.type !== 'needRedirect') {
-        throw new Error('Failed to get needRedirect');
-      }
-
-      const response = result as NeedRedirectResponse;
-
-      console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|response=', response);
-
-      if (!response.payload) {
-        // Если данные ещё не получены – продолжаем опрос
-        this.waitingVoditelTalonConfirmCtrl = setTimeout(
-          () => this.waitingVoditelConfirm(),
-          1000
-        ) as unknown as number;
-        return;
-      }
-
-      // Останавливаем опрос
-      clearTimeout(this.waitingVoditelTalonConfirmCtrl);
-      this.waitingVoditelTalonConfirmCtrl = null;
-
-      this.setState({
-        isVoditelTalonConfirm: true,
-        isVoditelTalonConfirmSuccess: true,
-        isVoditelTalonConfirmError: false,
-      });
-    } catch (e) {
-      console.error('KombainerWaitTicketConfirm|waitingVoditelConfirm|error=', e);
-      // Продолжаем опрос даже при ошибке
-      this.waitingVoditelTalonConfirmCtrl = setTimeout(
-        () => this.waitingVoditelConfirm(),
-        1000
-      ) as unknown as number;
-      return;
-    }
+  handleVoditelConfirmAfterConnect = (data: IPayloadConfirmKombainerTicket): any => {
+    console.log(
+      'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmAfterConnect|data=',
+      data
+    );
+    this.setState({
+      isVoditelTalonConfirm: true,
+      isVoditelTalonConfirmSuccess: true,
+      isVoditelTalonConfirmError: false,
+    });
   };
 
   // Валидация веса перед отправкой
