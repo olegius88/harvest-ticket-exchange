@@ -953,8 +953,7 @@ export type RootStackParamList = {
   KombainerQRCodeScreen: undefined;
   KombainerTicketDetailScreen: undefined;
   KombainerTicketCreatedSuccessScreen: undefined;
-  KombainerTicketDetailAfterVoditelConfirmScreen: undefined;
-  KombainerWaitTicketConfirmScreen: undefined;
+  KombainerTicketDetailAfterVoditelConfirmScreen: { data: IVoditelConnectedPayload };
   KombainerWaitTicketWithWeightConfirmScreen: undefined;
   VoditelRegistrationScreen: undefined;
   VoditelCreateTripScreen: undefined;
@@ -1165,3 +1164,8 @@ export type HandleReqMessageResponse =
   | GetTalonsByVoditelIdResponse
   | CheckUserRegistrationResponse
   | UpdateUserProfileResponse;
+
+export interface IVoditelConnectedPayload {
+  voditelData: ICreateVoditelParams;
+  voditelUserData: ICreateUsersParams;
+}

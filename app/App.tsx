@@ -65,9 +65,6 @@ export default function App(): React.ReactElement {
             {(props) => <KombainerTicketDetailAfterVoditelConfirm {...props} />}
           </Stack.Screen>
           <Stack.Screen name="KombainerCreateTicketScreen" component={KombainerCreateTicket} />
-          <Stack.Screen name="KombainerWaitTicketConfirmScreen">
-            {(props) => <KombainerWaitTicketConfirm {...props} />}
-          </Stack.Screen>
           <Stack.Screen name="KombainerQRCodeScreen">
             {(props) => <KombainerQRCode {...props} />}
           </Stack.Screen>
