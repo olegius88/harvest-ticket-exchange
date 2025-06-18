@@ -298,47 +298,7 @@ const _handleReqMessage = async (
     case 'isHotspotEnabled': {
       return await isHotspotEnabled();
     }
-    case 'setHotspotEnabled': {
-      console.log('setHotspotEnabled|req=', req);
-      try {
-        const { HotspotBridge } = NativeModules;
 
-        if (!HotspotBridge) {
-          console.log('setHotspotEnabled|HotspotBridge not available');
-          throw new Error('HotspotBridge not available');
-        }
-        if (!HotspotBridge.startHotspot) {
-          console.log('setHotspotEnabled|HotspotBridge.startHotspot not available');
-          throw new Error('HotspotBridge.startHotspot not available');
-        }
-
-        // Вызываем нативный метод startHotspot
-        const startResStr = await HotspotBridge.startHotspot('reqId');
-        const startRes = JSON.parse(startResStr);
-        console.log('setHotspotEnabled|startRes=', startRes);
-
-        // Обрабатываем ответ так же, как в WebView-версии
-        if (startRes.status === 'error') {
-          return {
-            type: 'setHotspotEnabled',
-            status: startRes.status,
-            error: startRes.error,
-          };
-        } else {
-          return {
-            type: 'setHotspotEnabled',
-            status: startRes.status,
-            ssid: startRes.ssid,
-            password: startRes.password,
-          };
-        }
-      } catch (error: unknown) {
-        console.error('setHotspotEnabled error:', error);
-        const errorMessage =
-          error instanceof Error ? error.message : 'Ошибка при включении hotspot';
-        throw new Error(errorMessage);
-      }
-    }
     case 'setHotspotDisabled': {
       console.log('setHotspotDisabled|Stopping hotspot for React Native');
       try {
@@ -433,16 +393,7 @@ const _handleReqMessage = async (
       console.log('userData|kombainerData=', kombainerData);
       return { type, userData };
     }
-    case 'enableKeepAwake': {
-      console.log('enableKeepAwake|активация удержания экрана');
-      KeepAwake.activate();
-      return { type };
-    }
-    case 'disableKeepAwake': {
-      console.log('disableKeepAwake|деактивация удержания экрана');
-      KeepAwake.deactivate();
-      return { type };
-    }
+
     case 'createTalon': {
       const talonData = req.data as ICreateTalonParams;
       console.log('createTalon|req.data=', talonData);

@@ -11,6 +11,7 @@ import {
   PermissionsAndroid,
   Linking,
   DeviceEventEmitter,
+  NativeModules,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import {
@@ -23,7 +24,6 @@ import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
   ISendPostResponseIsHotspotEnabled,
-  ISendPostResponseSetHotspotEnabled,
   ISendPostResponseNeedRedirect,
   NeedRedirectResponse,
   PositionOptionValue,
@@ -35,6 +35,9 @@ import {
 } from '../../../global';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
+import KeepAwake from 'react-native-keep-awake';
+
+const { HotspotBridge } = NativeModules;
 
 interface KombainerQRCodeProps {
   navigation: NavigationProp<RootStackParamList, 'KombainerQRCodeScreen'>;
@@ -79,20 +82,6 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       voditelConnected: false, // Инициализация флага подключения водителя
     };
   }
-
-  // Включение точки доступа через API
-  setHotspotEnabled = async (): Promise<SetHotspotEnabledResponse> => {
-    console.log('setHotspotEnabled|init');
-    const response = await handleMessage({
-      req: {
-        type: 'setHotspotEnabled',
-      },
-      reqId: 'setHotspotEnabled_' + Date.now(),
-    });
-
-    console.log('setHotspotEnabled|response=', response);
-    return response as SetHotspotEnabledResponse;
-  };
 
   // Отключение точки доступа через API
   setHotspotDisabled = async (): Promise<SetHotspotDisabledResponse> => {
@@ -177,15 +166,13 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
-      sheRes = await this.setHotspotEnabled();
-      console.log('generateQRCode|setHotspotEnabled|sheRes=', sheRes);
-
+      const startResStr = await HotspotBridge.startHotspot('reqId');
+      console.log('generateQRCode|startHotspot|startResStr=', startResStr);
+      sheRes = JSON.parse(startResStr);
       // Проверка валидности полученных данных
       if (!sheRes || !sheRes.ssid || !sheRes.password) {
         throw new Error('Получены неполные данные Wi-Fi (отсутствует SSID или пароль)');
       }
-
-      // Теперь можно безопасно использовать sheRes.ssid и sheRes.password
     } catch (e) {
       console.error('generateQRCode|setHotspotEnabled|error=', e);
       this.handleRetryIfNeeded('Ошибка при включении точки доступа');
@@ -430,12 +417,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     // ✅ Отключаем не гаснущий экран
-    handleMessage({
-      req: {
-        type: 'disableKeepAwake',
-      },
-      reqId: 'disableKeepAwake_' + Date.now(),
-    }).catch((e) => console.error('disableKeepAwake|error=', e));
+    KeepAwake.deactivate();
 
     // Определяем, нужно ли сохранить соединение
     // Соединение сохраняется, если водитель подключился (voditelConnected = true)
