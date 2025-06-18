@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Component } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ScrollView,
   DeviceEventEmitter,
 } from 'react-native';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
@@ -22,7 +22,13 @@ import {
   ICreateVoditelParams,
   ITcpResponseKombainerData,
   RootStackParamList,
+  IPayloadSetTalonOfKombainer,
 } from '../../../global';
+import KeepAwake from 'react-native-keep-awake';
+
+interface VoditelTicketDetailAfterSetWeightProps {
+  navigation: NavigationProp<RootStackParamList>;
+}
 
 interface VoditelTicketDetailAfterSetWeightState {
   isKombainerData: boolean;
@@ -42,49 +48,67 @@ interface VoditelTicketDetailAfterSetWeightState {
   kombainerData: ICreateKombainerParams | null;
 }
 
-const VoditelTicketDetailAfterSetWeight: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+class VoditelTicketDetailAfterSetWeight extends Component<
+  VoditelTicketDetailAfterSetWeightProps,
+  VoditelTicketDetailAfterSetWeightState
+> {
+  // Слушатель для получения данных комбайнера
+  setTalonOfKombainerListener: any = null;
 
-  // Контроллер для периодического опроса данных
-  const waitingKombainerDataWithWeightConfirmCtrl = useRef<NodeJS.Timeout | null>(null);
+  constructor(props: VoditelTicketDetailAfterSetWeightProps) {
+    super(props);
+    this.state = {
+      isKombainerData: true,
+      loadingKombainerData: false,
+      loadingKombainerDataSuccess: false,
+      loadingKombainerDataError: false,
 
-  const [state, setState] = useState<VoditelTicketDetailAfterSetWeightState>({
-    isKombainerData: true,
-    loadingKombainerData: false,
-    loadingKombainerDataSuccess: false,
-    loadingKombainerDataError: false,
+      isKombainerDataWithWeight: false,
+      loadingKombainerDataWithWeight: false,
+      loadingKombainerDataWithWeightSuccess: false,
+      loadingKombainerDataWithWeightError: false,
 
-    isKombainerDataWithWeight: false,
-    loadingKombainerDataWithWeight: false,
-    loadingKombainerDataWithWeightSuccess: false,
-    loadingKombainerDataWithWeightError: false,
+      weight: null,
+      kombainerUserData: null,
+      userData: null,
+      voditelData: null,
+      kombainerData: null,
+    };
+  }
 
-    weight: null,
-    kombainerUserData: null,
-    userData: null,
-    voditelData: null,
-    kombainerData: null,
-  });
-
-  useEffect(() => {
-    getKombainerData().catch((e: unknown) => {
+  componentDidMount() {
+    this.getKombainerData().catch((e: unknown) => {
       console.error('VoditelTicketDetailAfterSetWeight|getKombainerData|error=', e);
       Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
 
-    // Cleanup function для очистки таймера при размонтировании компонента
-    return () => {
-      if (waitingKombainerDataWithWeightConfirmCtrl.current) {
-        clearTimeout(waitingKombainerDataWithWeightConfirmCtrl.current);
-        waitingKombainerDataWithWeightConfirmCtrl.current = null;
-      }
-    };
-  }, []);
+    // Включаем не гаснущий экран
+    KeepAwake.activate();
+  }
+
+  componentWillUnmount() {
+    this.setTalonOfKombainerListener?.remove();
+
+    // Отключаем не гаснущий экран
+    KeepAwake.deactivate();
+  }
+
+  handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
+    console.log('VoditelTicketDetailAfterSetWeight|handleSetTalonOfKombainer|data=', data);
+    const { kombainerData, userData, weight } = data;
+
+    // Обновляем состояние компонента: данные с весом загружены
+    this.setState({
+      loadingKombainerDataWithWeight: false,
+      loadingKombainerDataWithWeightSuccess: true,
+      weight,
+    });
+  };
 
   /**
    * Метод для получения данных текущего пользователя и отправки TCP-запроса для получения данных комбайнера.
    */
-  const getKombainerData = async () => {
+  getKombainerData = async () => {
     let currentUser: CurrentUserResponse;
     try {
       const response = await handleMessage({
@@ -149,8 +173,7 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     }
 
     // Обновляем состояние компонента: данные загружены
-    setState((prevState) => ({
-      ...prevState,
+    this.setState({
       isKombainerData: true,
       loadingKombainerDataSuccess: true,
       loadingKombainerDataError: false,
@@ -159,68 +182,15 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       voditelData: currentUser.voditelData,
       kombainerData,
       kombainerUserData,
-    }));
+    });
 
     console.log('VoditelTicketDetailAfterSetWeight|data loaded successfully');
   };
 
   /**
-   * Метод для получения данных комбайнера с весом
-   */
-  const waitingKombainerDataWithWeight = async () => {
-    let currentUser: any;
-    try {
-      const response = await handleMessage({
-        req: {
-          type: 'currentUser',
-          data: { context: AuthStoreData.context || 'voditel' },
-        },
-        reqId: Date.now().toString(),
-      });
-      currentUser = response;
-    } catch (error: any) {
-      console.error(
-        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser|error =',
-        error
-      );
-      Alert.alert(
-        'Ошибка получения данных текущего пользователя',
-        error.message || JSON.stringify(error)
-      );
-      return;
-    }
-
-    console.log(
-      'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|currentUser=',
-      currentUser
-    );
-
-    console.log(
-      'VoditelTicketDetailAfterSetWeight|payloadSetTalonOfKombainer=',
-      (AuthStoreData as any).payloadSetTalonOfKombainer
-    );
-
-    if (!(AuthStoreData as any).payloadSetTalonOfKombainer?.weight) {
-      console.error('VoditelTicketDetailAfterSetWeight|!weight');
-      Alert.alert('Ошибка получения веса', 'Данные о весе не были получены');
-      return;
-    }
-
-    const { weight } = (AuthStoreData as any).payloadSetTalonOfKombainer;
-
-    // Обновляем состояние компонента: данные с весом загружены
-    setState((prevState) => ({
-      ...prevState,
-      loadingKombainerDataWithWeight: false,
-      loadingKombainerDataWithWeightSuccess: true,
-      weight,
-    }));
-  };
-
-  /**
    * Подтверждение талона с весом
    */
-  const confirmKombainerTicketWithWeight = async () => {
+  confirmKombainerTicketWithWeight = async () => {
     let sendRes: any;
     try {
       const data = await sendTcpRequest({
@@ -245,14 +215,16 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       return;
     }
 
-    navigation.navigate('VoditelTicketCreatedSuccessScreen');
+    this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
   };
 
   /**
    * Подтверждение талона без веса
    */
-  const confirmKombainerTicket = async () => {
-    if (!state.voditelData || !state.userData) {
+  confirmKombainerTicket = async () => {
+    const { voditelData, userData } = this.state;
+
+    if (!voditelData || !userData) {
       Alert.alert('Ошибка', 'Данные водителя или пользователя не найдены');
       return;
     }
@@ -261,8 +233,8 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     try {
       const data = await sendTcpRequest({
         type: 'confirm_kombainer_ticket',
-        voditelData: state.voditelData,
-        userData: state.userData,
+        voditelData: voditelData,
+        userData: userData,
       });
       console.log('VoditelTicketDetailAfterSetWeight|confirm_kombainer_ticket|data=', data);
       sendRes = data;
@@ -277,139 +249,135 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
       return;
     }
 
-    setState((prevState) => ({
-      ...prevState,
+    this.setState({
       isKombainerData: false,
       loadingKombainerDataSuccess: false,
       loadingKombainerDataError: false,
       loadingKombainerData: false,
       isKombainerDataWithWeight: true,
-    }));
+    });
 
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
 
-    // waitingKombainerDataWithWeight().catch((e: any) => {
-    //   console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|error=', e);
-    //   Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
-    // });
-
     // Добавляем слушатель события подтверждения от водителя
-    // this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
-    //   'setTalonOfKombainer',
-    //   this.handleVoditelConfirmAfterConnect
-    // );
+    this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
+      'setTalonOfKombainer',
+      this.handleSetTalonOfKombainer
+    );
   };
 
   /**
    * Обработчик отмены операции
    */
-  const handleCancelClick = () => {
+  handleCancelClick = () => {
     Alert.alert(
       'Закрытие соединения',
       'Вы уверены, что хотите отменить процесс и вернуться назад?',
       [
         { text: 'Отмена', style: 'cancel' },
-        { text: 'Да', onPress: () => navigation.goBack() },
+        { text: 'Да', onPress: () => this.props.navigation.goBack() },
       ]
     );
   };
 
-  const {
-    isKombainerData,
-    loadingKombainerData,
-    loadingKombainerDataSuccess,
-    isKombainerDataWithWeight,
-    loadingKombainerDataWithWeightSuccess,
-    weight,
-    kombainerData,
-    kombainerUserData,
-    userData,
-    voditelData,
-  } = state;
+  render() {
+    const {
+      isKombainerData,
+      loadingKombainerData,
+      loadingKombainerDataSuccess,
+      isKombainerDataWithWeight,
+      loadingKombainerDataWithWeightSuccess,
+      weight,
+      kombainerData,
+      kombainerUserData,
+      userData,
+      voditelData,
+    } = this.state;
 
-  if (loadingKombainerData) {
+    if (loadingKombainerData) {
+      return (
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color="#98d642" />
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#98d642" />
-      </View>
-    );
-  }
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <VectorLogo />
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <VectorLogo />
+        <Text style={styles.title}>Талон комбайнера N</Text>
 
-      <Text style={styles.title}>Талон комбайнера N</Text>
+        <View style={styles.formContainer}>
+          {[
+            ['Комбайн', kombainerData?.combine],
+            ['Комбайнер', kombainerUserData?.fio],
+            ['Культура', kombainerData?.culture],
+            ['Поле', kombainerData?.field],
+            ['Бригада', kombainerData?.brigade],
+          ].map(([label, value]) => (
+            <View key={label as string} style={styles.formRow}>
+              <Text style={styles.label}>{label}:</Text>
+              <Text style={styles.value}>{value || '-'}</Text>
+            </View>
+          ))}
 
-      <View style={styles.formContainer}>
-        {[
-          ['Комбайн', kombainerData?.combine],
-          ['Комбайнер', kombainerUserData?.fio],
-          ['Культура', kombainerData?.culture],
-          ['Поле', kombainerData?.field],
-          ['Бригада', kombainerData?.brigade],
-        ].map(([label, value]) => (
-          <View key={label} style={styles.formRow}>
-            <Text style={styles.label}>{label}:</Text>
-            <Text style={styles.value}>{value || '-'}</Text>
+          <View style={styles.formRow}>
+            <Text style={styles.label}>Вес:</Text>
+            <Text style={styles.value}>{weight || 'Будет указан комбайнером'}</Text>
           </View>
-        ))}
 
-        <View style={styles.formRow}>
-          <Text style={styles.label}>Вес:</Text>
-          <Text style={styles.value}>{weight || 'Будет указан комбайнером'}</Text>
+          {[
+            ['Транспорт', voditelData?.transport],
+            ['Водитель', userData?.fio],
+          ].map(([label, value]) => (
+            <View key={label as string} style={styles.formRow}>
+              <Text style={styles.label}>{label}:</Text>
+              <Text style={styles.value}>{value}</Text>
+            </View>
+          ))}
         </View>
 
-        {[
-          ['Транспорт', voditelData?.transport],
-          ['Водитель', userData?.fio],
-        ].map(([label, value]) => (
-          <View key={label} style={styles.formRow}>
-            <Text style={styles.label}>{label}:</Text>
-            <Text style={styles.value}>{value}</Text>
-          </View>
-        ))}
-      </View>
+        {isKombainerData && (
+          <>
+            {loadingKombainerDataSuccess ? (
+              <TouchableOpacity style={styles.submitButton} onPress={this.confirmKombainerTicket}>
+                <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#98d642" />
+              </View>
+            )}
+          </>
+        )}
 
-      {isKombainerData && (
-        <>
-          {loadingKombainerDataSuccess ? (
-            <TouchableOpacity style={styles.submitButton} onPress={confirmKombainerTicket}>
-              <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#98d642" />
-            </View>
-          )}
-        </>
-      )}
+        {isKombainerDataWithWeight && (
+          <>
+            {loadingKombainerDataWithWeightSuccess ? (
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={this.confirmKombainerTicketWithWeight}
+              >
+                <Text style={styles.submitButtonText}>
+                  Подтвердить данные талона и веса и подписать талон
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#98d642" />
+              </View>
+            )}
+          </>
+        )}
 
-      {isKombainerDataWithWeight && (
-        <>
-          {loadingKombainerDataWithWeightSuccess ? (
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={confirmKombainerTicketWithWeight}
-            >
-              <Text style={styles.submitButtonText}>
-                Подтвердить данные талона и веса и подписать талон
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#98d642" />
-            </View>
-          )}
-        </>
-      )}
-
-      <TouchableOpacity style={styles.cancelButton} onPress={handleCancelClick}>
-        <Text style={styles.cancelButtonText}>Отмена</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-};
+        <TouchableOpacity style={styles.cancelButton} onPress={this.handleCancelClick}>
+          <Text style={styles.cancelButtonText}>Отмена</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  }
+}
 
 const styles = StyleSheet.create({
   container: {
