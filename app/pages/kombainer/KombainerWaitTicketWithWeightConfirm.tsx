@@ -124,102 +124,14 @@ class KombainerWaitTicketWithWeightConfirm extends React.Component<
       console.log('getKombainerData|currentUser=', currentUser);
 
       console.log('getKombainerData|waitingVoditelWeightConfirm|init');
-      // Запускаем периодический опрос для получения подтверждения от водителя
-      this.waitingVoditelWeightConfirmCtrl = setTimeout(
-        () => this.waitingVoditelWeightConfirm(),
-        1000
-      ) as unknown as number;
+
+      // this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
     } catch (error: any) {
       console.error('getKombainerData|currentUser|error =', error);
       Alert.alert(
         'Ошибка получения данных текущего пользователя',
         error.message || JSON.stringify(error)
       );
-    }
-  };
-
-  /**
-   * Метод для периодического опроса ответа needRedirect
-   */
-  waitingVoditelWeightConfirm = async () => {
-    if (this.waitingVoditelWeightConfirmCtrl === null) {
-      console.log(
-        'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|!waitingVoditelWeightConfirmCtrl'
-      );
-      return;
-    }
-
-    try {
-      const result = await handleMessage({
-        req: { type: 'needRedirect' },
-        reqId: 'needRedirect_' + Date.now(),
-      });
-
-      if (result.type !== 'needRedirect') {
-        throw new Error('Failed to get needRedirect response');
-      }
-
-      const response = result as NeedRedirectResponse;
-      console.log(
-        'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|response=',
-        response
-      );
-
-      if (response.status === 'empty') {
-        // Если данные ещё не получены – продолжаем опрос
-        this.waitingVoditelWeightConfirmCtrl = setTimeout(
-          () => this.waitingVoditelWeightConfirm(),
-          1000
-        ) as unknown as number;
-        return;
-      }
-
-      // Останавливаем опрос
-      if (this.waitingVoditelWeightConfirmCtrl) {
-        clearTimeout(this.waitingVoditelWeightConfirmCtrl);
-        this.waitingVoditelWeightConfirmCtrl = null;
-      }
-
-      if (!response.path) {
-        console.error(
-          'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|!response.path|response=',
-          response
-        );
-        Alert.alert(
-          'Ошибка подключения к устройству',
-          `Не был получен корректный "needRedirect": ${JSON.stringify(response)}`
-        );
-        return;
-      }
-
-      AuthStoreData.context = response.path as PositionOptionValue;
-
-      if (!AuthStoreData.context) {
-        Alert.alert(
-          'Не определен контекст',
-          'Не определен контекст пользователя "AuthStoreData.context"'
-        );
-        return;
-      }
-
-      AuthStoreData.payloadConfirmKombainerTicket =
-        response.payload as IPayloadConfirmKombainerTicket;
-
-      switch (AuthStoreData.context) {
-        case 'kombainer':
-          this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
-          return;
-        default:
-          Alert.alert('Ошибка', `Неизвестный контекст в switch: ${AuthStoreData.context}`);
-          return;
-      }
-    } catch (e) {
-      console.error('KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|error=', e);
-      // В случае ошибки продолжаем опрос
-      this.waitingVoditelWeightConfirmCtrl = setTimeout(
-        () => this.waitingVoditelWeightConfirm(),
-        1000
-      ) as unknown as number;
     }
   };
 
