@@ -6,8 +6,11 @@ import {
   IPayloadConfirmKombainerTicket,
   IPayloadSetTalonOfKombainer,
   ICreateKombainerParams,
+  ISendTcpSetVoditelData,
+  IVoditelConnectedPayload,
+  ICreateVoditelParams,
 } from '../../global';
-import { ToastAndroid } from 'react-native';
+import { ToastAndroid, DeviceEventEmitter } from 'react-native';
 import { setNeedRedirect } from '../services/MessageHandler';
 import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
@@ -29,11 +32,11 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'set_voditel_data': {
       const { voditelData, voditelUserData } = message;
-
-      setNeedRedirect('kombainer', {
+      // Отправляем событие о подключении водителя
+      DeviceEventEmitter.emit('voditelConnected', {
         voditelData,
         voditelUserData,
-      } as IPayloadVoditelConnectSuccess);
+      } as IVoditelConnectedPayload);
 
       return { status: 'ok' };
     }
@@ -55,11 +58,11 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'confirm_kombainer_ticket': {
       const { voditelData, userData } = message;
+      console.log('confirm_kombainer_ticket|message=', message);
 
-      setNeedRedirect('kombainer', {
+      DeviceEventEmitter.emit('voditelConfirmAfterConnect', {
         voditelData,
         userData,
-        status: 'ok',
       } as IPayloadConfirmKombainerTicket);
 
       return { status: 'ok' };
@@ -135,7 +138,9 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
         talonNumber,
       };
 
-      setNeedRedirect('voditel', payload);
+      console.log('confirm_kombainer_ticket|payload=', payload);
+
+      DeviceEventEmitter.emit('setTalonOfKombainer', payload);
 
       return { status: 'ok' };
     }
