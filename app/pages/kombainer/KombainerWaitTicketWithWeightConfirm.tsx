@@ -14,6 +14,7 @@ import {
   PositionOptionValue,
   RootStackParamList,
 } from '../../../global';
+import KeepAwake from 'react-native-keep-awake';
 
 interface KombainerWaitTicketWithWeightConfirmProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -65,12 +66,7 @@ class KombainerWaitTicketWithWeightConfirm extends React.Component<
 
   componentDidMount() {
     // Включаем не гаснущий экран
-    handleMessage({
-      req: { type: 'enableKeepAwake' },
-      reqId: 'enableKeepAwake_' + Date.now(),
-    })
-      .then(() => console.log('Экран не будет гаснуть'))
-      .catch((error) => console.error('Ошибка при включении функции не гаснущего экрана:', error));
+    KeepAwake.activate();
 
     this.getKombainerData().catch((e: unknown) => {
       console.error('KombainerWaitTicketWithWeightConfirm|setKombainerData|error=', e);
@@ -86,12 +82,7 @@ class KombainerWaitTicketWithWeightConfirm extends React.Component<
     }
 
     // Отключаем функцию не гаснущего экрана при выходе с экрана
-    handleMessage({
-      req: { type: 'disableKeepAwake' },
-      reqId: 'disableKeepAwake_' + Date.now(),
-    })
-      .then(() => console.log('Функция не гаснущего экрана отключена'))
-      .catch((error) => console.error('Ошибка при отключении не гаснущего экрана:', error));
+    KeepAwake.deactivate();
 
     // Если переходим не на экран успешного создания талона, то отключаем соединения
     const isNavigatingToSuccessPage =
