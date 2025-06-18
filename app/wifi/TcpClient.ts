@@ -192,7 +192,7 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
 
     try {
       client.write(jsonMessage, 'utf8', () => {
-        console.log('TCP клиент|Запрос отправлен:', jsonMessage);
+        console.log('TCP клиент|Запрос отправлен:', JSON.parse(jsonMessage));
         // ToastAndroid.show(`TCP клиент|Запрос отправлен`, ToastAndroid.SHORT);
       });
     } catch (error) {
