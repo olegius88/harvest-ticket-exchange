@@ -10,6 +10,7 @@ import {
   BackHandler,
   PermissionsAndroid,
   Linking,
+  DeviceEventEmitter,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import {
@@ -30,6 +31,7 @@ import {
   RootStackParamList,
   SetHotspotDisabledResponse,
   SetHotspotEnabledResponse,
+  IVoditelConnectedPayload,
 } from '../../../global';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
@@ -52,11 +54,14 @@ interface KombainerQRCodeState {
   maxRetries: number;
   retryInProgress: boolean;
   isCancelling: boolean; // Добавляем флаг для отслеживания процесса отмены
+  voditelConnected: boolean; // Добавляем флаг для отслеживания подключения водителя
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
   generateQr = false;
   waitingVoditelDataCtrl: number | NodeJS.Timeout | null = null;
+  // Добавляем слушатель события
+  voditelConnectedListener: any = null;
 
   constructor(props: KombainerQRCodeProps) {
     super(props);
@@ -71,6 +76,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       maxRetries: 5, // Максимальное количество попыток
       retryInProgress: false,
       isCancelling: false, // Инициализация флага отмены
+      voditelConnected: false, // Инициализация флага подключения водителя
     };
   }
 
@@ -295,6 +301,25 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
   };
 
+  // Обработчик события подключения водителя
+  handleVoditelConnected = (data: IVoditelConnectedPayload) => {
+    console.log('Водитель подключился:', data);
+
+    // Устанавливаем флаг подключения водителя
+    this.setState({ voditelConnected: true });
+
+    // Очищаем таймер ожидания данных водителя, если он был установлен
+    if (this.waitingVoditelDataCtrl !== null) {
+      clearTimeout(this.waitingVoditelDataCtrl);
+      this.waitingVoditelDataCtrl = null;
+    }
+
+    // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя
+    this.props.navigation.navigate('KombainerTicketDetailAfterVoditelConfirmScreen', {
+      data,
+    });
+  };
+
   componentDidMount() {
     console.log('componentDidMount');
 
@@ -304,105 +329,17 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       return true; // Предотвращаем стандартное поведение
     });
 
+    // Добавляем слушатель события подключения водителя
+    this.voditelConnectedListener = DeviceEventEmitter.addListener(
+      'voditelConnected',
+      this.handleVoditelConnected
+    );
+
     this.initGenerateQr();
 
     // Cleanup function
     return () => backHandler.remove();
   }
-
-  waitingVoditelData = async () => {
-    // Проверяем флаг отмены перед началом выполнения
-    if (this.state.isCancelling) {
-      console.log('waitingVoditelData: процесс был отменен');
-      this.waitingVoditelDataCtrl = null;
-      return;
-    }
-
-    if (this.waitingVoditelDataCtrl === null) {
-      console.log('KombainerQRCode|waitingVoditelData|!this.waitingVoditelDataCtrl');
-      return;
-    }
-
-    let response: NeedRedirectResponse;
-    try {
-      const res = await handleMessage({
-        req: {
-          type: 'needRedirect',
-        },
-        reqId: 'needRedirect_' + Date.now(),
-      });
-
-      // Проверяем флаг отмены после получения ответа
-      if (this.state.isCancelling) {
-        console.log('waitingVoditelData: процесс был отменен после получения ответа');
-        this.waitingVoditelDataCtrl = null;
-        return;
-      }
-
-      if (res.type !== 'needRedirect') {
-        throw new Error('Failed to get needRedirect');
-      }
-
-      response = res as NeedRedirectResponse;
-    } catch (e) {
-      console.error('KombainerQRCode|waitingVoditelData|error=', e);
-      return;
-    }
-
-    console.log('KombainerQRCode|waitingVoditelData|response =', response);
-
-    if (response.status === 'empty') {
-      // Проверяем флаг отмены перед установкой нового таймера
-      if (!this.state.isCancelling) {
-        this.waitingVoditelDataCtrl = setTimeout(() => this.waitingVoditelData(), 1000);
-      } else {
-        console.log('waitingVoditelData: новый таймер не установлен из-за отмены');
-        this.waitingVoditelDataCtrl = null;
-      }
-      return;
-    }
-
-    this.waitingVoditelDataCtrl = null;
-
-    if (!response.path) {
-      console.error('KombainerQRCode|waitingVoditelData|!response.path|response=', response);
-      Alert.alert(
-        'Ошибка подключения к устройству',
-        `Не был получен корректный 'needRedirect': ${JSON.stringify(response)}`
-      );
-      return;
-    }
-
-    // Сохраняем payload для дальнейшего использования
-    // AuthStoreData.payloadVoditelConnectSuccess = response.payload as IPayloadVoditelConnectSuccess;
-    console.log('Payload водителя:', response.payload);
-    AuthStoreData.context = response.path as PositionOptionValue;
-
-    if (!AuthStoreData.context) {
-      Alert.alert(
-        'Не определен контекст',
-        "Не определен контекст пользователя 'AuthStoreData.context'"
-      );
-      return;
-    }
-    switch (AuthStoreData.context) {
-      case 'kombainer':
-        // В React Native навигация происходит через navigation prop
-        Alert.alert('Подключение успешно', 'Водитель подключился к устройству', [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Переходим на экран ожидания подтверждения данных водителем
-              this.props.navigation.navigate('KombainerWaitTicketConfirmScreen');
-            },
-          },
-        ]);
-        return;
-      default:
-        Alert.alert('Ошибка', `Неизвестный контекст в switch: ${AuthStoreData.context}`);
-        return;
-    }
-  };
 
   initGenerateQr = async () => {
     console.log('initGenerateQr|init');
@@ -475,15 +412,17 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     this.waitingVoditelDataCtrl = 0;
-    console.log('componentDidMount|waitingVoditelData|init');
-    this.waitingVoditelData().catch((error) => {
-      console.error('waitingVoditelData|error=', error);
-    });
   };
 
   componentWillUnmount() {
     // Установим флаг отмены для предотвращения запуска новых процессов
     this.setState({ isCancelling: true });
+
+    // Удаляем слушатель события подключения водителя
+    if (this.voditelConnectedListener) {
+      this.voditelConnectedListener.remove();
+      this.voditelConnectedListener = null;
+    }
 
     if (this.waitingVoditelDataCtrl !== null) {
       clearTimeout(this.waitingVoditelDataCtrl);
@@ -498,16 +437,17 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       reqId: 'disableKeepAwake_' + Date.now(),
     }).catch((e) => console.error('disableKeepAwake|error=', e));
 
-    // Определяем, переходим ли мы на страницу подтверждения талона
-    const isNavigatingToTicketConfirm =
-      AuthStoreData.context === 'kombainer' && this.waitingVoditelDataCtrl === null;
+    // Определяем, нужно ли сохранить соединение
+    // Соединение сохраняется, если водитель подключился (voditelConnected = true)
+    const shouldKeepConnection = this.state.voditelConnected;
 
-    if (!isNavigatingToTicketConfirm) {
+    if (!shouldKeepConnection) {
+      console.log('Водитель не подключен - закрываем соединения');
       this.cancel().catch((error) => {
         console.error('cancel|error=', error);
       });
     } else {
-      console.log('Переход на страницу подтверждения талона - сохраняем соединения');
+      console.log('Водитель подключен - сохраняем соединения для обмена данными');
     }
   }
 
