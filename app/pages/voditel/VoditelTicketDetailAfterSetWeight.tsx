@@ -7,6 +7,7 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  DeviceEventEmitter,
 } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -164,95 +165,6 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
   };
 
   /**
-   * Метод для периодического опроса ответа needRedirect
-   */
-  const waitingKombainerDataWithWeightConfirm = async () => {
-    if (waitingKombainerDataWithWeightConfirmCtrl.current === null) {
-      console.log(
-        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|controller stopped'
-      );
-      return;
-    }
-
-    let response: any;
-    try {
-      const result = await handleMessage({
-        req: {
-          type: 'needRedirect',
-        },
-        reqId: Date.now().toString(),
-      });
-      response = result;
-    } catch (e) {
-      console.error(
-        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|error=',
-        e
-      );
-      return;
-    }
-
-    console.log(
-      'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response=',
-      response
-    );
-
-    if (response.status === 'empty') {
-      // Если данные ещё не получены – продолжаем опрос
-      waitingKombainerDataWithWeightConfirmCtrl.current = setTimeout(
-        () => waitingKombainerDataWithWeightConfirm(),
-        1000
-      );
-      return;
-    }
-
-    // Останавливаем опрос
-    if (waitingKombainerDataWithWeightConfirmCtrl.current) {
-      clearTimeout(waitingKombainerDataWithWeightConfirmCtrl.current);
-      waitingKombainerDataWithWeightConfirmCtrl.current = null;
-    }
-
-    if (!response.path) {
-      console.error(
-        'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|!response.path|response=',
-        response
-      );
-      Alert.alert(
-        'Ошибка подключения к устройству',
-        `Не был получен корректный "needRedirect": ${JSON.stringify(response)}`
-      );
-      return;
-    }
-
-    AuthStoreData.context = response.path;
-
-    if (!AuthStoreData.context) {
-      Alert.alert('Ошибка', 'Не определен контекст пользователя "AuthStoreData.context"');
-      return;
-    }
-
-    switch (AuthStoreData.context) {
-      case 'voditel':
-        console.log(
-          'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|response.payload=',
-          response.payload
-        );
-        (AuthStoreData as any).payloadSetTalonOfKombainer = response.payload;
-
-        waitingKombainerDataWithWeight().catch((e: any) => {
-          console.error(
-            'VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|error=',
-            e
-          );
-          Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
-        });
-        return;
-      default:
-        Alert.alert('Ошибка', `Неизвестный контекст в switch: ${AuthStoreData.context}`);
-        return;
-    }
-  };
-
-  /**
    * Метод для получения данных комбайнера с весом
    */
   const waitingKombainerDataWithWeight = async () => {
@@ -375,10 +287,17 @@ const VoditelTicketDetailAfterSetWeight: React.FC = () => {
     }));
 
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
-    waitingKombainerDataWithWeightConfirmCtrl.current = setTimeout(
-      () => waitingKombainerDataWithWeightConfirm(),
-      1000
-    );
+
+    // waitingKombainerDataWithWeight().catch((e: any) => {
+    //   console.error('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeight|error=', e);
+    //   Alert.alert('Ошибка передачи данных комбайнера', e.message || JSON.stringify(e));
+    // });
+
+    // Добавляем слушатель события подтверждения от водителя
+    // this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
+    //   'setTalonOfKombainer',
+    //   this.handleVoditelConfirmAfterConnect
+    // );
   };
 
   /**
