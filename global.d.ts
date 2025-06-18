@@ -20,15 +20,6 @@ export interface ISendPostResponseIsHotspotEnabled {
 }
 
 /**
- * Интерфейс для ответа на запрос setHotspotEnabled.
- */
-export interface ISendPostResponseSetHotspotEnabled {
-  type: 'setHotspotEnabled';
-  ssid: string;
-  password: string;
-}
-
-/**
  * Интерфейс для ответа на запрос setHotspotDisabled.
  */
 export interface ISendPostResponseSetHotspotDisabled {
@@ -290,22 +281,6 @@ export interface ISendPostResponseJoinHotspot {
   status: string;
 }
 
-export interface ISendPostMessageEnableKeepAwake {
-  type: 'enableKeepAwake';
-}
-
-export interface ISendPostMessageDisableKeepAwake {
-  type: 'disableKeepAwake';
-}
-
-export interface ISendPostResponseEnableKeepAwake {
-  type: 'enableKeepAwake';
-}
-
-export interface ISendPostResponseDisableKeepAwake {
-  type: 'disableKeepAwake';
-}
-
 /**
  * Интерфейс для запроса запуска TCP-сервера.
  */
@@ -493,8 +468,6 @@ export type ISendPostMessage =
   | ISendPostMessageEditVoditel
   | ISendPostMessageJoinHotspot
   | ISendPostMessageNeedRedirect
-  | ISendPostMessageEnableKeepAwake
-  | ISendPostMessageDisableKeepAwake
   | ISendPostMessageStartTcpServer
   | ISendPostMessageStopTcpServer
   | ISendPostMessageConnectToTcpServer
@@ -525,15 +498,12 @@ export type ISendPostResponseRes =
   | ISendPostResponseOpenQRScanner
   | ISendPostResponseUserPushId
   | ISendPostResponseIsHotspotEnabled
-  | ISendPostResponseSetHotspotEnabled
   | ISendPostResponseSetHotspotDisabled
   | ISendPostResponseCheckAndRequestPermissions
   | ISendPostResponseCreateVoditel
   | ISendPostResponseEditVoditel
   | ISendPostResponseJoinHotspot
   | ISendPostResponseNeedRedirect
-  | ISendPostResponseEnableKeepAwake
-  | ISendPostResponseDisableKeepAwake
   | ISendPostResponseStartTcpServer
   | ISendPostResponseStopTcpServer
   | ISendPostResponseConnectToTcpServer
@@ -1050,14 +1020,6 @@ export interface UserDataResponse {
   userData: ICreateUsersParams;
 }
 
-export interface EnableKeepAwakeResponse {
-  type: 'enableKeepAwake';
-}
-
-export interface DisableKeepAwakeResponse {
-  type: 'disableKeepAwake';
-}
-
 export interface StartTcpServerResponse {
   type: 'startTcpServer';
   message: string;
@@ -1148,8 +1110,6 @@ export type HandleReqMessageResponse =
   | PushUserIdResponse
   | JoinHotspotResponse
   | UserDataResponse
-  | EnableKeepAwakeResponse
-  | DisableKeepAwakeResponse
   | StartTcpServerResponse
   | StopTcpServerResponse
   | ConnectToTcpServerResponse
