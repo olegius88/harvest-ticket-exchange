@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
-import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
+import { stopTcpServer, isTcpServerRunning, tcpServerSendRequest } from '../../wifi/TcpServer';
 import { VectorLogo } from '../../components/VectorLogo';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -204,7 +204,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
     try {
       // Отправляем запрос через TCP
-      const tcpResponse = await sendTcpRequest({
+      const tcpResponse = await tcpServerSendRequest({
         type: 'set_talon_of_kombainer',
         kombainerData: data.kombainerData,
         userData: data.userData,
