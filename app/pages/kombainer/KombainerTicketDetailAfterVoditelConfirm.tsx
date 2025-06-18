@@ -32,6 +32,7 @@ import {
   ICreateUserParams,
 } from '../../../global';
 import { sendTcpRequest } from '../../wifi/TcpClient';
+import KeepAwake from 'react-native-keep-awake';
 
 interface KombainerTicketDetailAfterVoditelConfirmProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -105,12 +106,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       return;
     }
     // Включаем не гаснущий экран
-    handleMessage({
-      req: { type: 'enableKeepAwake' },
-      reqId: 'enableKeepAwake_' + Date.now(),
-    })
-      .then(() => console.log('Экран не будет гаснуть'))
-      .catch((error) => console.error('Ошибка при включении функции не гаснущего экрана:', error));
+    KeepAwake.activate();
 
     Alert.alert(
       'Подключение к устройству прошло успешно',
@@ -436,10 +432,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
   componentWillUnmount() {
     // Отключаем не гаснущий экран
-    handleMessage({
-      req: { type: 'disableKeepAwake' },
-      reqId: 'disableKeepAwake_' + Date.now(),
-    }).catch((e) => console.error('disableKeepAwake|error=', e));
+    KeepAwake.deactivate();
 
     // Очищаем таймеры
     if (this.waitingVoditelTalonConfirmCtrl !== null) {
