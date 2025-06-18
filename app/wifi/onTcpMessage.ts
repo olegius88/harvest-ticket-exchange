@@ -128,6 +128,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'set_talon_of_kombainer': {
+      console.log('onTcpMessage|set_talon_of_kombainer|message=', message);
       const { kombainerData, userData, weight } = message;
       const talonNumber = message.talonNumber || '';
 
