@@ -245,7 +245,7 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
     try {
       const messageString = JSON.stringify(messageWithId);
       socket.write(messageString);
-      console.log('tcpServerSendRequest|Сообщение отправлено:', messageString);
+      console.log('tcpServerSendRequest|Сообщение отправлено|messageWithId=', messageWithId);
     } catch (error) {
       clearTimeout(timeout);
       pendingServerRequests.delete(messageId);
