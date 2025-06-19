@@ -1,6 +1,14 @@
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, NativeModules, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  NativeModules,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../../Constants';
@@ -64,6 +72,11 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   const isProcessing = useRef(false);
   const [processing, setProcessing] = useState(false);
 
+  // Новое состояние для показа инструкции
+  const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
+  // Сохраняем данные Wi-Fi для передачи в joinHotspot после инструкции
+  const wifiCredentialsRef = useRef<{ ssid: string; password: string } | null>(null);
+
   // При загрузке страницы вызываем setHotspotDisabled
   useEffect(() => {
     setHotspotDisabled();
@@ -78,45 +91,14 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       if (credentials) {
         const { ssid, password } = credentials;
         console.log('Parsed Wi‑Fi credentials:', ssid, password);
-        isProcessing.current = true;
-        setProcessing(true);
 
-        MainWifiModule.joinHotspot(ssid, password)
-          .then((joinDataRes: string) => {
-            console.log('onCodeScanned|joinHotspot|joinDataRes=', joinDataRes);
-            let joinData: JoinHotspotResponse;
-            try {
-              joinData = JSON.parse(joinDataRes);
-            } catch (e) {
-              console.error('onCodeScanned|JSON.parse error|e=', e);
-              console.error('onCodeScanned|JSON.parse error|e|joinDataRes=', joinDataRes);
-              Alert.alert('Ошибка joinDataRes');
-              return;
-            }
-            console.log('onCodeScanned|joinData=', joinData);
-
-            handleNeedRedirect(joinData);
-
-            // // Если подключение успешно, возвращается IP-адрес
-            // // Можно, например, сохранить его или передать в другой модуль
-            // const joinPayload: JoinHotspotPayload = {
-            //   ip: joinDataRes, // используем исходную строку с IP
-            // };
-            // setNeedRedirect('voditel', joinPayload);
-
-            // navigation.reset({
-            //   index: 0,
-            //   routes: [{ name: 'MainScreen' }],
-            // });
-          })
-          .catch((err: unknown) => {
-            Alert.alert(
-              'Ошибка',
-              err instanceof Error ? err.message : 'Не удалось подключиться к сети'
-            );
-            isProcessing.current = false;
-            setProcessing(false);
-          });
+        // Сохраняем данные для дальнейшего использования
+        wifiCredentialsRef.current = { ssid, password };
+        // Показываем инструкцию вместо сканера
+        setShowHotspotInstruction(true);
+        // Сразу запускаем подключение к Wi-Fi
+        handleConnectToHotspot();
+        return;
       } else {
         console.error('onCodeScanned|!credentials|value=', value);
         Alert.alert('Ошибка считывания QR-кода');
@@ -124,6 +106,35 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     },
     [navigation]
   );
+
+  // Обработчик для кнопки "Подключиться к Wi-Fi"
+  const handleConnectToHotspot = async () => {
+    if (!wifiCredentialsRef.current) return;
+    const { ssid, password } = wifiCredentialsRef.current;
+    isProcessing.current = true;
+    setProcessing(true);
+
+    try {
+      const joinDataRes = await MainWifiModule.joinHotspot(ssid, password);
+      console.log('onCodeScanned|joinHotspot|joinDataRes=', joinDataRes);
+      let joinData: JoinHotspotResponse;
+      try {
+        joinData = JSON.parse(joinDataRes);
+      } catch (e) {
+        console.error('onCodeScanned|JSON.parse error|e=', e);
+        console.error('onCodeScanned|JSON.parse error|e|joinDataRes=', joinDataRes);
+        Alert.alert('Ошибка joinDataRes');
+        return;
+      }
+      console.log('onCodeScanned|joinData=', joinData);
+
+      handleNeedRedirect(joinData);
+    } catch (err: unknown) {
+      Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось подключиться к сети');
+      isProcessing.current = false;
+      setProcessing(false);
+    }
+  };
 
   const handleNeedRedirect = async (joinData: JoinHotspotResponse) => {
     console.log('Main|needRedirect|joinData=', joinData);
@@ -231,39 +242,77 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     onCodeScanned,
   });
 
+  // Компонент-инструкция по подключению к хотспоту
+  const HotspotInstruction = () => (
+    <View style={styles.instructionOverlay}>
+      <View style={styles.instructionBox}>
+        <Text style={styles.instructionTitle}>Подключение к Wi-Fi точке доступа</Text>
+        <Text style={styles.instructionStep}>
+          1. После сканирования QR-кода дождитесь появления системного окна с кнопкой{' '}
+          <Text style={{ fontWeight: 'bold' }}>Соединиться</Text>.
+        </Text>
+        <Text style={styles.instructionStep}>
+          2. Нажмите на кнопку <Text style={{ fontWeight: 'bold' }}>Соединиться/Подключиться</Text>,
+          чтобы подключиться к Wi-Fi.
+        </Text>
+        <Text style={styles.instructionStep}>
+          3. После подключения процесс продолжится автоматически.
+        </Text>
+        {/* Кнопка "Назад к сканеру" */}
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => {
+            setShowHotspotInstruction(false);
+            isProcessing.current = false;
+            setProcessing(false);
+          }}
+        >
+          <Text style={styles.cancelButtonText}>Назад к сканеру</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {device && !isProcessing.current && (
-        // @ts-ignore
-        <Camera
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={isActive}
-          codeScanner={codeScanner}
-          torch={torch ? 'on' : 'off'}
-          enableZoomGesture={true}
-        />
-      )}
-      <StatusBarBlurBackground />
-      {/* Оверлей для сканирования */}
-      <ScanningOverlay />
-      <View style={styles.rightButtonRow}>
-        <PressableOpacity
-          style={styles.button}
-          onPress={() => setTorch(!torch)}
-          disabledOpacity={0.4}
-        >
-          <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
-        </PressableOpacity>
-      </View>
-      {/* Кнопка "Назад" */}
-      <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
-        <IonIcon name="chevron-back" color="white" size={35} />
-      </PressableOpacity>
-      {processing && (
-        <View style={styles.preloaderContainer}>
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
+      {/* Показываем инструкцию вместо сканера, если showHotspotInstruction */}
+      {showHotspotInstruction ? (
+        <HotspotInstruction />
+      ) : (
+        <>
+          {device && !isProcessing.current && (
+            // @ts-ignore
+            <Camera
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={isActive}
+              codeScanner={codeScanner}
+              torch={torch ? 'on' : 'off'}
+              enableZoomGesture={true}
+            />
+          )}
+          <StatusBarBlurBackground />
+          {/* Оверлей для сканирования */}
+          <ScanningOverlay />
+          <View style={styles.rightButtonRow}>
+            <PressableOpacity
+              style={styles.button}
+              onPress={() => setTorch(!torch)}
+              disabledOpacity={0.4}
+            >
+              <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
+            </PressableOpacity>
+          </View>
+          {/* Кнопка "Назад" */}
+          <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
+            <IonIcon name="chevron-back" color="white" size={35} />
+          </PressableOpacity>
+          {processing && (
+            <View style={styles.preloaderContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -302,5 +351,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  instructionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  instructionBox: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 28,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    elevation: 8,
+  },
+  instructionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 18,
+    color: '#333',
+    textAlign: 'center',
+  },
+  instructionStep: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'left',
+    width: '100%',
+  },
+  connectButton: {
+    backgroundColor: '#5a7d2b',
+    borderRadius: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    marginTop: 18,
+    width: '100%',
+  },
+  connectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#d9d9d9',
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    marginTop: 12,
+    width: '100%',
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
