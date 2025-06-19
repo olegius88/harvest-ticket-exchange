@@ -924,7 +924,6 @@ export type RootStackParamList = {
   KombainerTicketDetailScreen: undefined;
   KombainerTicketCreatedSuccessScreen: undefined;
   KombainerTicketDetailAfterVoditelConfirmScreen: { data: IVoditelConnectedPayload };
-  KombainerWaitTicketWithWeightConfirmScreen: undefined;
   VoditelRegistrationScreen: undefined;
   VoditelCreateTripScreen: undefined;
   VoditelTicketDetailScreen: undefined;
