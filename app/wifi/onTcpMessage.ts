@@ -70,9 +70,10 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'confirm_kombainer_ticket_with_weight': {
       // const { voditelData, userData } = message;
+      console.log('confirm_kombainer_ticket_with_weight|message=', message);
 
-      // Передаем undefined для случая подтверждения с весом без конкретных данных
-      setNeedRedirect('kombainer', undefined);
+      // Отправляем событие о подтверждении веса водителем
+      DeviceEventEmitter.emit('voditelConfirmWithWeight', message);
 
       return { status: 'ok' };
     }

@@ -58,8 +58,24 @@ export const startTcpServer = (): Promise<string> => {
 
         // Обработка полученных данных от клиента
         socket.on('data', async (data: string | Buffer) => {
+          if (typeof data === 'string') {
+            console.log('startTcpServer|socket|on|data (string)=', data);
+            try {
+              const json = JSON.parse(data);
+              console.log('startTcpServer|socket|on|data (parsed JSON)=', json);
+            } catch (error) {
+              console.error('startTcpServer|Ошибка парсинга JSON:', error);
+            }
+          } else {
+            try {
+              const json = JSON.parse(data.toString());
+              console.log('startTcpServer|socket|on|data (Buffer JSON)=', json);
+            } catch (error) {
+              console.error('startTcpServer|Ошибка парсинга Buffer JSON:', error);
+            }
+          }
+
           const dataString = typeof data === 'string' ? data : data.toString();
-          console.log('startTcpServer|socket|on|data=', dataString);
 
           let message: IMessageWithId;
           try {

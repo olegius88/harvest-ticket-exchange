@@ -54,6 +54,8 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   isVoditelTalonConfirmAfterSetWeightError: boolean;
   weightValue: string;
   weightError: string | null;
+  isWaitingVoditelWeightConfirm?: boolean; // новое состояние
+  canApproveTicket?: boolean; // новое состояние для кнопки "Подписать талон"
 }
 
 /**
@@ -72,6 +74,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   waitingVoditelWeightConfirmCtrl: number | null = null;
   // Слушатель события подключения водителя
   voditelConnectedListener: any = null;
+  // Слушатель события подтверждения веса водителем
+  voditelConfirmWithWeightListener: any = null;
 
   constructor(props: KombainerTicketDetailAfterVoditelConfirmProps) {
     super(props);
@@ -90,6 +94,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       isVoditelTalonConfirmAfterSetWeightError: false,
       weightValue: '',
       weightError: null,
+      isWaitingVoditelWeightConfirm: false, // Изначально не ждем подтверждения веса
+      canApproveTicket: false, // по умолчанию скрыта
     };
   }
 
@@ -170,6 +176,26 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     });
   };
 
+  // Обработчик события подтверждения веса водителем
+  handleVoditelConfirmWithWeight = (data: any): any => {
+    console.log(
+      'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmWithWeight|data=',
+      data
+    );
+
+    // Останавливаем опрос needRedirect, если он запущен
+    if (this.waitingVoditelWeightConfirmCtrl !== null) {
+      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
+      this.waitingVoditelWeightConfirmCtrl = null;
+    }
+
+    // Показываем кнопку "Подписать талон"
+    this.setState({
+      canApproveTicket: true,
+      isWaitingVoditelWeightConfirm: false,
+    });
+  };
+
   // Валидация веса перед отправкой
   validateWeight = (): boolean => {
     const { weightValue } = this.state;
@@ -213,8 +239,16 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
 
-      // Успешно отправили данные - переходим на экран ожидания подтверждения веса водителем
-      this.props.navigation.navigate('KombainerWaitTicketWithWeightConfirmScreen');
+      // Добавляем слушатель события подтверждения веса водителем
+      this.voditelConfirmWithWeightListener = DeviceEventEmitter.addListener(
+        'voditelConfirmWithWeight',
+        this.handleVoditelConfirmWithWeight
+      );
+
+      // Вместо перехода на другой экран, блокируем поля и показываем прелоадер
+      this.setState({
+        isWaitingVoditelWeightConfirm: true,
+      });
     } catch (error: any) {
       console.error('onFinish|set_talon_of_kombainer|error =', error);
       Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
@@ -434,10 +468,26 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
 
+    // Удаляем слушатели событий
+    if (this.voditelConnectedListener) {
+      this.voditelConnectedListener.remove();
+      this.voditelConnectedListener = null;
+    }
+
+    if (this.voditelConfirmWithWeightListener) {
+      this.voditelConfirmWithWeightListener.remove();
+      this.voditelConfirmWithWeightListener = null;
+    }
+
     // Очищаем таймеры
     if (this.waitingVoditelTalonConfirmCtrl !== null) {
       clearTimeout(this.waitingVoditelTalonConfirmCtrl);
       this.waitingVoditelTalonConfirmCtrl = null;
+    }
+
+    if (this.waitingVoditelWeightConfirmCtrl !== null) {
+      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
+      this.waitingVoditelWeightConfirmCtrl = null;
     }
   }
 
@@ -457,6 +507,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       isVoditelTalonConfirmAfterSetWeightError,
       weightValue,
       weightError,
+      isWaitingVoditelWeightConfirm,
+      canApproveTicket,
     } = this.state;
 
     if (confirmDataError) {
@@ -545,7 +597,9 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                     onChangeText={this.handleWeightChange}
                     onBlur={this.handleWeightBlur}
                     keyboardType="decimal-pad"
-                    editable={!isVoditelTalonConfirmAfterSetWeight}
+                    editable={
+                      !isVoditelTalonConfirmAfterSetWeight && !isWaitingVoditelWeightConfirm // поле недоступно при ожидании подтверждения веса
+                    }
                   />
                   {weightError ? <Text style={styles.errorHint}>{weightError}</Text> : null}
                 </View>
@@ -565,7 +619,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
             </View>
 
             {/* Состояние ожидания подтверждения от водителя и кнопки */}
-            {isVoditelTalonConfirm && (
+            {!isWaitingVoditelWeightConfirm && isVoditelTalonConfirm && (
               <View style={styles.actionsContainer}>
                 {isVoditelTalonConfirmSuccess ? (
                   <TouchableOpacity style={styles.submitButton} onPress={this.onSubmitForm}>
@@ -586,28 +640,31 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
               </View>
             )}
 
-            {/* Состояние после подтверждения веса водителем */}
-            {isVoditelTalonConfirmAfterSetWeight && (
+            {/* Новый блок: ожидание подтверждения веса водителем */}
+            {isWaitingVoditelWeightConfirm && (
               <View style={styles.actionsContainer}>
-                {isVoditelTalonConfirmAfterSetWeightSuccess ? (
-                  <TouchableOpacity style={styles.submitButton} onPress={this.handleApproveClick}>
-                    <Text style={styles.submitButtonText}>Подписать талон</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.loadingStateContainer}>
-                    <Text style={styles.loadingStateText}>Ожидание подтверждения от водителя</Text>
-                    <ActivityIndicator
-                      size="large"
-                      color="#98d642"
-                      style={styles.loadingIndicator}
-                    />
-                  </View>
-                )}
+                <View style={styles.loadingStateContainer}>
+                  <Text style={styles.loadingStateText}>
+                    Данные талона, а так же указанный вес были отправлены водителю
+                  </Text>
+                  <ActivityIndicator size="large" color="#98d642" style={styles.loadingIndicator} />
+                </View>
               </View>
             )}
 
+            {/* Кнопка "Подписать талон" появляется после подтверждения водителем */}
+            {canApproveTicket && (
+              <TouchableOpacity style={styles.submitButton} onPress={this.handleApproveClick}>
+                <Text style={styles.submitButtonText}>Подписать талон</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Кнопка отмены */}
-            <TouchableOpacity style={styles.cancelButton} onPress={this.handleCancelClick}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={this.handleCancelClick}
+              disabled={isWaitingVoditelWeightConfirm}
+            >
               <Text style={styles.cancelButtonText}>Отмена</Text>
             </TouchableOpacity>
           </View>
