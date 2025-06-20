@@ -58,13 +58,18 @@ interface KombainerQRCodeState {
   retryInProgress: boolean;
   isCancelling: boolean; // Добавляем флаг для отслеживания процесса отмены
   voditelConnected: boolean; // Добавляем флаг для отслеживания подключения водителя
+  // Новые поля для геопозиции
+  isLocationEnabled: boolean;
+  checkingLocationStatus: boolean;
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
   generateQr = false;
   waitingVoditelDataCtrl: number | NodeJS.Timeout | null = null;
-  // Добавляем слушатель события
   voditelConnectedListener: any = null;
+  // Новый массив для хранения всех таймеров повторных попыток
+  retryTimeouts: Array<NodeJS.Timeout | number> = [];
+  _isUnmounted = false; // Флаг размонтирования
 
   constructor(props: KombainerQRCodeProps) {
     super(props);
@@ -80,6 +85,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       retryInProgress: false,
       isCancelling: false, // Инициализация флага отмены
       voditelConnected: false, // Инициализация флага подключения водителя
+      // Инициализация полей геопозиции
+      isLocationEnabled: true,
+      checkingLocationStatus: false,
     };
   }
 
@@ -136,6 +144,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
   // Генерация QR-кода - упрощённая версия
   generateQRCode = async (isRetry = false) => {
+    // Не выполнять, если отменено или размонтировано
+    if (this.state.isCancelling || this._isUnmounted) {
+      console.log('generateQRCode|отменено или размонтировано, выход');
+      return;
+    }
+
     console.log(`generateQRCode|init|isRetry=${isRetry}|retryCount=${this.state.retryCount}`);
 
     if (isRetry) {
@@ -249,28 +263,25 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
   // Новый метод для обработки повторных попыток
   handleRetryIfNeeded = async (errorMessage: string) => {
-    // Проверяем флаг отмены перед повторной попыткой
-    if (this.state.isCancelling) {
-      console.log('handleRetryIfNeeded: процесс был отменен');
+    if (this.state.isCancelling || this._isUnmounted) {
+      console.log('handleRetryIfNeeded: процесс был отменен или размонтирован');
       return;
     }
-
     const { retryCount, maxRetries } = this.state;
-
     if (retryCount < maxRetries) {
       console.log(
         `Попытка ${retryCount + 1}/${maxRetries} не удалась: ${errorMessage}. Повторяем...`
       );
 
       // Небольшая задержка перед следующей попыткой
-      setTimeout(() => {
-        // Проверяем флаг отмены перед выполнением повторной попытки
-        if (!this.state.isCancelling) {
+      const timeout = setTimeout(() => {
+        if (!this.state.isCancelling && !this._isUnmounted) {
           this.generateQRCode(true);
         } else {
-          console.log('handleRetryIfNeeded: повторная попытка отменена');
+          console.log('handleRetryIfNeeded: повторная попытка отменена или размонтирована');
         }
       }, 1500);
+      this.retryTimeouts.push(timeout);
     } else {
       console.error(
         `Достигнуто максимальное количество попыток (${maxRetries}). Прекращаем попытки.`
@@ -308,6 +319,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   componentDidMount() {
+    this._isUnmounted = false;
     console.log('componentDidMount');
 
     // Обработчик для кнопки "Назад" на Android
@@ -328,6 +340,48 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     return () => backHandler.remove();
   }
 
+  // Новая функция для проверки состояния GPS
+  checkLocationServiceStatus = async (): Promise<boolean> => {
+    try {
+      const locationEnabled = await DeviceInfo.isLocationEnabled();
+      console.log('checkLocationServiceStatus|locationEnabled=', locationEnabled);
+      this.setState({ isLocationEnabled: locationEnabled });
+      return locationEnabled;
+    } catch (error) {
+      console.error('checkLocationServiceStatus|error=', error);
+      return false;
+    }
+  };
+
+  // Новая функция для запроса включения геопозиции
+  requestEnableLocation = () => {
+    Alert.alert(
+      'Требуется включить геопозицию',
+      'Для создания точки доступа Wi-Fi необходимо включить службу определения местоположения на устройстве.',
+      [
+        {
+          text: 'Отмена',
+          style: 'cancel',
+        },
+        {
+          text: 'Открыть настройки',
+          onPress: () => {
+            // Открываем настройки местоположения
+            Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => {
+              // Если не удалось открыть настройки местоположения, открываем общие настройки
+              Linking.openSettings().catch(() => {
+                Alert.alert(
+                  'Ошибка',
+                  'Не удалось открыть настройки. Пожалуйста, включите геопозицию вручную: Настройки → Местоположение → Включить'
+                );
+              });
+            });
+          },
+        },
+      ]
+    );
+  };
+
   initGenerateQr = async () => {
     console.log('initGenerateQr|init');
 
@@ -337,11 +391,27 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       generatingQR: true,
       retryCount: 0,
       retryInProgress: false,
+      checkingLocationStatus: true,
     });
 
     // Разрешим запускать проверку разрешений снова
     this.generateQr = false;
     this.generateQr = true;
+
+    // Сначала проверяем состояние геопозиции
+    const locationEnabled = await this.checkLocationServiceStatus();
+    this.setState({ checkingLocationStatus: false });
+
+    if (!locationEnabled) {
+      console.log('initGenerateQr|Геопозиция отключена');
+      this.setState({
+        loading: false,
+        generatingQR: false,
+        allPermissionsGranted: false,
+      });
+      this.requestEnableLocation();
+      return;
+    }
 
     try {
       const permissions = [
@@ -360,24 +430,48 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       );
 
       if (!allGranted) {
+        // Специальная обработка для точного местоположения
         if (
           granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
           PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
         ) {
           console.log('checkPermissionsHotspot|ACCESS_FINE_LOCATION = NEVER_ASK_AGAIN');
 
-          const locationEnabled = await DeviceInfo.isLocationEnabled();
-          console.log('checkPermissionsHotspot|locationEnabled=', locationEnabled);
-          if (!locationEnabled) {
-            console.log('initGenerateQr|requestMultiple|!allGranted');
-            this.setState({ loading: false, generatingQR: false, allPermissionsGranted: false });
+          // Повторно проверяем состояние геопозиции
+          const currentLocationEnabled = await this.checkLocationServiceStatus();
+          console.log('checkPermissionsHotspot|currentLocationEnabled=', currentLocationEnabled);
+
+          if (!currentLocationEnabled) {
+            console.log('initGenerateQr|Геопозиция отключена при NEVER_ASK_AGAIN');
+            this.setState({
+              loading: false,
+              generatingQR: false,
+              allPermissionsGranted: false,
+            });
+            this.requestEnableLocation();
             return;
           }
+        } else {
+          // Если разрешения не предоставлены и это не NEVER_ASK_AGAIN
+          console.log('initGenerateQr|requestMultiple|!allGranted');
+          this.setState({
+            loading: false,
+            generatingQR: false,
+            allPermissionsGranted: false,
+          });
+          return;
         }
       }
+
+      // ✅ ИСПРАВЛЕНИЕ: Устанавливаем allPermissionsGranted в true при успешной проверке
+      this.setState({ allPermissionsGranted: true });
     } catch (e) {
       console.error('initGenerateQr|generateQRCode|error=', e);
-      this.setState({ loading: false, generatingQR: false, allPermissionsGranted: false });
+      this.setState({
+        loading: false,
+        generatingQR: false,
+        allPermissionsGranted: false,
+      });
       return;
     }
 
@@ -402,6 +496,11 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   componentWillUnmount() {
+    this._isUnmounted = true;
+    // Очищаем все таймеры повторных попыток
+    this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.retryTimeouts = [];
+
     // Установим флаг отмены для предотвращения запуска новых процессов
     this.setState({ isCancelling: true });
 
@@ -434,8 +533,10 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   }
 
   handleCancelClick = async () => {
-    // Сразу устанавливаем флаг отмены, чтобы предотвратить запуск новых процессов
     this.setState({ isCancelling: true });
+    // Очищаем все таймеры повторных попыток
+    this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.retryTimeouts = [];
 
     // Показываем уведомление о закрытии TCP-соединения
     Alert.alert(
@@ -481,9 +582,50 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     });
   };
 
+  // Открытие настроек местоположения
+  openLocationSettings = () => {
+    Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => {
+      // Если не удалось открыть настройки местоположения, пробуем общие настройки
+      Linking.openSettings().catch(() => {
+        Alert.alert(
+          'Ошибка',
+          'Не удалось открыть настройки. Пожалуйста, включите геопозицию вручную: Настройки → Местоположение → Включить'
+        );
+      });
+    });
+  };
+
   renderPermissionStatusMessages = () => {
-    const { permissionsStatus } = this.state;
+    const { permissionsStatus, isLocationEnabled, checkingLocationStatus } = this.state;
     const messages: React.ReactNode[] = [];
+
+    // Если геопозиция отключена, показываем соответствующее сообщение
+    if (!isLocationEnabled) {
+      messages.push(
+        <View key="location-disabled" style={styles.permissionMessageContainer}>
+          <Text style={styles.permissionTitle}>Служба определения местоположения</Text>
+          <Text style={styles.permissionError}>
+            Служба определения местоположения отключена на устройстве.
+          </Text>
+          <Text style={styles.permissionInstruction}>
+            Для создания точки доступа Wi-Fi необходимо включить геопозицию в настройках устройства.
+          </Text>
+        </View>
+      );
+    }
+
+    // Если проверяем статус геопозиции, показываем индикатор
+    if (checkingLocationStatus) {
+      messages.push(
+        <View key="location-checking" style={styles.permissionMessageContainer}>
+          <Text style={styles.permissionTitle}>Проверка геопозиции</Text>
+          <ActivityIndicator size="small" color="#856404" style={{ marginVertical: 8 }} />
+          <Text style={styles.permissionInstruction}>
+            Проверяем состояние службы определения местоположения...
+          </Text>
+        </View>
+      );
+    }
 
     // Текст с описанием проблемы для каждого типа разрешения
     const permissionMessages: {
@@ -498,8 +640,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         title: 'Точное местоположение',
         denied: 'Разрешение на доступ к точному местоположению отклонено.',
         never_ask_again: 'Разрешение на доступ к точному местоположению заблокировано навсегда.',
-        instruction:
-          'Перейдите в Настройки → Приложения → Это приложение → Разрешения → Местоположение → включите доступ к местоположению.',
+        instruction: isLocationEnabled
+          ? 'Перейдите в Настройки → Приложения → Это приложение → Разрешения → Местоположение → включите доступ к местоположению.'
+          : 'Сначала включите геопозицию в настройках устройства, затем предоставьте разрешение приложению.',
       },
       [PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION]: {
         title: 'Приблизительное местоположение',
@@ -530,7 +673,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
             <Text style={styles.permissionTitle}>{permInfo.title}</Text>
             <Text style={styles.permissionError}>{permInfo.denied}</Text>
             <Text style={styles.permissionInstruction}>
-              Нажмите кнопку "Проверить разрешения", чтобы запросить доступ повторно.
+              {isLocationEnabled
+                ? 'Нажмите кнопку "Проверить разрешения", чтобы запросить доступ повторно.'
+                : 'Сначала включите геопозицию, затем проверьте разрешения.'}
             </Text>
           </View>
         );
@@ -568,6 +713,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       retryCount,
       maxRetries,
       retryInProgress,
+      isLocationEnabled,
+      checkingLocationStatus,
     } = this.state;
 
     return (
@@ -581,12 +728,28 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
             <View style={styles.permissionsErrorContainer}>
               {this.renderPermissionStatusMessages()}
               <View style={styles.buttonsContainer}>
-                <TouchableOpacity style={styles.retryButton} onPress={this.initGenerateQr}>
-                  <Text style={styles.retryButtonText}>Проверить разрешения</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={this.initGenerateQr}
+                  disabled={checkingLocationStatus}
+                >
+                  <Text style={styles.retryButtonText}>
+                    {checkingLocationStatus ? 'Проверяю...' : 'Проверить разрешения'}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.settingsButton} onPress={this.openAppSettings}>
-                  <Text style={styles.settingsButtonText}>Открыть настройки</Text>
-                </TouchableOpacity>
+
+                {!isLocationEnabled ? (
+                  <TouchableOpacity
+                    style={styles.settingsButton}
+                    onPress={this.openLocationSettings}
+                  >
+                    <Text style={styles.settingsButtonText}>Включить геопозицию</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.settingsButton} onPress={this.openAppSettings}>
+                    <Text style={styles.settingsButtonText}>Открыть настройки</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ) : (

@@ -15,18 +15,18 @@ import java.util.concurrent.atomic.AtomicReference
 
 class HotspotBridgeModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     override fun getName() = "HotspotBridge"
-    
+
     private val mainWifi: MainWifi = MainWifi(reactContext)
-    
+
     @ReactMethod
     fun startHotspot(reqId: String, promise: Promise) {
         try {
             Log.d("HotspotBridgeModule", "startHotspot вызван из React Native, reqId: $reqId")
-            
+
             val latch = CountDownLatch(1)
             val result = AtomicReference<String>("")
             val isStarted = AtomicReference(false)
-            
+
             mainWifi.callback = object : MainWifi.MainWifiCallback {
                 override fun onHotspotStarted(
                     ssid: String,
@@ -35,11 +35,7 @@ class HotspotBridgeModule(reactContext: ReactApplicationContext) : ReactContextB
                     reservation: WifiManager.LocalOnlyHotspotReservation
                 ) {
                     Log.d("HotspotBridgeModule", "Hotspot запущен. SSID: $ssid, Пароль: $password")
-                    
-                    GlobalScope.launch {
-                        mainWifi.startTCP()
-                    }
-                    
+
                     isStarted.set(true)
                     val jsonResult = Gson().toJson(
                         mapOf(
@@ -52,7 +48,7 @@ class HotspotBridgeModule(reactContext: ReactApplicationContext) : ReactContextB
                     result.set(jsonResult)
                     latch.countDown()
                 }
-                
+
                 override fun onHotspotFailed(reason: Int) {
                     Log.e("HotspotBridgeModule", "Ошибка запуска hotspot, код ошибки: $reason")
                     if (isStarted.get()) {
@@ -68,33 +64,33 @@ class HotspotBridgeModule(reactContext: ReactApplicationContext) : ReactContextB
                     result.set(jsonResult)
                     latch.countDown()
                 }
-                
+
                 override fun onHotspotStopped() {
                     Log.d("HotspotBridgeModule", "Hotspot остановлен")
                     GlobalScope.launch {
                         mainWifi.stopTCP()
                     }
                 }
-                
+
                 override fun onHotspotJoined(ipAddress: String?) {
                     Log.d("HotspotBridgeModule", "Устройство подключилось к hotspot")
                     Log.d("HotspotBridgeModule", "ipAddress: $ipAddress")
                 }
-                
+
                 override fun onJoinFailed(error: String) {
                     Log.e("HotspotBridgeModule", "Ошибка подключения к hotspot: $error")
                 }
             }
-            
+
             mainWifi.startHotspot()
-            
+
             latch.await(30, TimeUnit.SECONDS)
             promise.resolve(result.get())
         } catch (e: Exception) {
             promise.reject("HOTSPOT_ERROR", e.message, e)
         }
     }
-    
+
     @ReactMethod
     fun stopHotspot(reqId: String, promise: Promise) {
         try {
@@ -106,7 +102,7 @@ class HotspotBridgeModule(reactContext: ReactApplicationContext) : ReactContextB
             promise.reject("HOTSPOT_ERROR", e.message, e)
         }
     }
-    
+
     @ReactMethod
     fun getHotspotStatus(reqId: String, promise: Promise) {
         try {
