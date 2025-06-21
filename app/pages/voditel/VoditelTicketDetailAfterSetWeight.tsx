@@ -219,6 +219,30 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   };
 
   /**
+   * Обработчик клика на кнопку подтверждения талона с весом
+   */
+  handleConfirmWithWeightClick = async () => {
+    // Показываем диалог подтверждения перед подписанием талона
+    Alert.alert(
+      'Подтверждение',
+      'Своим действием Вы подтверждаете правильность созданного талона и записываете его в базу данных.',
+      [
+        {
+          text: 'Отменить',
+          style: 'cancel',
+        },
+        {
+          text: 'Принять',
+          style: 'default',
+          onPress: () => {
+            this.confirmKombainerTicketWithWeight();
+          },
+        },
+      ]
+    );
+  };
+
+  /**
    * Подтверждение талона без веса
    */
   confirmKombainerTicket = async () => {
@@ -359,9 +383,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
                 style={styles.submitButton}
                 onPress={this.confirmKombainerTicketWithWeight}
               >
-                <Text style={styles.submitButtonText}>
-                  Подтвердить данные талона и веса и подписать талон
-                </Text>
+                <Text style={styles.submitButtonText}>Утвердить талон</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.loadingContainer}>

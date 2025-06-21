@@ -27,7 +27,7 @@ import {
   ITcpResponseConnectEstablishedOk,
   CurrentUserResponse,
 } from '../../../global';
-import { setHotspotDisabled } from '../../wifi/hotspot';
+import { closeAllConnections } from '../../services/ConnectionManager';
 import { handleMessage, setNeedRedirect } from '../../services/MessageHandler';
 import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
@@ -77,9 +77,24 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   // Сохраняем данные Wi-Fi для передачи в joinHotspot после инструкции
   const wifiCredentialsRef = useRef<{ ssid: string; password: string } | null>(null);
 
-  // При загрузке страницы вызываем setHotspotDisabled
+  // При загрузке страницы отключаем все соединения
   useEffect(() => {
-    setHotspotDisabled();
+    const closeConnections = async () => {
+      try {
+        await closeAllConnections(
+          {
+            closeHotspot: true,
+            closeTcpServer: true,
+            closeTcpClient: false,
+          },
+          'VoditelQrCodeScanner'
+        );
+      } catch (error) {
+        console.error('VoditelQrCodeScanner: Ошибка при закрытии соединений:', error);
+      }
+    };
+
+    closeConnections();
   }, []);
 
   const onCodeScanned = useCallback(
