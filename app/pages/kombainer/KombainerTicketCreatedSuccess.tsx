@@ -4,7 +4,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
 import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
-import { handleMessage } from '../../services/MessageHandler';
+import { handleMessage, setHotspotDisabled } from '../../services/MessageHandler';
 
 /**
  * Компонент отображения успешного создания талона комбайнера для мобильного приложения
@@ -17,10 +17,7 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
     const closeConnections = async () => {
       try {
         // Отключаем точку доступа Wi-Fi
-        await handleMessage({
-          req: { type: 'setHotspotDisabled' },
-          reqId: 'setHotspotDisabled_' + Date.now(),
-        });
+        await setHotspotDisabled();
         console.log('KombainerTicketCreatedSuccess: Точка доступа отключена');
 
         // Останавливаем TCP-сервер если он запущен

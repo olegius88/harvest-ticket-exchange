@@ -18,6 +18,7 @@ import {
   checkPermissionsHotspot,
   handleMessage,
   isHotspotEnabled,
+  setHotspotDisabled,
 } from '../../services/MessageHandler';
 import { stopTcpServer, startTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
@@ -94,19 +95,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   // Отключение точки доступа через API
   setHotspotDisabled = async (): Promise<SetHotspotDisabledResponse> => {
     console.log('setHotspotDisabled|init');
-    const response = await handleMessage({
-      req: {
-        type: 'setHotspotDisabled',
-      },
-      reqId: 'setHotspotDisabled_' + Date.now(),
-    });
-
-    if (response.type !== 'setHotspotDisabled') {
-      throw new Error('Failed to disable hotspot');
-    }
-
+    const response = await setHotspotDisabled();
     console.log('setHotspotDisabled|response=', response);
-    return response as SetHotspotDisabledResponse;
+    return response;
   };
 
   // Функция, вызываемая при покидании страницы (размонтировании компонента)

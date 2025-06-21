@@ -13,7 +13,7 @@ import {
   DeviceEventEmitter,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { handleMessage } from '../../services/MessageHandler';
+import { handleMessage, setHotspotDisabled } from '../../services/MessageHandler';
 import { stopTcpServer, isTcpServerRunning, tcpServerSendRequest } from '../../wifi/TcpServer';
 import { VectorLogo } from '../../components/VectorLogo';
 import { AuthStoreData } from '../../stores/AuthStore';
@@ -376,10 +376,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
     try {
       // Отключаем точку доступа
-      await handleMessage({
-        req: { type: 'setHotspotDisabled' },
-        reqId: 'setHotspotDisabled_' + Date.now(),
-      });
+      await setHotspotDisabled();
       console.log('Точка доступа отключена при покидании страницы');
     } catch (error) {
       console.error('Ошибка при отключении точки доступа на выходе:', error);

@@ -27,6 +27,8 @@ import {
   HandleReqMessageResponse,
   TNeedRedirectPayload,
   ISendPostResponseIsHotspotEnabled,
+  ISendPostResponseSetHotspotDisabled,
+  SetHotspotDisabledResponse,
 } from '../../global';
 import {
   createUser,
@@ -300,30 +302,7 @@ const _handleReqMessage = async (
     }
 
     case 'setHotspotDisabled': {
-      console.log('setHotspotDisabled|Stopping hotspot for React Native');
-      try {
-        const { HotspotBridge } = NativeModules;
-
-        if (!HotspotBridge) {
-          console.log('setHotspotDisabled|HotspotBridge not available');
-          return { type: 'setHotspotDisabled', state: 'stopped' };
-        }
-
-        if (!HotspotBridge.stopHotspot) {
-          console.log('setHotspotDisabled|HotspotBridge.stopHotspot not available');
-          return { type: 'setHotspotDisabled', state: 'stopped' };
-        }
-
-        // Вызываем нативный метод stopHotspot
-        const stopResStr = await HotspotBridge.stopHotspot(reqId);
-        const stopRes = JSON.parse(stopResStr);
-        console.log('setHotspotDisabled|stopRes=', stopRes);
-
-        return { type: 'setHotspotDisabled', state: stopRes.status };
-      } catch (error) {
-        console.error('setHotspotDisabled error:', error);
-        return { type: 'setHotspotDisabled', state: 'error' };
-      }
+      return await setHotspotDisabled();
     }
     case 'pushUserId': {
       const { userId } = req.data as { userId: string };
@@ -542,5 +521,39 @@ export const handleMessage = async (
     console.error('_handleReqMessage error:', error);
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
     throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Отключает Wi-Fi точку доступа (hotspot).
+ * @returns Информацию о результате отключения точки доступа
+ */
+export const setHotspotDisabled = async (): Promise<SetHotspotDisabledResponse> => {
+  console.log('setHotspotDisabled|Stopping hotspot for React Native');
+  try {
+    const { HotspotBridge } = NativeModules;
+
+    if (!HotspotBridge) {
+      console.log('setHotspotDisabled|HotspotBridge not available');
+      return { type: 'setHotspotDisabled', state: 'stopped' };
+    }
+
+    if (!HotspotBridge.stopHotspot) {
+      console.log('setHotspotDisabled|HotspotBridge.stopHotspot not available');
+      return { type: 'setHotspotDisabled', state: 'stopped' };
+    }
+
+    // Вызываем нативный метод stopHotspot
+    const stopResStr = await HotspotBridge.stopHotspot('stopHotspot_' + Date.now());
+    const stopRes = JSON.parse(stopResStr);
+    console.log('setHotspotDisabled|stopRes=', stopRes);
+
+    return {
+      type: 'setHotspotDisabled',
+      state: stopRes.status === 'stopped' ? 'stopped' : 'error',
+    };
+  } catch (error) {
+    console.error('setHotspotDisabled error:', error);
+    return { type: 'setHotspotDisabled', state: 'error' };
   }
 };

@@ -1,7 +1,10 @@
 // Файл: app/wifi/hotspot.ts
 
 import HotspotManager, { Network } from '@react-native-tethering/hotspot';
-import { isHotspotEnabled as checkHotspotStatus } from '../services/MessageHandler';
+import {
+  isHotspotEnabled as checkHotspotStatus,
+  setHotspotDisabled as disableHotspot,
+} from '../services/MessageHandler';
 
 export const isHotspotEnabled = async () => {
   try {
@@ -24,9 +27,9 @@ export const setHotspotEnabled = async (): Promise<Network> => {
 
 export const setHotspotDisabled = async (): Promise<void> => {
   try {
-    const state = await HotspotManager.setLocalHotspotEnabled(false);
-    console.log('setHotspotDisabled|state=', state);
-    // ToastAndroid.show(`setHotspotDisabled state: ${state}`, ToastAndroid.SHORT);
+    const result = await disableHotspot();
+    console.log('setHotspotDisabled|result=', result);
+    // ToastAndroid.show(`setHotspotDisabled state: ${result.state}`, ToastAndroid.SHORT);
   } catch (error) {
     // if (error instanceof TetheringError) {
     //   ToastAndroid.show(error.message, ToastAndroid.LONG);
