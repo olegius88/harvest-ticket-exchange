@@ -301,22 +301,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
           'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|!response.path|response=',
           response
         );
-        Alert.alert(
-          'Ошибка подключения к устройству',
-          `Не был получен корректный "needRedirect": ${JSON.stringify(response)}`
-        );
+        Alert.alert('Ошибка подключения к устройству', `${JSON.stringify(response)}`);
         return;
       }
 
       AuthStoreData.context = response.path as PositionOptionValue;
-
-      if (!AuthStoreData.context) {
-        Alert.alert(
-          'Не определен контекст',
-          'Не определен контекст пользователя "AuthStoreData.context"'
-        );
-        return;
-      }
 
       this.setState({
         isVoditelTalonConfirmAfterSetWeight: true,
@@ -612,7 +601,9 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                     onBlur={this.handleWeightBlur}
                     keyboardType="decimal-pad"
                     editable={
-                      !isVoditelTalonConfirmAfterSetWeight && !isWaitingVoditelWeightConfirm // поле недоступно при ожидании подтверждения веса
+                      !isVoditelTalonConfirmAfterSetWeight &&
+                      !isWaitingVoditelWeightConfirm &&
+                      !canApproveTicket
                     }
                   />
                   {weightError ? <Text style={styles.errorHint}>{weightError}</Text> : null}
