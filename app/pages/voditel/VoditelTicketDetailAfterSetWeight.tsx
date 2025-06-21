@@ -41,6 +41,8 @@ interface VoditelTicketDetailAfterSetWeightState {
   loadingKombainerDataWithWeightSuccess: boolean;
   loadingKombainerDataWithWeightError: boolean;
 
+  canSignTicket: boolean; // Новое состояние для отображения кнопки "Подписать талон"
+
   weight: number | null;
   kombainerUserData: ICreateUsersParams | null;
   userData: ICreateUsersParams | null;
@@ -67,6 +69,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       loadingKombainerDataWithWeight: false,
       loadingKombainerDataWithWeightSuccess: false,
       loadingKombainerDataWithWeightError: false,
+
+      canSignTicket: false, // Изначально кнопка скрыта
 
       weight: null,
       kombainerUserData: null,
@@ -215,7 +219,10 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       return;
     }
 
-    this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
+    // После успешного подтверждения показываем кнопку "Подписать талон"
+    this.setState({
+      canSignTicket: true,
+    });
   };
 
   /**
@@ -235,7 +242,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           text: 'Принять',
           style: 'default',
           onPress: () => {
-            this.confirmKombainerTicketWithWeight();
+            this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
           },
         },
       ]
@@ -311,6 +318,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       loadingKombainerDataSuccess,
       isKombainerDataWithWeight,
       loadingKombainerDataWithWeightSuccess,
+      canSignTicket,
       weight,
       kombainerData,
       kombainerUserData,
@@ -376,7 +384,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           </>
         )}
 
-        {isKombainerDataWithWeight && (
+        {isKombainerDataWithWeight && !canSignTicket && (
           <>
             {loadingKombainerDataWithWeightSuccess ? (
               <TouchableOpacity
@@ -391,6 +399,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
               </View>
             )}
           </>
+        )}
+
+        {isKombainerDataWithWeight && canSignTicket && (
+          <TouchableOpacity style={styles.submitButton} onPress={this.handleConfirmWithWeightClick}>
+            <Text style={styles.submitButtonText}>Подписать талон</Text>
+          </TouchableOpacity>
         )}
 
         <TouchableOpacity style={styles.cancelButton} onPress={this.handleCancelClick}>
