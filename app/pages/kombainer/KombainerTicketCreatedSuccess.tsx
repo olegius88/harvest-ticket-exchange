@@ -3,8 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
-import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
-import { handleMessage, setHotspotDisabled } from '../../services/MessageHandler';
+import { closeKombainerConnections } from '../../services/ConnectionManager';
 
 /**
  * Компонент отображения успешного создания талона комбайнера для мобильного приложения
@@ -16,15 +15,7 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
   useEffect(() => {
     const closeConnections = async () => {
       try {
-        // Отключаем точку доступа Wi-Fi
-        await setHotspotDisabled();
-        console.log('KombainerTicketCreatedSuccess: Точка доступа отключена');
-
-        // Останавливаем TCP-сервер если он запущен
-        if (isTcpServerRunning()) {
-          const message = await stopTcpServer();
-          console.log('KombainerTicketCreatedSuccess: TCP-сервер остановлен:', message);
-        }
+        await closeKombainerConnections('KombainerTicketCreatedSuccess');
       } catch (error) {
         console.error('KombainerTicketCreatedSuccess: Ошибка при закрытии соединений:', error);
       }

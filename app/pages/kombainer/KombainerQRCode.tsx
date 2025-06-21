@@ -20,7 +20,8 @@ import {
   isHotspotEnabled,
   setHotspotDisabled,
 } from '../../services/MessageHandler';
-import { stopTcpServer, startTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
+import { closeKombainerConnections } from '../../services/ConnectionManager';
+import { startTcpServer, isTcpServerRunning, stopTcpServer } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
@@ -102,7 +103,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
   // Функция, вызываемая при покидании страницы (размонтировании компонента)
   cancel = async () => {
-    console.log('Покидание страницы: вызывается функция cancel');
+    console.log('KombainerQRCode: Покидание страницы, вызывается функция cancel');
 
     // Установим флаг отмены, чтобы предотвратить запуск новых процессов
     this.setState({ isCancelling: true });
@@ -114,22 +115,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
-      await this.setHotspotDisabled();
-      console.log('Точка доступа отключена при покидании страницы');
+      await closeKombainerConnections('KombainerQRCode.cancel');
     } catch (error) {
-      console.error('Ошибка при отключении точки доступа на выходе:', error);
-    }
-
-    try {
-      // Проверяем, запущен ли TCP-сервер перед остановкой
-      if (isTcpServerRunning()) {
-        const message = await stopTcpServer();
-        console.log('cancel|stopTcpServer|message=', message);
-      } else {
-        console.log('cancel|TCP-сервер не запущен, пропускаем остановку');
-      }
-    } catch (error) {
-      console.error('cancel|stopTcpServer|error=', error);
+      console.error('KombainerQRCode.cancel: Ошибка при закрытии соединений:', error);
     }
   };
 

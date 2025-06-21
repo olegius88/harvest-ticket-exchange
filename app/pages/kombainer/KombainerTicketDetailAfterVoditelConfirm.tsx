@@ -13,8 +13,9 @@ import {
   DeviceEventEmitter,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { handleMessage, setHotspotDisabled } from '../../services/MessageHandler';
-import { stopTcpServer, isTcpServerRunning, tcpServerSendRequest } from '../../wifi/TcpServer';
+import { handleMessage } from '../../services/MessageHandler';
+import { tcpServerSendRequest } from '../../wifi/TcpServer';
+import { closeKombainerConnections } from '../../services/ConnectionManager';
 import { VectorLogo } from '../../components/VectorLogo';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -352,6 +353,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   };
 
   cancel = async () => {
+    console.log('KombainerTicketDetailAfterVoditelConfirm: Вызывается функция cancel');
+
     // Очищаем таймеры перед закрытием
     if (this.waitingVoditelTalonConfirmCtrl !== null) {
       clearTimeout(this.waitingVoditelTalonConfirmCtrl);
@@ -364,23 +367,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
 
     try {
-      // Отключаем точку доступа
-      await setHotspotDisabled();
-      console.log('Точка доступа отключена при покидании страницы');
+      await closeKombainerConnections('KombainerTicketDetailAfterVoditelConfirm.cancel');
     } catch (error) {
-      console.error('Ошибка при отключении точки доступа на выходе:', error);
-    }
-
-    try {
-      // Проверяем, запущен ли TCP-сервер перед остановкой
-      if (isTcpServerRunning()) {
-        const message = await stopTcpServer();
-        console.log('cancel|stopTcpServer|message=', message);
-      } else {
-        console.log('cancel|TCP-сервер не запущен, пропускаем остановку');
-      }
-    } catch (error) {
-      console.error('cancel|stopTcpServer|error=', error);
+      console.error(
+        'KombainerTicketDetailAfterVoditelConfirm.cancel: Ошибка при закрытии соединений:',
+        error
+      );
     }
   };
 
