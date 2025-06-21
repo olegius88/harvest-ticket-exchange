@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
+import { disconnectTcpClient } from '../../wifi/TcpClient';
 
 const VoditelTicketCreatedSuccess: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  // Закрываем соединения при монтировании компонента
+  useEffect(() => {
+    const closeConnections = async () => {
+      try {
+        // Отключаем TCP-клиент
+        const message = await disconnectTcpClient();
+        console.log('VoditelTicketCreatedSuccess: TCP-клиент отключен:', message);
+      } catch (error) {
+        console.error('VoditelTicketCreatedSuccess: Ошибка при отключении TCP-клиента:', error);
+      }
+    };
+
+    closeConnections();
+  }, []);
 
   const handleOkPress = () => {
     navigation.navigate('VoditelCreateTripScreen');

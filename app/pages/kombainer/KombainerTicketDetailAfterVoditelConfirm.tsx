@@ -399,7 +399,24 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   };
 
   handleApproveClick = async () => {
-    this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+    // Показываем диалог подтверждения перед подписанием талона
+    Alert.alert(
+      'Подтверждение',
+      'Своим действием Вы подтверждаете правильность созданного талона и записываете его в базу данных.',
+      [
+        {
+          text: 'Отменить',
+          style: 'cancel',
+        },
+        {
+          text: 'Принять',
+          style: 'default',
+          onPress: () => {
+            this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+          },
+        },
+      ]
+    );
   };
 
   // Обработчик изменения значения веса
@@ -619,7 +636,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
             </View>
 
             {/* Состояние ожидания подтверждения от водителя и кнопки */}
-            {!isWaitingVoditelWeightConfirm && isVoditelTalonConfirm && (
+            {!canApproveTicket && !isWaitingVoditelWeightConfirm && isVoditelTalonConfirm && (
               <View style={styles.actionsContainer}>
                 {isVoditelTalonConfirmSuccess ? (
                   <TouchableOpacity style={styles.submitButton} onPress={this.onSubmitForm}>

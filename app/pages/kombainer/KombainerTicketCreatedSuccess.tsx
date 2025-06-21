@@ -1,14 +1,40 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
+import { stopTcpServer, isTcpServerRunning } from '../../wifi/TcpServer';
+import { handleMessage } from '../../services/MessageHandler';
 
 /**
  * Компонент отображения успешного создания талона комбайнера для мобильного приложения
  */
 const KombainerTicketCreatedSuccess: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  // Закрываем соединения при монтировании компонента
+  useEffect(() => {
+    const closeConnections = async () => {
+      try {
+        // Отключаем точку доступа Wi-Fi
+        await handleMessage({
+          req: { type: 'setHotspotDisabled' },
+          reqId: 'setHotspotDisabled_' + Date.now(),
+        });
+        console.log('KombainerTicketCreatedSuccess: Точка доступа отключена');
+
+        // Останавливаем TCP-сервер если он запущен
+        if (isTcpServerRunning()) {
+          const message = await stopTcpServer();
+          console.log('KombainerTicketCreatedSuccess: TCP-сервер остановлен:', message);
+        }
+      } catch (error) {
+        console.error('KombainerTicketCreatedSuccess: Ошибка при закрытии соединений:', error);
+      }
+    };
+
+    closeConnections();
+  }, []);
 
   const handleOkPress = () => {
     navigation.navigate('MainScreen');
