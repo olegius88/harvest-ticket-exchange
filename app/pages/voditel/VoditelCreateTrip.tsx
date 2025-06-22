@@ -3,27 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } fr
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { RootStackParamList, OpenCodeScannerResponse } from '../../../global';
-
-// Компонент логотипа
-const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
-  width = 120,
-  height = 120,
-}) => {
-  return (
-    <View
-      style={{
-        width,
-        height,
-        backgroundColor: '#5a7d2b',
-        borderRadius: width / 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: 'bold' }}>LOGO</Text>
-    </View>
-  );
-};
+import { VectorLogo } from '../../components/VectorLogo';
 
 const VoditelCreateTrip: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -71,7 +51,7 @@ const VoditelCreateTrip: React.FC = () => {
           disabled={isLoading}
         >
           <Text style={styles.createButtonText}>
-            {isLoading ? 'Загрузка камеры, ожидайте' : 'Создать Поездку 1'}
+            {isLoading ? 'Загрузка камеры, ожидайте' : 'Создать Поездку'}
           </Text>
           {isLoading && (
             <ActivityIndicator size="small" color="#ffffff" style={{ marginLeft: 8 }} />
