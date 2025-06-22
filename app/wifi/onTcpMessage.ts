@@ -30,6 +30,22 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       return { status: 'ok' };
     }
 
+    case 'kombainer_sign_ticket': {
+      const {} = message;
+      // Отправляем событие о подключении водителя
+      DeviceEventEmitter.emit('kombainerSignTicket', {});
+
+      return { status: 'ok' };
+    }
+
+    case 'voditel_sign_ticket': {
+      const {} = message;
+      // Отправляем событие о подключении водителя
+      DeviceEventEmitter.emit('voditelSignTicket', {});
+
+      return { status: 'ok' };
+    }
+
     case 'set_voditel_data': {
       const { voditelData, voditelUserData } = message;
       // Отправляем событие о подключении водителя
