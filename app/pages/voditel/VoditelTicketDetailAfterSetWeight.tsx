@@ -43,6 +43,9 @@ interface VoditelTicketDetailAfterSetWeightState {
 
   canSignTicket: boolean; // Новое состояние для отображения кнопки "Подписать талон"
 
+  waitingForKombainerSign: boolean; // Ожидание события kombainerSignTicket
+  kombainerSignReceived: boolean; // Получено ли событие kombainerSignTicket
+
   weight: number | null;
   kombainerUserData: ICreateUsersParams | null;
   userData: ICreateUsersParams | null;
@@ -56,6 +59,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 > {
   // Слушатель для получения данных комбайнера
   setTalonOfKombainerListener: any = null;
+  // Слушатель для события подписания талона комбайнером
+  kombainerSignTicketListener: any = null;
 
   constructor(props: VoditelTicketDetailAfterSetWeightProps) {
     super(props);
@@ -72,6 +77,9 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
       canSignTicket: false, // Изначально кнопка скрыта
 
+      waitingForKombainerSign: false,
+      kombainerSignReceived: false,
+
       weight: null,
       kombainerUserData: null,
       userData: null,
@@ -86,16 +94,35 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
 
+    // Добавляем слушатель события подписания талона комбайнером
+    this.kombainerSignTicketListener = DeviceEventEmitter.addListener(
+      'kombainerSignTicket',
+      this.handleKombainerSignTicket
+    );
+
     // Включаем не гаснущий экран
     KeepAwake.activate();
   }
 
   componentWillUnmount() {
     this.setTalonOfKombainerListener?.remove();
+    this.kombainerSignTicketListener?.remove();
 
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
   }
+
+  handleKombainerSignTicket = () => {
+    console.log('VoditelTicketDetailAfterSetWeight|handleKombainerSignTicket');
+
+    // Если мы ожидаем подписания, сразу переходим на следующий экран
+    if (this.state.waitingForKombainerSign) {
+      this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
+    } else {
+      // Если событие пришло до нажатия на "Принять", запоминаем это
+      this.setState({ kombainerSignReceived: true });
+    }
+  };
 
   handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
     console.log('VoditelTicketDetailAfterSetWeight|handleSetTalonOfKombainer|data=', data);
@@ -228,7 +255,24 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   /**
    * Обработчик клика на кнопку подтверждения талона с весом
    */
-  handleConfirmWithWeightClick = async () => {
+  handleSignTicketClick = async () => {
+    // Если событие kombainerSignTicket уже получено, сразу переходим
+    if (this.state.kombainerSignReceived) {
+      try {
+        // Отправляем TCP-запрос для подписания талона водителем
+        const data = await sendTcpRequest({
+          type: 'voditel_sign_ticket',
+        });
+        console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
+
+        this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
+      } catch (error: any) {
+        console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
+        Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
+      }
+      return;
+    }
+
     // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
       'Подтверждение',
@@ -241,8 +285,25 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         {
           text: 'Принять',
           style: 'default',
-          onPress: () => {
-            this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
+          onPress: async () => {
+            try {
+              // Отправляем TCP-запрос для подписания талона водителем
+              const data = await sendTcpRequest({
+                type: 'voditel_sign_ticket',
+              });
+              console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
+
+              // Устанавливаем состояние ожидания подписания
+              this.setState({ waitingForKombainerSign: true });
+
+              // Если событие уже получено, сразу переходим
+              if (this.state.kombainerSignReceived) {
+                this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
+              }
+            } catch (error: any) {
+              console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
+              Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
+            }
           },
         },
       ]
@@ -319,6 +380,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       isKombainerDataWithWeight,
       loadingKombainerDataWithWeightSuccess,
       canSignTicket,
+      waitingForKombainerSign,
+      kombainerSignReceived,
       weight,
       kombainerData,
       kombainerUserData,
@@ -370,6 +433,19 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           ))}
         </View>
 
+        {waitingForKombainerSign && !kombainerSignReceived && (
+          <View style={styles.waitingContainer}>
+            <ActivityIndicator size="large" color="#98d642" />
+            <Text style={styles.waitingText}>Ожидание подписания талона комбайнером...</Text>
+          </View>
+        )}
+
+        {kombainerSignReceived && (
+          <View style={styles.successContainer}>
+            <Text style={styles.successText}>✓ Подпись комбайнера получена</Text>
+          </View>
+        )}
+
         {isKombainerData && (
           <>
             {loadingKombainerDataSuccess ? (
@@ -402,7 +478,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         )}
 
         {isKombainerDataWithWeight && canSignTicket && (
-          <TouchableOpacity style={styles.submitButton} onPress={this.handleConfirmWithWeightClick}>
+          <TouchableOpacity style={styles.submitButton} onPress={this.handleSignTicketClick}>
             <Text style={styles.submitButtonText}>Подписать талон</Text>
           </TouchableOpacity>
         )}
@@ -496,6 +572,32 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     marginVertical: 20,
+  },
+  waitingContainer: {
+    marginVertical: 20,
+    alignItems: 'center',
+  },
+  waitingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  successContainer: {
+    marginVertical: 20,
+    alignItems: 'center',
+    backgroundColor: '#f6ffed',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#b7eb8f',
+    width: '100%',
+  },
+  successText: {
+    fontSize: 16,
+    color: '#52c41a',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
