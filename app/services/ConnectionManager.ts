@@ -35,7 +35,7 @@ export const closeAllConnections = async (
   const {
     closeHotspot = true,
     closeTcpServer = true,
-    closeTcpClient = false,
+    closeTcpClient = true,
     verbose = true,
   } = options;
 
