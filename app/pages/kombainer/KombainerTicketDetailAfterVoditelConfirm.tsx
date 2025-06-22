@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   DeviceEventEmitter,
+  BackHandler,
+  ToastAndroid,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -75,6 +77,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   voditelConfirmWithWeightListener: any = null;
   // Слушатель для события подписания талона водителем
   voditelSignTicketListener: any = null;
+  // Слушатель для блокировки кнопки "Назад"
+  backHandlerListener: any = null;
 
   constructor(props: KombainerTicketDetailAfterVoditelConfirmProps) {
     super(props);
@@ -114,6 +118,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
     // Включаем не гаснущий экран
     KeepAwake.activate();
+
+    // Блокируем кнопку "Назад"
+    this.backHandlerListener = BackHandler.addEventListener(
+      'hardwareBackPress',
+      this.handleBackPress
+    );
 
     // Добавляем слушатель события подписания талона водителем
     this.voditelSignTicketListener = DeviceEventEmitter.addListener(
@@ -259,6 +269,19 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   // Обработчик клика "Назад".
   handleBack = () => {
     this.props.navigation.goBack();
+  };
+
+  // Обработчик аппаратной кнопки "Назад"
+  handleBackPress = () => {
+    // Блокируем возврат назад, возвращая true
+    console.log(
+      'KombainerTicketDetailAfterVoditelConfirm|handleBackPress - блокировка возврата назад'
+    );
+
+    // Показываем toast уведомление
+    ToastAndroid.show('Для выхода нажмите кнопку "Отмена" на экране', ToastAndroid.SHORT);
+
+    return true;
   };
 
   handleCancelClick = async () => {
@@ -454,6 +477,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     if (this.voditelSignTicketListener) {
       this.voditelSignTicketListener.remove();
       this.voditelSignTicketListener = null;
+    }
+
+    if (this.backHandlerListener) {
+      this.backHandlerListener.remove();
+      this.backHandlerListener = null;
     }
   }
 

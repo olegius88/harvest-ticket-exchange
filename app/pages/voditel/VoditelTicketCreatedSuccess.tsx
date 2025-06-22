@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, BackHandler, ToastAndroid } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
@@ -19,6 +19,21 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
     };
 
     closeConnections();
+
+    // Блокируем кнопку "Назад"
+    const handleBackPress = () => {
+      console.log('VoditelTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
+
+      ToastAndroid.show('Для продолжения нажмите кнопку "Ок" на экране', ToastAndroid.SHORT);
+
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+
+    return () => {
+      backHandler.remove();
+    };
   }, []);
 
   const handleOkPress = () => {

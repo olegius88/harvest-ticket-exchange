@@ -8,6 +8,8 @@ import {
   StyleSheet,
   ScrollView,
   DeviceEventEmitter,
+  BackHandler,
+  ToastAndroid,
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -61,6 +63,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   setTalonOfKombainerListener: any = null;
   // Слушатель для события подписания талона комбайнером
   kombainerSignTicketListener: any = null;
+  // Слушатель для блокировки кнопки "Назад"
+  backHandlerListener: any = null;
 
   constructor(props: VoditelTicketDetailAfterSetWeightProps) {
     super(props);
@@ -100,6 +104,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       this.handleKombainerSignTicket
     );
 
+    // Блокируем кнопку "Назад"
+    this.backHandlerListener = BackHandler.addEventListener(
+      'hardwareBackPress',
+      this.handleBackPress
+    );
+
     // Включаем не гаснущий экран
     KeepAwake.activate();
   }
@@ -107,6 +117,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   componentWillUnmount() {
     this.setTalonOfKombainerListener?.remove();
     this.kombainerSignTicketListener?.remove();
+    this.backHandlerListener?.remove();
 
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
@@ -122,6 +133,16 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       // Если событие пришло до нажатия на "Принять", запоминаем это
       this.setState({ kombainerSignReceived: true });
     }
+  };
+
+  handleBackPress = () => {
+    // Блокируем возврат назад, возвращая true
+    console.log('VoditelTicketDetailAfterSetWeight|handleBackPress - блокировка возврата назад');
+
+    // Показываем toast уведомление
+    ToastAndroid.show('Для выхода нажмите кнопку "Отмена" на экране', ToastAndroid.SHORT);
+
+    return true;
   };
 
   handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
