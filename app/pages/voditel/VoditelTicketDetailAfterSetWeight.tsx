@@ -277,23 +277,6 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    * Обработчик клика на кнопку подтверждения талона с весом
    */
   handleSignTicketClick = async () => {
-    // Если событие kombainerSignTicket уже получено, сразу переходим
-    if (this.state.kombainerSignReceived) {
-      try {
-        // Отправляем TCP-запрос для подписания талона водителем
-        const data = await sendTcpRequest({
-          type: 'voditel_sign_ticket',
-        });
-        console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
-
-        this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
-      } catch (error: any) {
-        console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
-        Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
-      }
-      return;
-    }
-
     // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
       'Подтверждение',
