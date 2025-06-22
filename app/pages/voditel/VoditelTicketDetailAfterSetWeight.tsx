@@ -50,6 +50,16 @@ interface VoditelTicketDetailAfterSetWeightState {
 
   cancelInProgress: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
 
+  // Состояния для отслеживания загрузки кнопок
+  confirmDataLoading: boolean; // Загрузка для "Подтвердить данные талона"
+  confirmDataDisabled: boolean; // Блокировка после успешного выполнения
+
+  approveTicketLoading: boolean; // Загрузка для "Утвердить талон"
+  approveTicketDisabled: boolean; // Блокировка после успешного выполнения
+
+  signTicketLoading: boolean; // Загрузка для "Подписать талон"
+  signTicketDisabled: boolean; // Блокировка после успешного выполнения
+
   weight: number | null;
   kombainerUserData: ICreateUsersParams | null;
   userData: ICreateUsersParams | null;
@@ -87,6 +97,16 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       kombainerSignReceived: false,
 
       cancelInProgress: false, // Инициализация флага защиты от множественных нажатий
+
+      // Инициализация состояний для отслеживания загрузки кнопок
+      confirmDataLoading: false,
+      confirmDataDisabled: false,
+
+      approveTicketLoading: false,
+      approveTicketDisabled: false,
+
+      signTicketLoading: false,
+      signTicketDisabled: false,
 
       weight: null,
       kombainerUserData: null,
@@ -247,6 +267,9 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    * Подтверждение талона с весом
    */
   confirmKombainerTicketWithWeight = async () => {
+    // Устанавливаем состояние загрузки
+    this.setState({ approveTicketLoading: true });
+
     let sendRes: any;
     try {
       const data = await sendTcpRequest({
@@ -262,18 +285,24 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         'VoditelTicketDetailAfterSetWeight|confirmKombainerTicketWithWeight|error =',
         error
       );
+      // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
+      this.setState({ approveTicketLoading: false });
       Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
       return;
     }
 
     if (sendRes.status !== 'ok') {
+      // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
+      this.setState({ approveTicketLoading: false });
       Alert.alert('Ошибка подтверждения талона', JSON.stringify(sendRes));
       return;
     }
 
-    // После успешного подтверждения показываем кнопку "Подписать талон"
+    // После успешного подтверждения показываем кнопку "Подписать талон" и блокируем текущую
     this.setState({
       canSignTicket: true,
+      approveTicketLoading: false,
+      approveTicketDisabled: true, // Блокируем кнопку после успешного выполнения
     });
   };
 
@@ -294,6 +323,9 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           text: 'Принять',
           style: 'default',
           onPress: async () => {
+            // Устанавливаем состояние загрузки
+            this.setState({ signTicketLoading: true });
+
             try {
               // Отправляем TCP-запрос для подписания талона водителем
               const data = await sendTcpRequest({
@@ -301,8 +333,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
               });
               console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
 
-              // Устанавливаем состояние ожидания подписания
-              this.setState({ waitingForKombainerSign: true });
+              // Успешное выполнение - блокируем кнопку и устанавливаем состояние ожидания
+              this.setState({
+                waitingForKombainerSign: true,
+                signTicketLoading: false,
+                signTicketDisabled: true, // Блокируем кнопку после успешного выполнения
+              });
 
               // Если событие уже получено, сразу переходим
               if (this.state.kombainerSignReceived) {
@@ -310,6 +346,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
               }
             } catch (error: any) {
               console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
+              // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
+              this.setState({ signTicketLoading: false });
               Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
             }
           },
@@ -329,6 +367,9 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       return;
     }
 
+    // Устанавливаем состояние загрузки
+    this.setState({ confirmDataLoading: true });
+
     let sendRes: any;
     try {
       const data = await sendTcpRequest({
@@ -340,21 +381,28 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       sendRes = data;
     } catch (error: any) {
       console.error('VoditelTicketDetailAfterSetWeight|confirmKombainerTicket|error =', error);
+      // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
+      this.setState({ confirmDataLoading: false });
       Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
       return;
     }
 
     if (sendRes.status !== 'ok') {
+      // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
+      this.setState({ confirmDataLoading: false });
       Alert.alert('Ошибка подтверждения талона', JSON.stringify(sendRes));
       return;
     }
 
+    // При успешном выполнении блокируем кнопку и переходим к следующему этапу
     this.setState({
       isKombainerData: false,
       loadingKombainerDataSuccess: false,
       loadingKombainerDataError: false,
       loadingKombainerData: false,
       isKombainerDataWithWeight: true,
+      confirmDataLoading: false,
+      confirmDataDisabled: true, // Блокируем кнопку после успешного выполнения
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
@@ -388,7 +436,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         },
         {
           text: 'Да',
-          onPress: () => this.props.navigation.goBack(),
+          onPress: () => this.props.navigation.navigate('VoditelCreateTripScreen'),
         },
       ]
     );
@@ -404,6 +452,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       canSignTicket,
       waitingForKombainerSign,
       kombainerSignReceived,
+      confirmDataLoading,
+      confirmDataDisabled,
+      approveTicketLoading,
+      approveTicketDisabled,
+      signTicketLoading,
+      signTicketDisabled,
       weight,
       kombainerData,
       kombainerUserData,
@@ -471,8 +525,26 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         {isKombainerData && (
           <>
             {loadingKombainerDataSuccess ? (
-              <TouchableOpacity style={styles.submitButton} onPress={this.confirmKombainerTicket}>
-                <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (confirmDataLoading || confirmDataDisabled) && styles.disabledButton,
+                ]}
+                onPress={this.confirmKombainerTicket}
+                disabled={confirmDataLoading || confirmDataDisabled}
+              >
+                {confirmDataLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.submitButtonText,
+                      (confirmDataLoading || confirmDataDisabled) && styles.disabledButtonText,
+                    ]}
+                  >
+                    Подтвердить данные талона
+                  </Text>
+                )}
               </TouchableOpacity>
             ) : (
               <View style={styles.loadingContainer}>
@@ -486,10 +558,25 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           <>
             {loadingKombainerDataWithWeightSuccess ? (
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[
+                  styles.submitButton,
+                  (approveTicketLoading || approveTicketDisabled) && styles.disabledButton,
+                ]}
                 onPress={this.confirmKombainerTicketWithWeight}
+                disabled={approveTicketLoading || approveTicketDisabled}
               >
-                <Text style={styles.submitButtonText}>Утвердить талон</Text>
+                {approveTicketLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.submitButtonText,
+                      (approveTicketLoading || approveTicketDisabled) && styles.disabledButtonText,
+                    ]}
+                  >
+                    Утвердить талон
+                  </Text>
+                )}
               </TouchableOpacity>
             ) : (
               <View style={styles.loadingContainer}>
@@ -500,8 +587,26 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         )}
 
         {isKombainerDataWithWeight && canSignTicket && (
-          <TouchableOpacity style={styles.submitButton} onPress={this.handleSignTicketClick}>
-            <Text style={styles.submitButtonText}>Подписать талон</Text>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (signTicketLoading || signTicketDisabled) && styles.disabledButton,
+            ]}
+            onPress={this.handleSignTicketClick}
+            disabled={signTicketLoading || signTicketDisabled}
+          >
+            {signTicketLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text
+                style={[
+                  styles.submitButtonText,
+                  (signTicketLoading || signTicketDisabled) && styles.disabledButtonText,
+                ]}
+              >
+                Подписать талон
+              </Text>
+            )}
           </TouchableOpacity>
         )}
 
@@ -604,7 +709,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   disabledButton: {
-    backgroundColor: '#ffb3b3', // Более светлый красный для отключенной кнопки
+    backgroundColor: '#cccccc', // Серый фон для отключенной кнопки
     opacity: 0.7,
   },
   disabledButtonText: {
