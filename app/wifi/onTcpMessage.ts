@@ -36,7 +36,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       setTimeout(() => {
         // Отправляем событие о подключении водителя
         DeviceEventEmitter.emit('kombainerSignTicket', {});
-      }, 500);
+      });
 
       return { status: 'ok' };
     }
@@ -47,7 +47,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       setTimeout(() => {
         // Отправляем событие о подключении водителя
         DeviceEventEmitter.emit('voditelSignTicket', {});
-      }, 500);
+      });
 
       return { status: 'ok' };
     }
@@ -61,7 +61,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
           voditelData,
           voditelUserData,
         } as IVoditelConnectedPayload);
-      }, 500);
+      });
 
       return { status: 'ok' };
     }
@@ -90,7 +90,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
           voditelData,
           userData,
         } as IPayloadConfirmKombainerTicket);
-      }, 500);
+      });
 
       return { status: 'ok' };
     }
@@ -102,7 +102,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       setTimeout(() => {
         // Отправляем событие о подтверждении веса водителем
         DeviceEventEmitter.emit('voditelConfirmWithWeight', message);
-      }, 500);
+      });
 
       return { status: 'ok' };
     }
