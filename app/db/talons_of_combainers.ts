@@ -314,20 +314,48 @@ export async function getTalonsByVoditelId(voditelId: string): Promise<ICreateTa
 }
 
 /**
- * Обновить талон.
+ * Получить последний талон для указанного комбайнера.
  */
-export async function editTalon({
-  talonId,
-  kombainerId,
-  voditelId,
-  status,
-  startTime,
-  endTime,
-  weight,
-  comment,
-}: IEditTalonParams): Promise<string> {
+export async function getLastTalonByKombainerId(
+  kombainerId: string
+): Promise<ICreateTalonsParams | null> {
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const records = await collection
+      .query(Q.where('kombainerId', kombainerId), Q.sortBy('created_at', Q.desc), Q.take(1))
+      .fetch();
+
+    if (records.length > 0) {
+      const record = records[0];
+      return {
+        id: record.id,
+        kombainerId: record.kombainerId,
+        voditelId: record.voditelId,
+        status: record.status as TalonStatus,
+        startTime: record.startTime,
+        endTime: record.endTime,
+        weight: record.weight,
+        comment: record.comment,
+        talonNumber: record.talonNumber,
+        cancellationReason: record.cancellationReason,
+        created_at: record.created_at,
+        updated_at: record.updated_at,
+      } as ICreateTalonsParams;
+    }
+    return null;
+  });
+}
+
+/**
+ * Редактирование записи в таблице "talons_of_combainers".
+ */
+export async function editTalon(talonId: string, params: IEditTalonParams): Promise<string> {
   // Валидация входных данных
-  TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
+  TalonsOfCombainers.validateFields({
+    kombainerId: params.kombainerId,
+    status: params.status,
+    startTime: params.startTime,
+  });
   return database.write(async () => {
     const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
@@ -338,13 +366,13 @@ export async function editTalon({
 
     const now = Date.now();
     await record.update((r) => {
-      r.kombainerId = kombainerId.trim();
-      r.voditelId = voditelId ? voditelId.trim() : undefined;
-      r.status = status;
-      r.startTime = startTime;
-      r.endTime = endTime || undefined;
-      r.weight = weight || undefined;
-      r.comment = comment ? comment.trim() : undefined;
+      r.kombainerId = params.kombainerId.trim();
+      r.voditelId = params.voditelId ? params.voditelId.trim() : undefined;
+      r.status = params.status;
+      r.startTime = params.startTime;
+      r.endTime = params.endTime || undefined;
+      r.weight = params.weight || undefined;
+      r.comment = params.comment ? params.comment.trim() : undefined;
       r.updated_at = now;
     });
     return record.id;
