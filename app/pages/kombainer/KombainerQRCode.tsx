@@ -20,7 +20,10 @@ import {
   isHotspotEnabled,
   setHotspotDisabled,
 } from '../../services/MessageHandler';
-import { closeKombainerConnections } from '../../services/ConnectionManager';
+import {
+  closeKombainerConnections,
+  closeKombainerConnectionsGracefully,
+} from '../../services/ConnectionManager';
 import { startTcpServer, isTcpServerRunning, stopTcpServer } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
@@ -115,9 +118,24 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
-      await closeKombainerConnections('KombainerQRCode.cancel');
+      // Используем согласованное отключение с таймаутом 3 секунды
+      await closeKombainerConnectionsGracefully(
+        'KombainerQRCode.cancel',
+        'Пользователь покинул страницу QR-кода',
+        3000
+      );
     } catch (error) {
-      console.error('KombainerQRCode.cancel: Ошибка при закрытии соединений:', error);
+      console.error('KombainerQRCode.cancel: Ошибка при согласованном закрытии соединений:', error);
+
+      // Если согласованное отключение не удалось, пробуем обычное
+      try {
+        await closeKombainerConnections('KombainerQRCode.cancel.fallback');
+      } catch (fallbackError) {
+        console.error(
+          'KombainerQRCode.cancel: Ошибка при резервном закрытии соединений:',
+          fallbackError
+        );
+      }
     }
   };
 
