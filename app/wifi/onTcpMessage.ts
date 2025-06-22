@@ -32,54 +32,65 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
     case 'kombainer_sign_ticket': {
       const {} = message;
-      // Отправляем событие о подключении водителя
-      DeviceEventEmitter.emit('kombainerSignTicket', {});
+
+      setTimeout(() => {
+        // Отправляем событие о подключении водителя
+        DeviceEventEmitter.emit('kombainerSignTicket', {});
+      }, 500);
 
       return { status: 'ok' };
     }
 
     case 'voditel_sign_ticket': {
       const {} = message;
-      // Отправляем событие о подключении водителя
-      DeviceEventEmitter.emit('voditelSignTicket', {});
+
+      setTimeout(() => {
+        // Отправляем событие о подключении водителя
+        DeviceEventEmitter.emit('voditelSignTicket', {});
+      }, 500);
 
       return { status: 'ok' };
     }
 
     case 'set_voditel_data': {
       const { voditelData, voditelUserData } = message;
-      // Отправляем событие о подключении водителя
-      DeviceEventEmitter.emit('voditelConnected', {
-        voditelData,
-        voditelUserData,
-      } as IVoditelConnectedPayload);
+
+      setTimeout(() => {
+        // Отправляем событие о подключении водителя
+        DeviceEventEmitter.emit('voditelConnected', {
+          voditelData,
+          voditelUserData,
+        } as IVoditelConnectedPayload);
+      }, 500);
 
       return { status: 'ok' };
     }
 
-    case 'set_kombainer_data': {
-      const { kombainerData } = message;
+    // case 'set_kombainer_data': {
+    //   const { kombainerData } = message;
 
-      // Создаем payload с правильной структурой для передачи данных комбайнера
-      const payload: IPayloadSetTalonOfKombainer = {
-        kombainerData: kombainerData as ICreateKombainerParams,
-        userData: {} as ICreateUsersParams, // Будет заполнено позже
-        weight: 0, // Будет заполнено позже
-      };
+    //   // Создаем payload с правильной структурой для передачи данных комбайнера
+    //   const payload: IPayloadSetTalonOfKombainer = {
+    //     kombainerData: kombainerData as ICreateKombainerParams,
+    //     userData: {} as ICreateUsersParams, // Будет заполнено позже
+    //     weight: 0, // Будет заполнено позже
+    //   };
 
-      setNeedRedirect('voditel', payload);
+    //   setNeedRedirect('voditel', payload);
 
-      return { status: 'ok' };
-    }
+    //   return { status: 'ok' };
+    // }
 
     case 'confirm_kombainer_ticket': {
       const { voditelData, userData } = message;
       console.log('confirm_kombainer_ticket|message=', message);
 
-      DeviceEventEmitter.emit('voditelConfirmAfterConnect', {
-        voditelData,
-        userData,
-      } as IPayloadConfirmKombainerTicket);
+      setTimeout(() => {
+        DeviceEventEmitter.emit('voditelConfirmAfterConnect', {
+          voditelData,
+          userData,
+        } as IPayloadConfirmKombainerTicket);
+      }, 500);
 
       return { status: 'ok' };
     }
@@ -88,8 +99,10 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       // const { voditelData, userData } = message;
       console.log('confirm_kombainer_ticket_with_weight|message=', message);
 
-      // Отправляем событие о подтверждении веса водителем
-      DeviceEventEmitter.emit('voditelConfirmWithWeight', message);
+      setTimeout(() => {
+        // Отправляем событие о подтверждении веса водителем
+        DeviceEventEmitter.emit('voditelConfirmWithWeight', message);
+      }, 500);
 
       return { status: 'ok' };
     }
