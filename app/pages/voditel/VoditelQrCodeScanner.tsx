@@ -72,6 +72,9 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   const isProcessing = useRef(false);
   const [processing, setProcessing] = useState(false);
 
+  // Состояние для защиты от множественных нажатий кнопки "Назад к сканеру"
+  const [cancelInProgress, setCancelInProgress] = useState(false);
+
   // Новое состояние для показа инструкции
   const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
   // Сохраняем данные Wi-Fi для передачи в joinHotspot после инструкции
@@ -346,16 +349,27 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
         {/* Кнопка "Назад к сканеру" */}
         <TouchableOpacity
-          style={styles.cancelButton}
+          style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
           onPress={() => {
+            if (cancelInProgress) return;
+            setCancelInProgress(true);
+
             setShowHotspotInstruction(false);
             isProcessing.current = false;
             setProcessing(false);
+
+            // Сбрасываем флаг через небольшую задержку
+            setTimeout(() => setCancelInProgress(false), 500);
           }}
-          disabled={processing}
+          disabled={processing || cancelInProgress}
         >
-          <Text style={[styles.cancelButtonText, processing && { color: '#999' }]}>
-            Назад к сканеру
+          <Text
+            style={[
+              styles.cancelButtonText,
+              (processing || cancelInProgress) && styles.disabledButtonText,
+            ]}
+          >
+            {cancelInProgress ? 'Отмена...' : 'Назад к сканеру'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -509,5 +523,12 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 15,
     fontWeight: '500',
+  },
+  disabledButton: {
+    opacity: 0.6,
+    backgroundColor: '#b0b0b0',
+  },
+  disabledButtonText: {
+    color: '#666',
   },
 });

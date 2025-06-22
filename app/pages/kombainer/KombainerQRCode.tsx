@@ -66,6 +66,7 @@ interface KombainerQRCodeState {
   // Новые поля для геопозиции
   isLocationEnabled: boolean;
   checkingLocationStatus: boolean;
+  cancelInProgress: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
@@ -93,6 +94,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       // Инициализация полей геопозиции
       isLocationEnabled: true,
       checkingLocationStatus: false,
+      cancelInProgress: false, // Инициализация флага защиты от множественных нажатий
     };
   }
 
@@ -530,7 +532,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   }
 
   handleCancelClick = async () => {
-    this.setState({ isCancelling: true });
+    // Защита от множественных нажатий
+    if (this.state.cancelInProgress) {
+      return;
+    }
+
+    this.setState({ isCancelling: true, cancelInProgress: true });
     // Очищаем все таймеры повторных попыток
     this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
     this.retryTimeouts = [];
@@ -544,7 +551,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           text: 'Отмена',
           style: 'cancel',
           // Если пользователь отменил закрытие, снимаем флаг отмены
-          onPress: () => this.setState({ isCancelling: false }),
+          onPress: () => this.setState({ isCancelling: false, cancelInProgress: false }),
         },
         {
           text: 'Закрыть',
@@ -790,8 +797,19 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           )}
 
           {/* Кнопка отмены */}
-          <TouchableOpacity style={styles.cancelButton} onPress={this.handleCancelClick}>
-            <Text style={styles.cancelButtonText}>Отменить</Text>
+          <TouchableOpacity
+            style={[styles.cancelButton, this.state.cancelInProgress && styles.disabledButton]}
+            onPress={this.handleCancelClick}
+            disabled={this.state.cancelInProgress}
+          >
+            <Text
+              style={[
+                styles.cancelButtonText,
+                this.state.cancelInProgress && styles.disabledButtonText,
+              ]}
+            >
+              {this.state.cancelInProgress ? 'Отмена...' : 'Отменить'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -927,6 +945,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Стили для отключенной кнопки
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
   // Стили для сообщений о разрешениях
   permissionMessageContainer: {

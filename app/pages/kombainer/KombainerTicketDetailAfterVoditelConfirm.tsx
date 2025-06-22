@@ -59,6 +59,7 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   canApproveTicket?: boolean; // новое состояние для кнопки "Подписать талон"
   waitingForVoditelSign?: boolean; // Ожидание события voditelSignTicket
   voditelSignReceived?: boolean; // Получено ли событие voditelSignTicket (kombainerSignReceived)
+  cancelInProgress?: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
 }
 
 /**
@@ -101,6 +102,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       canApproveTicket: false, // по умолчанию скрыта
       waitingForVoditelSign: false,
       voditelSignReceived: false,
+      cancelInProgress: false, // Инициализация флага защиты от множественных нажатий
     };
   }
 
@@ -285,12 +287,23 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   };
 
   handleCancelClick = async () => {
+    // Защита от множественных нажатий
+    if (this.state.cancelInProgress) {
+      return;
+    }
+
+    this.setState({ cancelInProgress: true });
+
     // Показываем уведомление о закрытии TCP-соединения
     Alert.alert(
       'Закрытие TCP-соединения',
       'TCP-соединение с устройством водителя будет закрыто. Обмен данными прекратится.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Отмена',
+          style: 'cancel',
+          onPress: () => this.setState({ cancelInProgress: false }),
+        },
         {
           text: 'Закрыть',
           style: 'destructive',
@@ -666,11 +679,23 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
             {/* Кнопка отмены */}
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[
+                styles.cancelButton,
+                (isWaitingVoditelWeightConfirm || this.state.cancelInProgress) &&
+                  styles.disabledButton,
+              ]}
               onPress={this.handleCancelClick}
-              disabled={isWaitingVoditelWeightConfirm}
+              disabled={isWaitingVoditelWeightConfirm || this.state.cancelInProgress}
             >
-              <Text style={styles.cancelButtonText}>Отмена</Text>
+              <Text
+                style={[
+                  styles.cancelButtonText,
+                  (isWaitingVoditelWeightConfirm || this.state.cancelInProgress) &&
+                    styles.disabledButtonText,
+                ]}
+              >
+                {this.state.cancelInProgress ? 'Отмена...' : 'Отмена'}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -793,6 +818,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Стили для отключенной кнопки
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
   loadingContainer: {
     flex: 1,

@@ -48,6 +48,8 @@ interface VoditelTicketDetailAfterSetWeightState {
   waitingForKombainerSign: boolean; // Ожидание события kombainerSignTicket
   kombainerSignReceived: boolean; // Получено ли событие kombainerSignTicket
 
+  cancelInProgress: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
+
   weight: number | null;
   kombainerUserData: ICreateUsersParams | null;
   userData: ICreateUsersParams | null;
@@ -83,6 +85,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
       waitingForKombainerSign: false,
       kombainerSignReceived: false,
+
+      cancelInProgress: false, // Инициализация флага защиты от множественных нажатий
 
       weight: null,
       kombainerUserData: null,
@@ -366,12 +370,26 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    * Обработчик отмены операции
    */
   handleCancelClick = () => {
+    // Защита от множественных нажатий
+    if (this.state.cancelInProgress) {
+      return;
+    }
+
+    this.setState({ cancelInProgress: true });
+
     Alert.alert(
       'Закрытие соединения',
       'Вы уверены, что хотите отменить процесс и вернуться назад?',
       [
-        { text: 'Отмена', style: 'cancel' },
-        { text: 'Да', onPress: () => this.props.navigation.goBack() },
+        {
+          text: 'Отмена',
+          style: 'cancel',
+          onPress: () => this.setState({ cancelInProgress: false }),
+        },
+        {
+          text: 'Да',
+          onPress: () => this.props.navigation.goBack(),
+        },
       ]
     );
   };
@@ -487,8 +505,19 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.cancelButton} onPress={this.handleCancelClick}>
-          <Text style={styles.cancelButtonText}>Отмена</Text>
+        <TouchableOpacity
+          style={[styles.cancelButton, this.state.cancelInProgress && styles.disabledButton]}
+          onPress={this.handleCancelClick}
+          disabled={this.state.cancelInProgress}
+        >
+          <Text
+            style={[
+              styles.cancelButtonText,
+              this.state.cancelInProgress && styles.disabledButtonText,
+            ]}
+          >
+            {this.state.cancelInProgress ? 'Отмена...' : 'Отмена'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -573,6 +602,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    backgroundColor: '#ffb3b3', // Более светлый красный для отключенной кнопки
+    opacity: 0.7,
+  },
+  disabledButtonText: {
+    color: 'rgba(255, 255, 255, 0.7)', // Полупрозрачный белый для текста отключенной кнопки
   },
   loadingContainer: {
     marginVertical: 20,
