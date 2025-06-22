@@ -29,6 +29,7 @@ import {
   isTcpServerRunning,
   stopTcpServer,
   getCurrentTcpServerPort,
+  tcpServerSendRequest,
 } from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
@@ -314,7 +315,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   };
 
   // Обработчик события подключения водителя
-  handleVoditelConnected = (data: IVoditelConnectedPayload) => {
+  handleVoditelConnected = async (data: IVoditelConnectedPayload) => {
     console.log('Водитель подключился:', data);
 
     // Устанавливаем флаг подключения водителя
@@ -324,6 +325,23 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     if (this.waitingVoditelDataCtrl !== null) {
       clearTimeout(this.waitingVoditelDataCtrl);
       this.waitingVoditelDataCtrl = null;
+    }
+
+    // Отправляем водителю событие о принятии подключения с talonId
+    try {
+      await tcpServerSendRequest({
+        type: 'accept_voditel_connect',
+        talonId: this.state.talonId,
+      });
+      console.log('Отправлено событие accept_voditel_connect с talonId:', this.state.talonId);
+    } catch (error) {
+      console.error('Ошибка при отправке accept_voditel_connect:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert(
+        'Ошибка подключения',
+        `Не удалось отправить подтверждение подключения водителю: ${errorMessage}`
+      );
+      return; // Прекращаем выполнение при ошибке
     }
 
     // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя

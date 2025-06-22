@@ -16,7 +16,7 @@ import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';
 import { getKombainerByUserId } from '../db/kombainers';
-import { getTalonsByKombainerId } from '../db/talons_of_combainers';
+import { getTalonsByKombainerId, ICreateTalonsParams } from '../db/talons_of_combainers';
 
 /**
  * Основная функция обработки сообщений
@@ -66,6 +66,19 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       return { status: 'ok' };
     }
 
+    case 'accept_voditel_connect': {
+      const { talonId } = message;
+
+      setTimeout(() => {
+        // Отправляем событие о принятии подключения водителя
+        DeviceEventEmitter.emit('acceptVoditelConnect', {
+          talonId,
+        });
+      });
+
+      return { status: 'ok' };
+    }
+
     // case 'set_kombainer_data': {
     //   const { kombainerData } = message;
 
@@ -108,7 +121,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'get_kombainer_data': {
-      const {} = message;
+      const { talonId } = message;
 
       const currentUserId = await getConfig('currentUserId');
       console.log('get_kombainer_data|currentUserId=', currentUserId);
@@ -138,35 +151,43 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       // Получаем номер последнего талона комбайнера, если есть
       let talonNumber = '';
+      let talonData = null;
       if (kombainerData && kombainerData.id) {
         try {
           const talons = await getTalonsByKombainerId(kombainerData.id);
           if (talons && talons.length > 0) {
-            // Находим последний созданный талон
-            const latestTalon = talons.reduce((latest, current) => {
-              return latest.created_at > current.created_at ? latest : current;
-            });
-
-            talonNumber = latestTalon.talonNumber || '';
+            // Если передан talonId, ищем конкретный талон
+            if (talonId) {
+              talonData = talons.find((talon) => talon.id === talonId);
+              if (talonData) {
+                talonNumber = talonData.talonNumber || '';
+              }
+            } else {
+              // Находим последний созданный талон
+              const latestTalon = talons.reduce((latest, current) => {
+                return latest.created_at > current.created_at ? latest : current;
+              });
+              talonData = latestTalon;
+              talonNumber = latestTalon.talonNumber || '';
+            }
           }
         } catch (error) {
           console.error('get_kombainer_data|error=', error);
         }
       }
 
-      return { status: 'ok', kombainerData, kombainerUserData: userData, talonNumber };
+      return { status: 'ok', kombainerData, kombainerUserData: userData, talonNumber, talonData };
     }
 
     case 'set_talon_of_kombainer': {
       console.log('onTcpMessage|set_talon_of_kombainer|message=', message);
-      const { kombainerData, userData, weight } = message;
-      const talonNumber = message.talonNumber || '';
+      const { kombainerData, userData, talonData, weight } = message;
 
       const payload: IPayloadSetTalonOfKombainer = {
         kombainerData: kombainerData as ICreateKombainerParams,
         userData: userData as ICreateUsersParams,
         weight: weight as number,
-        talonNumber,
+        talonData: talonData as ICreateTalonsParams,
       };
 
       console.log('confirm_kombainer_ticket|payload=', payload);

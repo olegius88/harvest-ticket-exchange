@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  DeviceEventEmitter,
   NativeModules,
   Linking,
   StyleSheet,
@@ -93,7 +94,20 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       }
     };
     closeAll();
-    return () => setProcessing(false);
+
+    // Добавляем слушатель события acceptVoditelConnect
+    const acceptVoditelConnectListener = DeviceEventEmitter.addListener(
+      'acceptVoditelConnect',
+      ({ talonId }) => {
+        navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
+        Alert.alert('Подключение к устройству прошло успешно');
+      }
+    );
+
+    return () => {
+      setProcessing(false);
+      acceptVoditelConnectListener.remove();
+    };
   }, []);
 
   // Сканер кодов
@@ -179,8 +193,6 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         voditelData: currentUser.voditelData,
         voditelUserData: currentUser.userData,
       });
-      Alert.alert('Подключение к устройству прошло успешно');
-      navigation.navigate('VoditelTicketDetailAfterSetWeightScreen');
     } catch (error: any) {
       Alert.alert('Ошибка', error.message || JSON.stringify(error));
       setShowHotspotInstruction(false);

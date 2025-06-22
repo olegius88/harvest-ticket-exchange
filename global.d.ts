@@ -377,6 +377,7 @@ export interface ISendTcpSetKombainerData {
 
 export interface ISendTcpGetKombainerData {
   type: 'get_kombainer_data';
+  talonId: string;
 }
 
 export interface ISendTcpConfirmKombainerTicket {
@@ -397,8 +398,7 @@ export interface ISendTcpSendSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonNumber?: string;
-  talonData?: ICreateTalonsParams | null;
+  talonData: ICreateTalonsParams;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -416,6 +416,7 @@ export interface ITcpResponseConnectEstablishedOk {
 export interface ITcpResponseKombainerData {
   kombainerUserData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams;
+  talonData: ICreateTalonsParams;
 }
 
 // Интерфейсы для проверки и подтверждения веса комбайнера
@@ -738,7 +739,7 @@ export interface IPayloadSetTalonOfKombainer {
   kombainerData: ICreateKombainerParams;
   userData: ICreateUsersParams;
   weight: number;
-  talonNumber?: string;
+  talonData: ICreateTalonsParams;
 }
 
 export type TNeedRedirectPayload =
@@ -932,7 +933,7 @@ export type RootStackParamList = {
   VoditelCreateTripScreen: undefined;
   VoditelTicketDetailScreen: undefined;
   VoditelWaitKombainerDataScreen: undefined;
-  VoditelTicketDetailAfterSetWeightScreen: undefined;
+  VoditelTicketDetailAfterSetWeightScreen: { talonId?: string };
   VoditelTicketCreatedSuccessScreen: undefined;
   CodeScannerPageScreen: undefined;
 };
