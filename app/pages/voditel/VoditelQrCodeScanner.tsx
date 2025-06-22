@@ -1,24 +1,23 @@
-import * as React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Component } from 'react';
 import {
   ActivityIndicator,
   Alert,
   NativeModules,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  BackHandler,
 } from 'react-native';
-import type { Code } from 'react-native-vision-camera';
-import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
+import type { Code, CameraDevice } from 'react-native-vision-camera';
+import { Camera } from 'react-native-vision-camera';
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../../Constants';
-import { useIsForeground } from '../../hooks/useIsForeground';
 import { StatusBarBlurBackground } from '../../views/StatusBarBlurBackground';
 import { PressableOpacity } from 'react-native-pressable-opacity';
 import IonIcon from 'react-native-vector-icons/Ionicons';
 import type { Routes } from '../../Routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useIsFocused } from '@react-navigation/core';
 import ScanningOverlay from '../../views/ScanningOverlay';
 import {
   JoinHotspotResponse,
@@ -26,11 +25,13 @@ import {
   SendTcpRequestResponse,
   ITcpResponseConnectEstablishedOk,
   CurrentUserResponse,
+  RootStackParamList,
 } from '../../../global';
 import { closeAllConnections } from '../../services/ConnectionManager';
 import { handleMessage, setNeedRedirect } from '../../services/MessageHandler';
 import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 
 const { MainWifiModule } = NativeModules; // Получаем нативный модуль
 
@@ -66,165 +67,292 @@ const parseWifiCredentials = (
   return ssid && password ? { ssid, password, port: port || 3290 } : null;
 };
 
-type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
-export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement {
-  // Используем заднюю камеру
-  const device = useCameraDevice('back');
+interface VoditelQrCodeScannerProps {
+  navigation: NavigationProp<RootStackParamList, 'CodeScannerPageScreen'>;
+  route: RouteProp<RootStackParamList, 'CodeScannerPageScreen'>;
+}
 
-  // Камера активна только если экран в фокусе и приложение на переднем плане
-  const isFocused = useIsFocused();
-  const isForeground = useIsForeground();
-  const isActive = isFocused && isForeground;
+interface VoditelQrCodeScannerState {
+  torch: boolean;
+  processing: boolean;
+  cancelInProgress: boolean;
+  showHotspotInstruction: boolean;
+  isFocused: boolean;
+  isForeground: boolean;
+  isActive: boolean;
+  cameraReady: boolean;
+  cameraPermissionStatus: 'granted' | 'denied' | 'restricted' | 'not-determined' | null;
+  showPermissionError: boolean;
+}
 
-  // Включение фонарика
-  const [torch, setTorch] = useState(false);
+class VoditelQrCodeScanner extends Component<VoditelQrCodeScannerProps, VoditelQrCodeScannerState> {
+  private isProcessingRef = false;
+  private wifiCredentialsRef: { ssid: string; password: string; port?: number } | null = null;
+  private backHandlerListener: any = null;
+  private focusListener: any = null;
+  private blurListener: any = null;
+  private device: CameraDevice | null = null;
 
-  // Флаг для предотвращения повторного срабатывания.
-  // Используем useRef для хранения флага, а state для управления UI
-  const isProcessing = useRef(false);
-  const [processing, setProcessing] = useState(false);
-
-  // Состояние для защиты от множественных нажатий кнопки "Назад к сканеру"
-  const [cancelInProgress, setCancelInProgress] = useState(false);
-
-  // Новое состояние для показа инструкции
-  const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
-  // Сохраняем данные Wi-Fi для передачи в joinHotspot после инструкции
-  const wifiCredentialsRef = useRef<{ ssid: string; password: string; port?: number } | null>(null);
-
-  // При загрузке страницы отключаем все соединения
-  useEffect(() => {
-    const closeConnections = async () => {
-      try {
-        await closeAllConnections(
-          {
-            closeHotspot: true,
-            closeTcpServer: true,
-            closeTcpClient: true,
-          },
-          'VoditelQrCodeScanner'
-        );
-      } catch (error) {
-        console.error('VoditelQrCodeScanner: Ошибка при закрытии соединений:', error);
-      }
+  constructor(props: VoditelQrCodeScannerProps) {
+    super(props);
+    this.state = {
+      torch: false,
+      processing: false,
+      cancelInProgress: false,
+      showHotspotInstruction: false,
+      isFocused: true,
+      isForeground: true,
+      isActive: true,
+      cameraReady: false,
+      cameraPermissionStatus: null,
+      showPermissionError: false,
     };
+  }
 
-    closeConnections();
+  componentDidMount() {
+    // Небольшая задержка для завершения монтирования компонента
+    setTimeout(() => {
+      this.initializeCamera();
+    }, 100);
 
-    // Cleanup функция при размонтировании компонента
-    return () => {
-      setProcessing(false);
-    };
-  }, []);
+    this.setupEventListeners();
+    this.closeConnections();
+  }
 
-  // Закрываем все соединения перед началом сканирования
-  useEffect(() => {
-    if (isActive && !processing && !showHotspotInstruction) {
-      const closeConnectionsBeforeScanning = async () => {
-        try {
-          await closeAllConnections(
-            {
-              closeHotspot: true,
-              closeTcpServer: true,
-              closeTcpClient: true,
-            },
-            'VoditelQrCodeScanner_BeforeScanning'
-          );
-        } catch (error) {
-          console.error(
-            'VoditelQrCodeScanner: Ошибка при закрытии соединений перед сканированием:',
-            error
-          );
+  initializeCamera = async () => {
+    try {
+      console.log('VoditelQrCodeScanner: Starting camera initialization...');
+
+      // Сбрасываем состояние ошибки разрешений
+      this.setState({ showPermissionError: false });
+
+      // Проверяем разрешения камеры
+      const cameraPermission = await Camera.getCameraPermissionStatus();
+      console.log('VoditelQrCodeScanner: Camera permission status:', cameraPermission);
+
+      this.setState({ cameraPermissionStatus: cameraPermission });
+
+      if (cameraPermission === 'not-determined') {
+        // Впервые запрашиваем разрешение
+        console.log('VoditelQrCodeScanner: Requesting camera permission for the first time...');
+        const newCameraPermission = await Camera.requestCameraPermission();
+        console.log('VoditelQrCodeScanner: New camera permission status:', newCameraPermission);
+
+        this.setState({ cameraPermissionStatus: newCameraPermission });
+
+        if (newCameraPermission !== 'granted') {
+          console.log('VoditelQrCodeScanner: Camera permission denied');
+          this.setState({
+            cameraReady: true,
+            showPermissionError: true,
+          });
+          return;
         }
-      };
-
-      closeConnectionsBeforeScanning();
-    }
-  }, [isActive, processing, showHotspotInstruction]);
-
-  const onCodeScanned = useCallback(
-    (codes: Code[]) => {
-      const value = codes[0]?.value;
-      if (!value || isProcessing.current) return;
-
-      const credentials = parseWifiCredentials(value);
-      if (credentials) {
-        const { ssid, password, port } = credentials;
-        console.log('Parsed Wi‑Fi credentials:', { ssid, password, port });
-
-        // Сохраняем данные для дальнейшего использования
-        wifiCredentialsRef.current = { ssid, password, port };
-        // Блокируем повторное сканирование
-        isProcessing.current = true;
-        // Показываем инструкцию вместо сканера
-        setShowHotspotInstruction(true);
-        // Автоматически запускаем подключение к Wi-Fi после небольшой задержки
-        setTimeout(() => {
-          handleConnectToHotspot();
-        }, 500);
+      } else if (cameraPermission === 'denied') {
+        // Разрешение было отклонено ранее
+        console.log('VoditelQrCodeScanner: Camera permission was denied before');
+        this.setState({
+          cameraReady: true,
+          showPermissionError: true,
+        });
         return;
-      } else {
-        console.error('onCodeScanned|!credentials|value=', value);
-        Alert.alert('Ошибка считывания QR-кода');
+      } else if (cameraPermission === 'restricted') {
+        // Разрешение ограничено (например, родительский контроль)
+        console.log('VoditelQrCodeScanner: Camera permission is restricted');
+        this.setState({
+          cameraReady: true,
+          showPermissionError: true,
+        });
+        return;
+      } else if (cameraPermission !== 'granted') {
+        // Любое другое состояние, кроме granted
+        console.log('VoditelQrCodeScanner: Unknown camera permission state:', cameraPermission);
+        this.setState({
+          cameraReady: true,
+          showPermissionError: true,
+        });
+        return;
       }
-    },
-    [navigation]
-  );
+
+      // Разрешение получено, пробуем получить камеру
+      console.log('VoditelQrCodeScanner: Getting available camera devices...');
+      const devices = Camera.getAvailableCameraDevices();
+      console.log(
+        'VoditelQrCodeScanner: Available devices:',
+        devices.length,
+        devices.map((d) => ({ id: d.id, position: d.position }))
+      );
+
+      this.device = devices.find((d) => d.position === 'back') || devices[0] || null;
+
+      if (!this.device) {
+        console.warn('VoditelQrCodeScanner: No camera device found');
+        Alert.alert('Ошибка', 'Камера недоступна на этом устройстве');
+        this.setState({ cameraReady: true }); // Отмечаем как готово, но устройство null
+        return;
+      }
+
+      console.log(
+        'VoditelQrCodeScanner: Camera device found:',
+        this.device.id,
+        this.device.position
+      );
+      this.setState({ cameraReady: true, showPermissionError: false });
+    } catch (error) {
+      console.error('VoditelQrCodeScanner: Error initializing camera:', error);
+      Alert.alert('Ошибка', 'Не удалось инициализировать камеру');
+      this.setState({ cameraReady: true, showPermissionError: true }); // Отмечаем как готово, чтобы показать ошибку
+    }
+  };
+
+  setupEventListeners = () => {
+    // Обработчик для кнопки "Назад" на Android
+    this.backHandlerListener = BackHandler.addEventListener(
+      'hardwareBackPress',
+      this.handleBackPress
+    );
+
+    // Слушатели фокуса экрана
+    this.focusListener = this.props.navigation.addListener('focus', () => {
+      this.setState({ isFocused: true }, this.updateActiveState);
+
+      // Если камера не готова, попробуем переинициализировать
+      if (!this.device || !this.state.cameraReady) {
+        setTimeout(() => {
+          this.handleRetryCamera();
+        }, 500);
+      }
+    });
+
+    this.blurListener = this.props.navigation.addListener('blur', () => {
+      this.setState({ isFocused: false }, this.updateActiveState);
+    });
+  };
+
+  componentWillUnmount() {
+    try {
+      if (this.backHandlerListener) {
+        this.backHandlerListener.remove();
+      }
+    } catch (error) {
+      console.error('VoditelQrCodeScanner: Error closing connections:', error);
+    }
+    try {
+      if (this.focusListener) {
+        this.focusListener.remove();
+      }
+    } catch (error) {
+      console.error('VoditelQrCodeScanner: Error closing connections:', error);
+    }
+    try {
+      if (this.blurListener) {
+        this.blurListener.remove();
+      }
+    } catch (error) {
+      console.error('VoditelQrCodeScanner: Error closing connections:', error);
+    }
+
+    this.backHandlerListener = null;
+    this.focusListener = null;
+    this.blurListener = null;
+
+    this.setState({ processing: false });
+  }
+
+  updateActiveState = () => {
+    const { isFocused, isForeground } = this.state;
+    this.setState({ isActive: isFocused && isForeground });
+  };
+
+  handleBackPress = () => {
+    if (this.state.showHotspotInstruction) {
+      this.handleCancelInstruction();
+      return true;
+    }
+    return false;
+  };
+
+  closeConnections = async () => {
+    try {
+      await closeAllConnections(
+        {
+          closeHotspot: true,
+          closeTcpServer: true,
+          closeTcpClient: true,
+        },
+        'VoditelQrCodeScanner'
+      );
+    } catch (error) {
+      console.error('VoditelQrCodeScanner: Ошибка при закрытии соединений:', error);
+    }
+  };
+
+  onCodeScanned = (codes: Code[]) => {
+    const value = codes[0]?.value;
+    if (!value || this.isProcessingRef) return;
+
+    const credentials = parseWifiCredentials(value);
+    if (credentials) {
+      const { ssid, password, port } = credentials;
+      console.log('Parsed Wi‑Fi credentials:', { ssid, password, port });
+
+      // Сохраняем данные для дальнейшего использования
+      this.wifiCredentialsRef = { ssid, password, port };
+      // Блокируем повторное сканирование
+      this.isProcessingRef = true;
+      // Показываем инструкцию вместо сканера
+      this.setState({ showHotspotInstruction: true });
+      // Автоматически запускаем подключение к Wi-Fi после небольшой задержки
+      setTimeout(() => {
+        this.handleConnectToHotspot();
+      }, 500);
+      return;
+    } else {
+      console.error('onCodeScanned|!credentials|value=', value);
+      Alert.alert('Ошибка считывания QR-кода');
+    }
+  };
 
   // Обработчик для кнопки "Подключиться к Wi-Fi"
-  const handleConnectToHotspot = async () => {
-    if (!wifiCredentialsRef.current) return;
-    const { ssid, password, port } = wifiCredentialsRef.current;
+  handleConnectToHotspot = async () => {
+    if (!this.wifiCredentialsRef) return;
+    const { ssid, password, port } = this.wifiCredentialsRef;
     console.log('handleConnectToHotspot: Starting connection with:', { ssid, password, port });
-    setProcessing(true);
+    this.setState({ processing: true });
 
     try {
       const joinDataRes = await MainWifiModule.joinHotspot(ssid, password);
       console.log('onCodeScanned|joinHotspot|joinDataRes=', joinDataRes);
       let joinData: JoinHotspotResponse;
       try {
-        joinData = JSON.parse(joinDataRes);
+        joinData = typeof joinDataRes === 'string' ? JSON.parse(joinDataRes) : joinDataRes;
       } catch (e) {
-        console.error('onCodeScanned|JSON.parse error|e=', e);
-        console.error('onCodeScanned|JSON.parse error|e|joinDataRes=', joinDataRes);
-        Alert.alert('Ошибка joinDataRes');
-        // Сбрасываем состояния при ошибке
-        setProcessing(false);
-        setShowHotspotInstruction(false);
-        isProcessing.current = false;
-        return;
+        console.error('onCodeScanned|JSON.parse error=', e);
+        throw new Error('Ошибка парсинга ответа подключения к Wi-Fi');
       }
       console.log('onCodeScanned|joinData=', joinData);
 
-      await handleNeedRedirect(joinData, port);
+      await this.handleNeedRedirect(joinData, port);
     } catch (err: unknown) {
       Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось подключиться к сети');
       // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      this.setState({ processing: false, showHotspotInstruction: false });
+      this.isProcessingRef = false;
     }
   };
 
-  const handleNeedRedirect = async (joinData: JoinHotspotResponse, port?: number) => {
+  handleNeedRedirect = async (joinData: JoinHotspotResponse, port?: number) => {
     console.log('Main|needRedirect|joinData=', joinData, 'port=', port);
 
     try {
       // Отправляем запрос на подключение к TCP-серверу
       const message = await connectToTcpServer({
         ip: joinData.ip,
-        port: port || 3290, // Используем переданный порт или значение по умолчанию
+        port: port || 3290,
       });
       console.log('connectToTcpServer|message=', message);
     } catch (error: unknown) {
       console.error('Main|needRedirect|error=', error);
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      Alert.alert('Ошибка подключения к устройству', errorMessage);
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
-      return;
     }
 
     let tcpResponse: SendTcpRequestResponse;
@@ -239,62 +367,39 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       console.error('Main|needRedirect|tcp test error =', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert('Ошибка подключения к устройству', errorMessage);
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
       return;
     }
 
     console.log('Main|needRedirect|tcpResponse =', tcpResponse);
 
     if ((tcpResponse.data as ITcpResponseConnectEstablishedOk).status !== 'ok') {
-      Alert.alert(
-        'Ошибка подключения к устройству',
-        `При подключении к устройству, получен некорректный ответ: ${JSON.stringify(tcpResponse)}`
-      );
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      Alert.alert('Ошибка установления соединения', JSON.stringify(tcpResponse.data));
       return;
     }
 
     AuthStoreData.context = 'voditel'; // Устанавливаем контекст пользователя
 
     if (!AuthStoreData.context) {
-      Alert.alert(
-        'Не определен контекст',
-        "Не определен контекст пользователя 'AuthStoreData.context'"
-      );
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      Alert.alert('Ошибка', `Не удалось установить контекст пользователя`);
       return;
     }
 
     let currentUser: CurrentUserResponse;
     try {
-      // Отправляем запрос на получение данных текущего пользователя
-      const currentUserResponse = await handleMessage({
+      const response = await handleMessage({
         req: {
           type: 'currentUser',
-          data: { context: AuthStoreData.context },
+          data: { context: AuthStoreData.context as 'voditel' },
         },
-        reqId: 'currentUser_' + Date.now(),
+        reqId: 'getCurrentUser_' + Date.now(),
       });
-      console.log('Main|needRedirect|currentUserResponse=', currentUserResponse);
-
-      currentUser = currentUserResponse as CurrentUserResponse;
+      currentUser = response as CurrentUserResponse;
     } catch (error: unknown) {
-      console.error('Main|needRedirect|currentUser|error =', error);
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      Alert.alert('Ошибка получения данных текущего пользователя', errorMessage);
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      console.error('Main|needRedirect|getCurrentUser|error=', error);
+      Alert.alert(
+        'Ошибка получения данных пользователя',
+        error instanceof Error ? error.message : 'Неизвестная ошибка'
+      );
       return;
     }
 
@@ -306,146 +411,288 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     ]);
 
     if (!currentUser.voditelData || !currentUser.userData) {
-      Alert.alert('Ошибка', 'Отсутствуют данные водителя');
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      Alert.alert('Ошибка', 'Отсутствуют данные водителя или пользователя');
       return;
     }
 
     try {
-      // Отправляем запрос на подключение к TCP-серверу
-      const data = await sendTcpRequest({
+      const connectData = await sendTcpRequest({
         type: 'set_voditel_data',
         voditelData: currentUser.voditelData,
         voditelUserData: currentUser.userData,
       });
-      console.log('sendTcpRequest|data=', data);
+      console.log('Main|needRedirect|voditel_connected|connectData=', connectData);
     } catch (error: any) {
-      console.error('Main|needRedirect|set_voditel_data error =', error);
-      Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
-      // Сбрасываем состояния при ошибке
-      setProcessing(false);
-      setShowHotspotInstruction(false);
-      isProcessing.current = false;
+      console.error('Main|needRedirect|voditel_connected|error=', error);
+      Alert.alert('Ошибка отправки данных водителя', error.message || JSON.stringify(error));
       return;
     }
 
-    navigation.navigate('VoditelTicketDetailAfterSetWeightScreen');
+    this.props.navigation.navigate('VoditelTicketDetailAfterSetWeightScreen');
   };
 
-  // Инициализация сканера с поддержкой QR и штрих‑кодов (ean‑13)
-  const codeScanner = useCodeScanner({
-    codeTypes: ['qr', 'ean-13'],
-    onCodeScanned,
-  });
+  handleCancelInstruction = () => {
+    if (this.state.cancelInProgress) return;
+
+    this.setState({ cancelInProgress: true });
+
+    // Сбрасываем состояния
+    this.setState({
+      processing: false,
+      showHotspotInstruction: false,
+      cancelInProgress: false,
+    });
+    this.isProcessingRef = false;
+  };
+
+  toggleTorch = () => {
+    this.setState((prevState) => ({ torch: !prevState.torch }));
+  };
+
+  handleRetryCamera = () => {
+    this.setState({
+      cameraReady: false,
+      showPermissionError: false,
+      cameraPermissionStatus: null,
+    });
+    this.device = null;
+    setTimeout(() => {
+      this.initializeCamera();
+    }, 100);
+  };
+
+  handlePermissionError = () => {
+    const { cameraPermissionStatus } = this.state;
+
+    if (cameraPermissionStatus === 'denied') {
+      // Разрешение отклонено, предлагаем перейти в настройки
+      Alert.alert(
+        'Разрешение камеры отклонено',
+        'Для сканирования QR-кодов необходимо разрешение на использование камеры. Вы можете предоставить его в настройках приложения.',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Настройки', onPress: this.openAppSettings },
+        ]
+      );
+    } else if (cameraPermissionStatus === 'restricted') {
+      Alert.alert(
+        'Камера недоступна',
+        'Доступ к камере ограничен системными настройками (например, родительским контролем).',
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert(
+        'Камера недоступна',
+        'Не удалось получить доступ к камере. Проверьте настройки приложения.',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Попробовать снова', onPress: this.handleRetryCamera },
+        ]
+      );
+    }
+  };
+
+  openAppSettings = () => {
+    Linking.openSettings().catch((error) => {
+      console.error('VoditelQrCodeScanner: Error opening app settings:', error);
+      Alert.alert('Ошибка', 'Не удалось открыть настройки приложения');
+    });
+  };
 
   // Компонент-инструкция по подключению к хотспоту
-  const HotspotInstruction = () => (
+  renderHotspotInstruction = () => (
     <View style={styles.instructionOverlay}>
       <View style={styles.instructionBox}>
-        <Text style={styles.instructionTitle}>Подключение к Wi-Fi точке доступа</Text>
-        <Text style={styles.instructionStep}>
-          1. После сканирования QR-кода дождитесь появления системного окна с кнопкой{' '}
-          <Text style={{ fontWeight: 'bold' }}>Соединиться</Text>.
-        </Text>
-        <Text style={styles.instructionStep}>
-          2. Нажмите на кнопку <Text style={{ fontWeight: 'bold' }}>Соединиться/Подключиться</Text>,
-          чтобы подключиться к Wi-Fi.
-        </Text>
-        <Text style={styles.instructionStep}>
-          3. После подключения процесс продолжится автоматически.
-        </Text>
+        <Text style={styles.instructionTitle}>Подключение к устройству</Text>
 
-        {/* Показываем индикатор загрузки если идет процесс подключения */}
-        {processing && (
+        <Text style={styles.instructionStep}>1. QR-код успешно отсканирован</Text>
+        <Text style={styles.instructionStep}>2. Подключение к Wi-Fi сети комбайнера...</Text>
+        <Text style={styles.instructionStep}>3. Установка соединения с устройством...</Text>
+
+        {this.state.processing ? (
           <View style={styles.instructionLoader}>
             <ActivityIndicator size="large" color="#5a7d2b" />
             <Text style={styles.instructionLoaderText}>Подключение...</Text>
           </View>
+        ) : (
+          <>
+            <TouchableOpacity style={styles.connectButton} onPress={this.handleConnectToHotspot}>
+              <Text style={styles.connectButtonText}>Подключиться к Wi-Fi</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.cancelButton, this.state.cancelInProgress && styles.disabledButton]}
+              onPress={this.handleCancelInstruction}
+              disabled={this.state.cancelInProgress}
+            >
+              <Text
+                style={[
+                  styles.cancelButtonText,
+                  this.state.cancelInProgress && styles.disabledButtonText,
+                ]}
+              >
+                Назад к сканеру
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
-
-        {/* Кнопка "Назад к сканеру" */}
-        <TouchableOpacity
-          style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
-          onPress={() => {
-            if (cancelInProgress) return;
-            setCancelInProgress(true);
-
-            setShowHotspotInstruction(false);
-            isProcessing.current = false;
-            setProcessing(false);
-
-            // Сбрасываем флаг через небольшую задержку
-            setTimeout(() => setCancelInProgress(false), 500);
-          }}
-          disabled={processing || cancelInProgress}
-        >
-          <Text
-            style={[
-              styles.cancelButtonText,
-              (processing || cancelInProgress) && styles.disabledButtonText,
-            ]}
-          >
-            {cancelInProgress ? 'Отмена...' : 'Назад к сканеру'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      {/* Показываем инструкцию вместо сканера, если showHotspotInstruction */}
-      {showHotspotInstruction ? (
-        <HotspotInstruction />
-      ) : (
-        <>
-          {device && (
-            // @ts-ignore
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={isActive && !isProcessing.current}
-              codeScanner={codeScanner}
-              torch={torch ? 'on' : 'off'}
-              enableZoomGesture={true}
-            />
-          )}
-          <StatusBarBlurBackground />
-          {/* Оверлей для сканирования */}
-          {!isProcessing.current && <ScanningOverlay />}
-          <View style={styles.rightButtonRow}>
-            <PressableOpacity
-              style={styles.button}
-              onPress={() => setTorch(!torch)}
-              disabledOpacity={0.4}
+  // Компонент для отображения ошибки разрешений камеры
+  renderPermissionError = () => {
+    const { cameraPermissionStatus } = this.state;
+
+    let title = 'Камера недоступна';
+    let message = 'Не удалось получить доступ к камере';
+    let showSettingsButton = false;
+    let showRetryButton = true;
+
+    if (cameraPermissionStatus === 'denied') {
+      title = 'Нужно разрешение';
+      message =
+        'Для сканирования QR-кодов необходимо разрешение на использование камеры. Предоставьте его в настройках приложения.';
+      showSettingsButton = true;
+      showRetryButton = false;
+    } else if (cameraPermissionStatus === 'restricted') {
+      title = 'Камера ограничена';
+      message = 'Доступ к камере ограничен системными настройками.';
+      showSettingsButton = false;
+      showRetryButton = false;
+    }
+
+    return (
+      <View style={styles.permissionErrorContainer}>
+        <Text style={styles.permissionErrorTitle}>{title}</Text>
+        <Text style={styles.permissionErrorMessage}>{message}</Text>
+
+        <View style={styles.permissionErrorButtons}>
+          {showSettingsButton && (
+            <TouchableOpacity
+              style={[styles.permissionButton, styles.settingsButton]}
+              onPress={this.openAppSettings}
             >
-              <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
-            </PressableOpacity>
-          </View>
-          {/* Кнопка "Назад" */}
-          <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
-            <IonIcon name="chevron-back" color="white" size={35} />
-          </PressableOpacity>
-
-          {/* Кнопка "Отмена" внизу */}
-          <View style={styles.bottomButtonContainer}>
-            <TouchableOpacity style={styles.bottomCancelButton} onPress={navigation.goBack}>
-              <Text style={styles.bottomCancelButtonText}>Отмена</Text>
+              <Text style={styles.settingsButtonText}>Открыть настройки</Text>
             </TouchableOpacity>
-          </View>
-
-          {processing && (
-            <View style={styles.preloaderContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
           )}
-        </>
-      )}
-    </View>
-  );
+
+          {showRetryButton && (
+            <TouchableOpacity
+              style={[styles.permissionButton, styles.retryButton]}
+              onPress={this.handleRetryCamera}
+            >
+              <Text style={styles.retryButtonText}>Попробовать снова</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.permissionButton, styles.backButtonPermission]}
+            onPress={() => this.props.navigation.goBack()}
+          >
+            <Text style={styles.backButtonPermissionText}>Назад</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  render() {
+    const {
+      torch,
+      processing,
+      showHotspotInstruction,
+      isActive,
+      cameraReady,
+      showPermissionError,
+    } = this.state;
+
+    return (
+      <View style={styles.container}>
+        <StatusBarBlurBackground />
+
+        {showHotspotInstruction ? (
+          this.renderHotspotInstruction()
+        ) : showPermissionError ? (
+          this.renderPermissionError()
+        ) : (
+          <>
+            {cameraReady && this.device ? (
+              <Camera
+                style={StyleSheet.absoluteFill}
+                device={this.device}
+                isActive={isActive}
+                torch={torch ? 'on' : 'off'}
+                codeScanner={{
+                  codeTypes: ['qr', 'ean-13'],
+                  onCodeScanned: this.onCodeScanned,
+                }}
+              />
+            ) : (
+              <View style={styles.noCameraContainer}>
+                {!cameraReady ? (
+                  <>
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text style={styles.noCameraText}>Инициализация камеры...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.noCameraText}>Камера недоступна</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={this.handleRetryCamera}>
+                      <Text style={styles.retryButtonText}>Попробовать снова</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+
+            <ScanningOverlay />
+
+            <View style={styles.rightButtonRow}>
+              <PressableOpacity style={styles.button} onPress={this.toggleTorch}>
+                <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
+              </PressableOpacity>
+            </View>
+
+            <PressableOpacity
+              style={[styles.button, styles.backButton]}
+              onPress={() => this.props.navigation.goBack()}
+            >
+              <IonIcon name="chevron-back" color="white" size={24} />
+            </PressableOpacity>
+
+            {processing && (
+              <View style={styles.preloaderContainer}>
+                <ActivityIndicator size="large" color="#5a7d2b" />
+              </View>
+            )}
+
+            <View style={styles.bottomButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.bottomCancelButton,
+                  this.state.cancelInProgress && styles.disabledButton,
+                ]}
+                onPress={() => this.props.navigation.goBack()}
+                disabled={this.state.cancelInProgress}
+              >
+                <Text
+                  style={[
+                    styles.bottomCancelButtonText,
+                    this.state.cancelInProgress && styles.disabledButtonText,
+                  ]}
+                >
+                  Отмена
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {showPermissionError && this.renderPermissionError()}
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
@@ -583,4 +830,84 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  noCameraContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  noCameraText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  retryButton: {
+    backgroundColor: '#5a7d2b',
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 20,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  permissionErrorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    padding: 20,
+  },
+  permissionErrorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff4d4d',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  permissionErrorMessage: {
+    fontSize: 15,
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  permissionErrorButtons: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '100%',
+  },
+  permissionButton: {
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  settingsButton: {
+    backgroundColor: '#007bff',
+  },
+  settingsButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButtonPermission: {
+    backgroundColor: '#d9d9d9',
+  },
+  backButtonPermissionText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
+
+export type { VoditelQrCodeScannerProps };
+
+export { VoditelQrCodeScanner };
+export default VoditelQrCodeScanner;
