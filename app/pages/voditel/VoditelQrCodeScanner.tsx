@@ -134,10 +134,14 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
         // Сохраняем данные для дальнейшего использования
         wifiCredentialsRef.current = { ssid, password };
+        // Блокируем повторное сканирование
+        isProcessing.current = true;
         // Показываем инструкцию вместо сканера
         setShowHotspotInstruction(true);
-        // Сразу запускаем подключение к Wi-Fi
-        handleConnectToHotspot();
+        // Автоматически запускаем подключение к Wi-Fi после небольшой задержки
+        setTimeout(() => {
+          handleConnectToHotspot();
+        }, 500);
         return;
       } else {
         console.error('onCodeScanned|!credentials|value=', value);
@@ -151,7 +155,6 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   const handleConnectToHotspot = async () => {
     if (!wifiCredentialsRef.current) return;
     const { ssid, password } = wifiCredentialsRef.current;
-    isProcessing.current = true;
     setProcessing(true);
 
     try {
@@ -164,15 +167,21 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         console.error('onCodeScanned|JSON.parse error|e=', e);
         console.error('onCodeScanned|JSON.parse error|e|joinDataRes=', joinDataRes);
         Alert.alert('Ошибка joinDataRes');
+        // Сбрасываем состояния при ошибке
+        setProcessing(false);
+        setShowHotspotInstruction(false);
+        isProcessing.current = false;
         return;
       }
       console.log('onCodeScanned|joinData=', joinData);
 
-      handleNeedRedirect(joinData);
+      await handleNeedRedirect(joinData);
     } catch (err: unknown) {
       Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось подключиться к сети');
-      isProcessing.current = false;
+      // Сбрасываем состояния при ошибке
       setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
     }
   };
 
@@ -189,6 +198,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       console.error('Main|needRedirect|error=', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert('Ошибка подключения к устройству', errorMessage);
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -204,6 +217,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       console.error('Main|needRedirect|tcp test error =', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert('Ошибка подключения к устройству', errorMessage);
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -214,6 +231,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         'Ошибка подключения к устройству',
         `При подключении к устройству, получен некорректный ответ: ${JSON.stringify(tcpResponse)}`
       );
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -224,6 +245,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         'Не определен контекст',
         "Не определен контекст пользователя 'AuthStoreData.context'"
       );
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -244,6 +269,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       console.error('Main|needRedirect|currentUser|error =', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       Alert.alert('Ошибка получения данных текущего пользователя', errorMessage);
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -256,6 +285,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
     if (!currentUser.voditelData || !currentUser.userData) {
       Alert.alert('Ошибка', 'Отсутствуют данные водителя');
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -270,6 +303,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     } catch (error: any) {
       console.error('Main|needRedirect|set_voditel_data error =', error);
       Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
+      // Сбрасываем состояния при ошибке
+      setProcessing(false);
+      setShowHotspotInstruction(false);
+      isProcessing.current = false;
       return;
     }
 
@@ -298,6 +335,15 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         <Text style={styles.instructionStep}>
           3. После подключения процесс продолжится автоматически.
         </Text>
+
+        {/* Показываем индикатор загрузки если идет процесс подключения */}
+        {processing && (
+          <View style={styles.instructionLoader}>
+            <ActivityIndicator size="large" color="#5a7d2b" />
+            <Text style={styles.instructionLoaderText}>Подключение...</Text>
+          </View>
+        )}
+
         {/* Кнопка "Назад к сканеру" */}
         <TouchableOpacity
           style={styles.cancelButton}
@@ -306,8 +352,11 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
             isProcessing.current = false;
             setProcessing(false);
           }}
+          disabled={processing}
         >
-          <Text style={styles.cancelButtonText}>Назад к сканеру</Text>
+          <Text style={[styles.cancelButtonText, processing && { color: '#999' }]}>
+            Назад к сканеру
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -320,12 +369,12 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         <HotspotInstruction />
       ) : (
         <>
-          {device && !isProcessing.current && (
+          {device && (
             // @ts-ignore
             <Camera
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={isActive}
+              isActive={isActive && !isProcessing.current}
               codeScanner={codeScanner}
               torch={torch ? 'on' : 'off'}
               enableZoomGesture={true}
@@ -333,7 +382,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
           )}
           <StatusBarBlurBackground />
           {/* Оверлей для сканирования */}
-          <ScanningOverlay />
+          {!isProcessing.current && <ScanningOverlay />}
           <View style={styles.rightButtonRow}>
             <PressableOpacity
               style={styles.button}
@@ -421,6 +470,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'left',
     width: '100%',
+  },
+  instructionLoader: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  instructionLoaderText: {
+    fontSize: 16,
+    color: '#5a7d2b',
+    marginTop: 8,
+    fontWeight: '500',
   },
   connectButton: {
     backgroundColor: '#5a7d2b',
