@@ -67,6 +67,7 @@ interface KombainerQRCodeState {
   isLocationEnabled: boolean;
   checkingLocationStatus: boolean;
   cancelInProgress: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
+  talonId: string; // Добавляем ID талона
 }
 
 class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeState> {
@@ -95,6 +96,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       isLocationEnabled: true,
       checkingLocationStatus: false,
       cancelInProgress: false, // Инициализация флага защиты от множественных нажатий
+      talonId: props.route.params?.talonId || '', // Инициализация ID талона из параметров
     };
   }
 

@@ -920,7 +920,7 @@ export type RootStackParamList = {
   RegistrationScreen: undefined;
   KombainerRegistrationScreen: undefined;
   KombainerCreateTicketScreen: undefined;
-  KombainerQRCodeScreen: undefined;
+  KombainerQRCodeScreen: { talonId: string };
   KombainerTicketDetailScreen: undefined;
   KombainerTicketCreatedSuccessScreen: undefined;
   KombainerTicketDetailAfterVoditelConfirmScreen: { data: IVoditelConnectedPayload };
