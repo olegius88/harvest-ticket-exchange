@@ -221,6 +221,96 @@ export const stopTcpServer = (): Promise<string> => {
 };
 
 /**
+ * Функция для согласованного отключения TCP-сервера.
+ * Сначала отправляет запрос на отключение всем подключенным клиентам и ждет подтверждения.
+ * Затем останавливает сервер.
+ * @param reason - причина отключения (опционально)
+ * @param timeout - таймаут ожидания ответа в миллисекундах (по умолчанию 5000)
+ */
+export const stopTcpServerGracefully = async (
+  reason?: string,
+  timeout: number = 5000
+): Promise<string> => {
+  console.log('stopTcpServerGracefully|init|reason=', reason);
+
+  if (!server) {
+    console.log('stopTcpServerGracefully|TCP-сервер не запущен');
+    return 'stopTcpServerGracefully|TCP-сервер не запущен';
+  }
+
+  if (activeSockets.length === 0) {
+    console.log('stopTcpServerGracefully|Нет активных соединений, выполняем обычную остановку');
+    return await stopTcpServer();
+  }
+
+  try {
+    console.log('stopTcpServerGracefully|Отправляем запрос на отключение клиентам');
+
+    // Отправляем запрос на отключение всем подключенным клиентам
+    const disconnectRequest = {
+      type: 'tcp_disconnect_request',
+      reason: reason || 'Плановое отключение сервера',
+      timestamp: Date.now(),
+    };
+
+    // Отправляем запрос всем клиентам и ждем подтверждения
+    const confirmationPromises = activeSockets.map(async (socket, index) => {
+      try {
+        console.log(`stopTcpServerGracefully|Отправляем запрос клиенту ${index + 1}`);
+        return await tcpServerSendRequest(disconnectRequest);
+      } catch (error) {
+        console.warn(
+          `stopTcpServerGracefully|Не удалось получить подтверждение от клиента ${index + 1}:`,
+          error
+        );
+        return null;
+      }
+    });
+
+    // Ждем подтверждения от всех клиентов или таймаут
+    const responses = await Promise.race([
+      Promise.all(confirmationPromises.map((p) => p.catch((e) => e))),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Таймаут ожидания подтверждения от клиентов')), timeout)
+      ),
+    ]);
+
+    console.log('stopTcpServerGracefully|Получены ответы от клиентов:', responses);
+
+    // Отправляем финальное уведомление об отключении
+    const finalMessage = {
+      type: 'tcp_disconnect_final',
+      timestamp: Date.now(),
+    };
+
+    // Отправляем финальное сообщение всем клиентам
+    activeSockets.forEach((socket, index) => {
+      try {
+        socket.write(JSON.stringify(finalMessage));
+        console.log(`stopTcpServerGracefully|Отправлено финальное сообщение клиенту ${index + 1}`);
+      } catch (error) {
+        console.warn(
+          `stopTcpServerGracefully|Не удалось отправить финальное сообщение клиенту ${index + 1}:`,
+          error
+        );
+      }
+    });
+
+    // Даем время на отправку финальных сообщений
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    console.log('stopTcpServerGracefully|Выполняем остановку сервера');
+    return await stopTcpServer();
+  } catch (error) {
+    console.error('stopTcpServerGracefully|Ошибка при согласованном отключении:', error);
+    console.log('stopTcpServerGracefully|Выполняем принудительную остановку');
+
+    // Если согласованное отключение не удалось, выполняем обычную остановку
+    return await stopTcpServer();
+  }
+};
+
+/**
  * Отправляет сообщение подключённому TCP-клиенту и ожидает ответа.
  * Предполагается, что подключён только один TCP-клиент.
  * @param message данные сообщения для отправки (любой объект, который будет сериализован в JSON).

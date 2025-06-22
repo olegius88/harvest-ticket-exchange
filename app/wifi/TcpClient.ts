@@ -144,6 +144,72 @@ export const disconnectTcpClient = (): Promise<string> => {
 };
 
 /**
+ * Функция для согласованного отключения от TCP-сервера.
+ * Сначала отправляет запрос на отключение и ждет подтверждения от сервера.
+ * Возвращает Promise, который резолвится сообщением об успешном отключении.
+ * @param reason - причина отключения (опционально)
+ * @param timeout - таймаут ожидания ответа в миллисекундах (по умолчанию 5000)
+ */
+export const disconnectTcpClientGracefully = async (
+  reason?: string,
+  timeout: number = 5000
+): Promise<string> => {
+  console.log('disconnectTcpClientGracefully|init|reason=', reason);
+
+  if (!client) {
+    return 'TCP клиент не был подключен';
+  }
+
+  try {
+    // Отправляем запрос на согласованное отключение
+    const disconnectRequest = {
+      type: 'tcp_disconnect_request',
+      reason: reason || 'Плановое отключение клиента',
+      timestamp: Date.now(),
+    };
+
+    console.log('disconnectTcpClientGracefully|Отправляем запрос на отключение');
+
+    // Отправляем запрос и ждем подтверждения
+    const response = await Promise.race([
+      sendTcpRequest(disconnectRequest),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Таймаут ожидания подтверждения отключения')), timeout)
+      ),
+    ]);
+
+    console.log('disconnectTcpClientGracefully|Получено подтверждение:', response);
+
+    // Отправляем финальное уведомление об отключении
+    const finalMessage = {
+      type: 'tcp_disconnect_final',
+      timestamp: Date.now(),
+    };
+
+    try {
+      // Пытаемся отправить финальное сообщение, но не ждем ответа
+      client.write(JSON.stringify(finalMessage));
+      // Даем время на отправку сообщения
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.warn(
+        'disconnectTcpClientGracefully|Не удалось отправить финальное сообщение:',
+        error
+      );
+    }
+
+    // Теперь отключаемся
+    return await disconnectTcpClient();
+  } catch (error) {
+    console.error('disconnectTcpClientGracefully|Ошибка при согласованном отключении:', error);
+    console.log('disconnectTcpClientGracefully|Выполняем принудительное отключение');
+
+    // Если согласованное отключение не удалось, выполняем обычное отключение
+    return await disconnectTcpClient();
+  }
+};
+
+/**
  * Функция для отправки запроса на TCP-сервер и получения ответа.
  * Принимает объект message, который необходимо отправить.
  * Объект преобразуется в JSON-строку и отправляется.

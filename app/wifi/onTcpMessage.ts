@@ -174,6 +174,48 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       };
     }
 
+    case 'tcp_disconnect_request': {
+      console.log('onTcpMessage|tcp_disconnect_request|message=', message);
+
+      // Уведомляем приложение о запросе на отключение
+      DeviceEventEmitter.emit('tcpDisconnectRequested', {
+        reason: message.reason,
+        timestamp: message.timestamp,
+      });
+
+      // Подтверждаем готовность к отключению
+      return {
+        type: 'tcp_disconnect_confirmation',
+        status: 'ok',
+        ready: true,
+        timestamp: Date.now(),
+      };
+    }
+
+    case 'tcp_disconnect_confirmation': {
+      console.log('onTcpMessage|tcp_disconnect_confirmation|message=', message);
+
+      // Уведомляем о подтверждении готовности к отключению
+      DeviceEventEmitter.emit('tcpDisconnectConfirmed', {
+        ready: message.ready,
+        reason: message.reason,
+        timestamp: message.timestamp,
+      });
+
+      return { status: 'ok' };
+    }
+
+    case 'tcp_disconnect_final': {
+      console.log('onTcpMessage|tcp_disconnect_final|message=', message);
+
+      // Уведомляем о финальном отключении
+      DeviceEventEmitter.emit('tcpDisconnectFinal', {
+        timestamp: message.timestamp,
+      });
+
+      return { status: 'ok' };
+    }
+
     default:
       console.error(`onTcpMessage|Получено неизвестное сообщение|type=`, type);
       console.error(`onTcpMessage|Получено неизвестное сообщение|message=`, message);
