@@ -1,8 +1,8 @@
 // Файл: app/services/ConnectionManager.ts
 
 import { setHotspotDisabled } from './MessageHandler';
-import { stopTcpServer, isTcpServerRunning } from '../wifi/TcpServer';
-import { disconnectTcpClient } from '../wifi/TcpClient';
+import { stopTcpServer, stopTcpServerGracefully, isTcpServerRunning } from '../wifi/TcpServer';
+import { disconnectTcpClient, disconnectTcpClientGracefully } from '../wifi/TcpClient';
 
 /**
  * Интерфейс для опций закрытия соединений
@@ -16,6 +16,12 @@ export interface CloseConnectionsOptions {
   closeTcpClient?: boolean;
   /** Показывать логи в консоли */
   verbose?: boolean;
+  /** Использовать согласованное отключение */
+  graceful?: boolean;
+  /** Причина отключения */
+  reason?: string;
+  /** Таймаут для согласованного отключения */
+  timeout?: number;
 }
 
 /**
@@ -37,10 +43,15 @@ export const closeAllConnections = async (
     closeTcpServer = true,
     closeTcpClient = true,
     verbose = true,
+    graceful = false,
+    reason,
+    timeout = 5000,
   } = options;
 
   if (verbose) {
-    console.log(`ConnectionManager[${context}]: Начинаем закрытие соединений...`);
+    console.log(
+      `ConnectionManager[${context}]: Начинаем ${graceful ? 'согласованное ' : ''}закрытие соединений...`
+    );
   }
 
   const errors: string[] = [];
@@ -65,7 +76,9 @@ export const closeAllConnections = async (
   if (closeTcpServer) {
     try {
       if (isTcpServerRunning()) {
-        const message = await stopTcpServer();
+        const message = graceful
+          ? await stopTcpServerGracefully(reason, timeout)
+          : await stopTcpServer();
         if (verbose) {
           console.log(`ConnectionManager[${context}]: TCP-сервер остановлен:`, message);
         }
@@ -84,7 +97,9 @@ export const closeAllConnections = async (
   // Отключаем TCP-клиент
   if (closeTcpClient) {
     try {
-      const message = await disconnectTcpClient();
+      const message = graceful
+        ? await disconnectTcpClientGracefully(reason, timeout)
+        : await disconnectTcpClient();
       if (verbose) {
         console.log(`ConnectionManager[${context}]: TCP-клиент отключен:`, message);
       }
@@ -147,6 +162,58 @@ export const closeVoditelConnections = async (
     closeTcpServer: false,
     closeTcpClient: true,
     verbose: true,
+  };
+
+  return closeAllConnections({ ...defaultOptions, ...options }, context);
+};
+
+/**
+ * Согласованное закрытие соединений для комбайнера (точка доступа + TCP-сервер)
+ * @param context Контекст вызова для логирования
+ * @param reason Причина отключения
+ * @param timeout Таймаут ожидания подтверждения
+ * @param options Дополнительные опции
+ */
+export const closeKombainerConnectionsGracefully = async (
+  context: string = 'Kombainer',
+  reason?: string,
+  timeout: number = 5000,
+  options: Partial<CloseConnectionsOptions> = {}
+): Promise<void> => {
+  const defaultOptions: CloseConnectionsOptions = {
+    closeHotspot: true,
+    closeTcpServer: true,
+    closeTcpClient: false,
+    verbose: true,
+    graceful: true,
+    reason,
+    timeout,
+  };
+
+  return closeAllConnections({ ...defaultOptions, ...options }, context);
+};
+
+/**
+ * Согласованное закрытие соединений для водителя (TCP-клиент)
+ * @param context Контекст вызова для логирования
+ * @param reason Причина отключения
+ * @param timeout Таймаут ожидания подтверждения
+ * @param options Дополнительные опции
+ */
+export const closeVoditelConnectionsGracefully = async (
+  context: string = 'Voditel',
+  reason?: string,
+  timeout: number = 5000,
+  options: Partial<CloseConnectionsOptions> = {}
+): Promise<void> => {
+  const defaultOptions: CloseConnectionsOptions = {
+    closeHotspot: false,
+    closeTcpServer: false,
+    closeTcpClient: true,
+    verbose: true,
+    graceful: true,
+    reason,
+    timeout,
   };
 
   return closeAllConnections({ ...defaultOptions, ...options }, context);

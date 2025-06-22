@@ -1128,3 +1128,30 @@ export interface IVoditelConnectedPayload {
   voditelData: ICreateVoditelParams;
   voditelUserData: ICreateUsersParams;
 }
+
+/**
+ * Интерфейс для запроса планового отключения TCP соединения
+ */
+export interface ITcpDisconnectRequest {
+  type: 'tcp_disconnect_request';
+  reason?: string;
+  timestamp: number;
+}
+
+/**
+ * Интерфейс для подтверждения готовности к отключению TCP соединения
+ */
+export interface ITcpDisconnectConfirmation {
+  type: 'tcp_disconnect_confirmation';
+  ready: boolean;
+  reason?: string;
+  timestamp: number;
+}
+
+/**
+ * Интерфейс для финального уведомления об отключении TCP соединения
+ */
+export interface ITcpDisconnectFinal {
+  type: 'tcp_disconnect_final';
+  timestamp: number;
+}
