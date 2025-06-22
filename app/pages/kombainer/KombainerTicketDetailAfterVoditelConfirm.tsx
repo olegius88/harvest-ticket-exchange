@@ -29,10 +29,8 @@ import {
   NeedRedirectResponse,
   PositionOptionValue,
   RootStackParamList,
-  SendTcpRequestResponse,
   ICreateUserParams,
 } from '../../../global';
-import { sendTcpRequest } from '../../wifi/TcpClient';
 import KeepAwake from 'react-native-keep-awake';
 
 interface KombainerTicketDetailAfterVoditelConfirmProps {
@@ -57,6 +55,8 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   weightError: string | null;
   isWaitingVoditelWeightConfirm?: boolean; // новое состояние
   canApproveTicket?: boolean; // новое состояние для кнопки "Подписать талон"
+  waitingForVoditelSign?: boolean; // Ожидание события voditelSignTicket
+  voditelSignReceived?: boolean; // Получено ли событие voditelSignTicket (kombainerSignReceived)
 }
 
 /**
@@ -69,14 +69,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 > {
   // Для отслеживания предыдущего значения поля weight
   previousWeight: string = '';
-  // Контроллер для периодического опроса данных (например, для needRedirect)
-  waitingVoditelTalonConfirmCtrl: number | null = null;
-  // Контроллер для ожидания подтверждения веса водителем
-  waitingVoditelWeightConfirmCtrl: number | null = null;
   // Слушатель события подключения водителя
   voditelConnectedListener: any = null;
   // Слушатель события подтверждения веса водителем
   voditelConfirmWithWeightListener: any = null;
+  // Слушатель для события подписания талона водителем
+  voditelSignTicketListener: any = null;
 
   constructor(props: KombainerTicketDetailAfterVoditelConfirmProps) {
     super(props);
@@ -97,6 +95,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       weightError: null,
       isWaitingVoditelWeightConfirm: false, // Изначально не ждем подтверждения веса
       canApproveTicket: false, // по умолчанию скрыта
+      waitingForVoditelSign: false,
+      voditelSignReceived: false,
     };
   }
 
@@ -114,6 +114,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
     // Включаем не гаснущий экран
     KeepAwake.activate();
+
+    // Добавляем слушатель события подписания талона водителем
+    this.voditelSignTicketListener = DeviceEventEmitter.addListener(
+      'voditelSignTicket',
+      this.handleVoditelSignTicket
+    );
 
     Alert.alert(
       'Подключение к устройству прошло успешно',
@@ -184,12 +190,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       data
     );
 
-    // Останавливаем опрос needRedirect, если он запущен
-    if (this.waitingVoditelWeightConfirmCtrl !== null) {
-      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
-      this.waitingVoditelWeightConfirmCtrl = null;
-    }
-
     // Показываем кнопку "Подписать талон"
     this.setState({
       canApproveTicket: true,
@@ -256,73 +256,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
   };
 
-  /**
-   * Метод для периодического опроса ответа needRedirect
-   */
-  waitingVoditelWeightConfirm = async () => {
-    if (this.waitingVoditelWeightConfirmCtrl === null) {
-      console.log(
-        'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|!waitingVoditelWeightConfirmCtrl'
-      );
-      return;
-    }
-
-    try {
-      const result = await handleMessage({
-        req: { type: 'needRedirect' },
-        reqId: 'needRedirect_' + Date.now(),
-      });
-
-      if (result.type !== 'needRedirect') {
-        throw new Error('Failed to get needRedirect');
-      }
-
-      const response = result as NeedRedirectResponse;
-
-      console.log(
-        'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|response=',
-        response
-      );
-
-      if (!response.payload) {
-        // Если данные ещё не получены – продолжаем опрос
-        this.waitingVoditelWeightConfirmCtrl = setTimeout(
-          () => this.waitingVoditelWeightConfirm(),
-          1000
-        ) as unknown as number;
-        return;
-      }
-
-      // Останавливаем опрос
-      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
-      this.waitingVoditelWeightConfirmCtrl = null;
-
-      if (!response.path) {
-        console.error(
-          'KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|!response.path|response=',
-          response
-        );
-        Alert.alert('Ошибка подключения к устройству', `${JSON.stringify(response)}`);
-        return;
-      }
-
-      AuthStoreData.context = response.path as PositionOptionValue;
-
-      this.setState({
-        isVoditelTalonConfirmAfterSetWeight: true,
-        isVoditelTalonConfirmAfterSetWeightSuccess: true,
-        isVoditelTalonConfirmAfterSetWeightError: false,
-      });
-    } catch (e) {
-      console.error('KombainerWaitTicketWithWeightConfirm|waitingVoditelWeightConfirm|error=', e);
-      // Продолжаем опрос даже при ошибке
-      this.waitingVoditelWeightConfirmCtrl = setTimeout(
-        () => this.waitingVoditelWeightConfirm(),
-        1000
-      ) as unknown as number;
-    }
-  };
-
   // Обработчик клика "Назад".
   handleBack = () => {
     this.props.navigation.goBack();
@@ -355,17 +288,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   cancel = async () => {
     console.log('KombainerTicketDetailAfterVoditelConfirm: Вызывается функция cancel');
 
-    // Очищаем таймеры перед закрытием
-    if (this.waitingVoditelTalonConfirmCtrl !== null) {
-      clearTimeout(this.waitingVoditelTalonConfirmCtrl);
-      this.waitingVoditelTalonConfirmCtrl = null;
-    }
-
-    if (this.waitingVoditelWeightConfirmCtrl !== null) {
-      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
-      this.waitingVoditelWeightConfirmCtrl = null;
-    }
-
     try {
       await closeKombainerConnections('KombainerTicketDetailAfterVoditelConfirm.cancel');
     } catch (error) {
@@ -376,7 +298,39 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
   };
 
+  handleVoditelSignTicket = () => {
+    console.log('KombainerTicketDetailAfterVoditelConfirm|handleVoditelSignTicket');
+
+    // Если мы ожидаем подписания, сразу переходим на следующий экран
+    if (this.state.waitingForVoditelSign) {
+      this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+    } else {
+      // Если событие пришло до нажатия на "Принять", запоминаем это для отображения в UI
+      this.setState({ voditelSignReceived: true });
+    }
+  };
+
   handleApproveClick = async () => {
+    // Если событие voditelSignTicket уже получено, сразу переходим
+    if (this.state.voditelSignReceived) {
+      try {
+        // Отправляем TCP-запрос для подписания талона комбайнером
+        const data = await tcpServerSendRequest({
+          type: 'kombainer_sign_ticket',
+        });
+        console.log('KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|data=', data);
+
+        this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+      } catch (error: any) {
+        console.error(
+          'KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|error =',
+          error
+        );
+        Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
+      }
+      return;
+    }
+
     // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
       'Подтверждение',
@@ -389,8 +343,31 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         {
           text: 'Принять',
           style: 'default',
-          onPress: () => {
-            this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+          onPress: async () => {
+            try {
+              // Отправляем TCP-запрос для подписания талона комбайнером
+              const data = await tcpServerSendRequest({
+                type: 'kombainer_sign_ticket',
+              });
+              console.log(
+                'KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|data=',
+                data
+              );
+
+              // Устанавливаем состояние ожидания подписания
+              this.setState({ waitingForVoditelSign: true });
+
+              // Если событие уже получено, сразу переходим
+              if (this.state.voditelSignReceived) {
+                this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+              }
+            } catch (error: any) {
+              console.error(
+                'KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|error =',
+                error
+              );
+              Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
+            }
           },
         },
       ]
@@ -474,15 +451,9 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       this.voditelConfirmWithWeightListener = null;
     }
 
-    // Очищаем таймеры
-    if (this.waitingVoditelTalonConfirmCtrl !== null) {
-      clearTimeout(this.waitingVoditelTalonConfirmCtrl);
-      this.waitingVoditelTalonConfirmCtrl = null;
-    }
-
-    if (this.waitingVoditelWeightConfirmCtrl !== null) {
-      clearTimeout(this.waitingVoditelWeightConfirmCtrl);
-      this.waitingVoditelWeightConfirmCtrl = null;
+    if (this.voditelSignTicketListener) {
+      this.voditelSignTicketListener.remove();
+      this.voditelSignTicketListener = null;
     }
   }
 
@@ -644,6 +615,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                   <Text style={styles.loadingStateText}>
                     Данные талона, а так же указанный вес были отправлены водителю
                   </Text>
+                  {/* Отображаем статус получения подписи водителя */}
+                  {this.state.voditelSignReceived && (
+                    <View style={styles.statusContainer}>
+                      <Text style={styles.successStatusText}>✓ Подпись водителя получена</Text>
+                    </View>
+                  )}
                   <ActivityIndicator size="large" color="#98d642" style={styles.loadingIndicator} />
                 </View>
               </View>
@@ -651,9 +628,32 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
             {/* Кнопка "Подписать талон" появляется после подтверждения водителем */}
             {canApproveTicket && (
-              <TouchableOpacity style={styles.submitButton} onPress={this.handleApproveClick}>
-                <Text style={styles.submitButtonText}>Подписать талон</Text>
-              </TouchableOpacity>
+              <View style={styles.actionsContainer}>
+                {/* Отображаем статус получения подписи водителя */}
+                {this.state.voditelSignReceived && (
+                  <View style={styles.statusContainer}>
+                    <Text style={styles.successStatusText}>✓ Подпись водителя получена</Text>
+                  </View>
+                )}
+
+                {/* Если ожидаем подпись водителя после нажатия "Подписать талон" */}
+                {this.state.waitingForVoditelSign ? (
+                  <View style={styles.loadingStateContainer}>
+                    <Text style={styles.loadingStateText}>
+                      Ожидание окончательного подтверждения от водителя...
+                    </Text>
+                    <ActivityIndicator
+                      size="large"
+                      color="#98d642"
+                      style={styles.loadingIndicator}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.submitButton} onPress={this.handleApproveClick}>
+                    <Text style={styles.submitButtonText}>Подписать талон</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
             {/* Кнопка отмены */}
@@ -815,6 +815,22 @@ const styles = StyleSheet.create({
     color: '#ff4d4f',
     textAlign: 'center',
     padding: 20,
+  },
+  statusContainer: {
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f6ffed',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#b7eb8f',
+    alignSelf: 'stretch',
+  },
+  successStatusText: {
+    fontSize: 16,
+    color: '#52c41a',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
