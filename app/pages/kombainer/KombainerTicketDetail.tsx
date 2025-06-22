@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -20,6 +21,7 @@ const KombainerTicketDetail: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CurrentUserResponse | null>(null);
+  const [weight, setWeight] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,13 +52,20 @@ const KombainerTicketDetail: React.FC = () => {
   }, []);
 
   const handleConnectDriver = () => {
-    // Переходим на экран QR-кода для подключения водителя
-    navigation.navigate('KombainerQRCodeScreen');
-  };
-
-  // Функция для перехода на экран успешного создания талона
-  const handleTicketSuccess = () => {
-    navigation.navigate('KombainerTicketCreatedSuccessScreen');
+    Alert.alert(
+      'Подтверждение',
+      'Вы уверены, что желаете создать талон? После принятия талон считается созданным и сохранённым в базу.',
+      [
+        {
+          text: 'Отменить',
+          style: 'cancel',
+        },
+        {
+          text: 'Принять',
+          onPress: () => navigation.navigate('KombainerQRCodeScreen'),
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -68,49 +77,73 @@ const KombainerTicketDetail: React.FC = () => {
     );
   }
 
-  const ticketData = [
-    ['Комбайн', data?.kombainerData?.combine],
-    ['Комбайнер', data?.userData?.fio],
-    ['Культура', data?.kombainerData?.culture],
-    ['Поле', data?.kombainerData?.field],
-    ['Бригада', data?.kombainerData?.brigade],
-  ];
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={styles.container}>
       <View style={styles.content}>
         {/* Логотип */}
-        <View style={styles.logoContainer}>
-          <VectorLogo />
-        </View>
+        <VectorLogo width={100} height={100} />
 
         {/* Заголовок */}
         <Text style={styles.title}>Талон комбайнера</Text>
 
-        {/* Данные талона */}
-        <View style={styles.ticketForm}>
-          {ticketData.map(([label, value]) => (
-            <View key={label} style={styles.formRow}>
-              <View style={styles.labelContainer}>
-                <Text style={styles.label}>{label}:</Text>
-              </View>
-              <View style={styles.valueContainer}>
-                <Text style={styles.value}>{value || '-'}</Text>
-              </View>
-            </View>
-          ))}
+        {/* Поля данных */}
+        <View style={styles.formContainer}>
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Комбайн:</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.combine || 'Класс'}</Text>
+          </View>
 
-          {/* Кнопка подключить водителя */}
-          <TouchableOpacity style={styles.submitButton} onPress={handleConnectDriver}>
-            <Text style={styles.submitButtonText}>Подключить водителя</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Комбайнер:</Text>
+            <Text style={styles.formValue}>{data?.userData?.fio || 'Иванов'}</Text>
+          </View>
 
-        {/* Кнопка назад */}
-        <View style={styles.backContainer}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>Назад</Text>
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Культура:</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.culture || 'ОмскаЯ'}</Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Поле:</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.field || '55'}</Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Бригада:</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.brigade || '1'}</Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Вес:</Text>
+            <TextInput
+              style={styles.weightInput}
+              placeholder="Введите вес"
+              keyboardType="numeric"
+              value={weight}
+              onChangeText={setWeight}
+              editable={false}
+            />
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Транспорт:</Text>
+            <Text style={styles.formValue}>-</Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Водитель:</Text>
+            <Text style={styles.formValue}>-</Text>
+          </View>
+
+          <TouchableOpacity style={styles.connectDriverButton} onPress={handleConnectDriver}>
+            <Text style={styles.connectDriverButtonText}>Подключить водителя</Text>
           </TouchableOpacity>
+
+          <View style={styles.backLinkContainer}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Text style={styles.backLink}>Назад</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -122,75 +155,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
   content: {
-    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-  },
-  logoContainer: {
-    marginBottom: 24,
-    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 32,
+    marginVertical: 20,
+    color: '#333',
     textAlign: 'center',
-    color: '#333333',
   },
-  ticketForm: {
+  formContainer: {
     width: '100%',
-    maxWidth: 400,
-    marginBottom: 24,
   },
   formRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#f0f8e8',
-    borderRadius: 6,
-    borderLeftWidth: 4,
-    borderLeftColor: '#98d642',
   },
-  labelContainer: {
-    flex: 2,
-  },
-  label: {
+  formLabel: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
+    color: '#333',
   },
-  valueContainer: {
-    flex: 3,
-  },
-  value: {
+  formValue: {
+    flex: 1,
     fontSize: 16,
-    color: '#333333',
+    color: '#333',
+    textAlign: 'left',
   },
-  submitButton: {
+  weightInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+  },
+  connectDriverButton: {
     backgroundColor: '#98d642',
-    borderRadius: 6,
-    padding: 16,
+    borderRadius: 5,
+    padding: 15,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 20,
+    width: '100%',
   },
-  submitButtonText: {
-    color: '#ffffff',
+  connectDriverButtonText: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  backContainer: {
+  backLinkContainer: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 10,
   },
-  backText: {
+  backLink: {
     color: '#5a7d2b',
     fontSize: 16,
     textDecorationLine: 'underline',
@@ -199,12 +220,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: 10,
     fontSize: 16,
-    color: '#666666',
+    color: '#666',
   },
 });
 
