@@ -89,7 +89,25 @@ const migrationTo12 = {
   ],
 };
 
-export const schemaVersion = 12;
+// Миграция для версии 13: добавляем поле cancellationReason в таблицу talons_of_combainers.
+const migrationTo13 = {
+  toVersion: 13,
+  steps: [
+    addColumns({
+      table: 'talons_of_combainers',
+      columns: [{ name: 'cancellationReason', type: 'string' }],
+    }),
+  ],
+};
+
+export const schemaVersion = 13;
 export const migrations = schemaMigrations({
-  migrations: [migrationTo8, migrationTo9, migrationTo10, migrationTo11, migrationTo12],
+  migrations: [
+    migrationTo8,
+    migrationTo9,
+    migrationTo10,
+    migrationTo11,
+    migrationTo12,
+    migrationTo13,
+  ],
 });

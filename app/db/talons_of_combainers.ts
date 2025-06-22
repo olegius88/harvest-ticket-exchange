@@ -13,6 +13,7 @@ import { ICreateTalonParams, IEditTalonParams, TalonStatus } from '../../global'
 export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   readonly id: string;
   readonly talonNumber: string;
+  readonly cancellationReason?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -31,6 +32,7 @@ export class TalonsOfCombainers extends Model {
   @field('weight') weight?: number | null;
   @field('comment') comment?: string | null;
   @field('talonNumber') talonNumber!: string;
+  @field('cancellationReason') cancellationReason?: string | null;
   @field('created_at') created_at!: number;
   @field('updated_at') updated_at!: number;
 
@@ -46,6 +48,7 @@ export class TalonsOfCombainers extends Model {
         { name: 'weight', type: 'number' },
         { name: 'comment', type: 'string' },
         { name: 'talonNumber', type: 'string' },
+        { name: 'cancellationReason', type: 'string' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
       ],
@@ -95,14 +98,37 @@ export async function createTalon({
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
 
     // Генерация номера талона
-    // Получаем все талоны данного комбайнера
-    const existingTalons = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
-    // Вычисляем номер талона: ID комбайнера + порядковый номер
-    const sequentialNumber = existingTalons.length + 1;
-    const talonNumber = `${sequentialNumber}`;
+    // Получаем все не отмененные талоны данного комбайнера
+    const existingTalons = await collection
+      .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))))
+      .fetch();
+
+    // Проверяем, есть ли отмененные талоны, чтобы переиспользовать их номера
+    const cancelledTalons = await collection
+      .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', 'cancelled')))
+      .fetch();
+
+    // Сортируем отмененные талоны по номеру (без префикса 'A')
+    const sortedCancelledTalons = cancelledTalons.sort((a, b) => {
+      const aNum = parseInt(a.talonNumber.replace('A', ''));
+      const bNum = parseInt(b.talonNumber.replace('A', ''));
+      return aNum - bNum;
+    });
+
+    let talonNumber: string;
+
+    // Если есть отмененные талоны, используем номер первого отмененного
+    if (sortedCancelledTalons.length > 0) {
+      // Берем номер из первого отмененного талона, убирая префикс 'A'
+      talonNumber = sortedCancelledTalons[0].talonNumber.replace('A', '');
+    } else {
+      // Иначе создаем новый порядковый номер
+      const sequentialNumber = existingTalons.length + 1;
+      talonNumber = `${sequentialNumber}`;
+    }
 
     const now = Date.now();
     const newTalon = await collection.create((record: any) => {
@@ -115,6 +141,7 @@ export async function createTalon({
       record.weight = weight || undefined;
       record.comment = comment ? comment.trim() : undefined;
       record.talonNumber = talonNumber;
+      record.cancellationReason = undefined;
       record.created_at = now;
       record.updated_at = now;
     });
@@ -123,12 +150,83 @@ export async function createTalon({
 }
 
 /**
+ * Отменить талон и указать причину отмены
+ */
+export async function cancelTalon(talonId: string, reason: string): Promise<string> {
+  return database.write(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const record = await collection.find(talonId);
+
+    if (!record) {
+      throw new Error(`Талон с ID ${talonId} не найден.`);
+    }
+
+    const now = Date.now();
+    await record.update((r) => {
+      r.status = 'cancelled';
+      r.cancellationReason = reason.trim();
+      r.updated_at = now;
+
+      // Если талон отменяется, автоматически устанавливаем время окончания
+      if (!r.endTime) {
+        r.endTime = now;
+      }
+    });
+    return record.id;
+  });
+}
+
+/**
+ * Получить все отмененные талоны
+ */
+export async function getCancelledTalons(): Promise<ICreateTalonsParams[]> {
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const records = await collection.query(Q.where('status', 'cancelled')).fetch();
+    return records.map(
+      (record) =>
+        ({
+          id: record.id,
+          kombainerId: record.kombainerId,
+          voditelId: record.voditelId,
+          status: record.status as TalonStatus,
+          startTime: record.startTime,
+          endTime: record.endTime,
+          weight: record.weight,
+          comment: record.comment,
+          talonNumber: record.talonNumber,
+          cancellationReason: record.cancellationReason,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+        }) as ICreateTalonsParams
+    );
+  });
+}
+
+/**
  * Получить все талоны из таблицы "talons_of_combainers".
  */
 export async function getAllTalons(): Promise<ICreateTalonsParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
-    return await collection.query().fetch();
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const records = await collection.query().fetch();
+    return records.map(
+      (record) =>
+        ({
+          id: record.id,
+          kombainerId: record.kombainerId,
+          voditelId: record.voditelId,
+          status: record.status as TalonStatus,
+          startTime: record.startTime,
+          endTime: record.endTime,
+          weight: record.weight,
+          comment: record.comment,
+          talonNumber: record.talonNumber,
+          cancellationReason: record.cancellationReason,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+        }) as ICreateTalonsParams
+    );
   });
 }
 
@@ -137,7 +235,7 @@ export async function getAllTalons(): Promise<ICreateTalonsParams[]> {
  */
 export async function getTalonById(talonId: string): Promise<ICreateTalonsParams> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
@@ -153,6 +251,8 @@ export async function getTalonById(talonId: string): Promise<ICreateTalonsParams
       endTime: record.endTime,
       weight: record.weight,
       comment: record.comment,
+      talonNumber: record.talonNumber,
+      cancellationReason: record.cancellationReason,
       created_at: record.created_at,
       updated_at: record.updated_at,
     } as ICreateTalonsParams;
@@ -164,8 +264,25 @@ export async function getTalonById(talonId: string): Promise<ICreateTalonsParams
  */
 export async function getTalonsByKombainerId(kombainerId: string): Promise<ICreateTalonsParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
-    return await collection.query(Q.where('kombainerId', kombainerId)).fetch();
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const records = await collection.query(Q.where('kombainerId', kombainerId)).fetch();
+    return records.map(
+      (record) =>
+        ({
+          id: record.id,
+          kombainerId: record.kombainerId,
+          voditelId: record.voditelId,
+          status: record.status as TalonStatus,
+          startTime: record.startTime,
+          endTime: record.endTime,
+          weight: record.weight,
+          comment: record.comment,
+          talonNumber: record.talonNumber,
+          cancellationReason: record.cancellationReason,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+        }) as ICreateTalonsParams
+    );
   });
 }
 
@@ -174,8 +291,25 @@ export async function getTalonsByKombainerId(kombainerId: string): Promise<ICrea
  */
 export async function getTalonsByVoditelId(voditelId: string): Promise<ICreateTalonsParams[]> {
   return database.read(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
-    return await collection.query(Q.where('voditelId', voditelId)).fetch();
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const records = await collection.query(Q.where('voditelId', voditelId)).fetch();
+    return records.map(
+      (record) =>
+        ({
+          id: record.id,
+          kombainerId: record.kombainerId,
+          voditelId: record.voditelId,
+          status: record.status as TalonStatus,
+          startTime: record.startTime,
+          endTime: record.endTime,
+          weight: record.weight,
+          comment: record.comment,
+          talonNumber: record.talonNumber,
+          cancellationReason: record.cancellationReason,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+        }) as ICreateTalonsParams
+    );
   });
 }
 
@@ -195,7 +329,7 @@ export async function editTalon({
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
@@ -222,7 +356,7 @@ export async function editTalon({
  */
 export async function assignDriverToTalon(talonId: string, voditelId: string): Promise<string> {
   return database.write(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
@@ -257,7 +391,7 @@ export async function updateTalonStatus(talonId: string, status: TalonStatus): P
   }
 
   return database.write(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
@@ -287,7 +421,7 @@ export async function updateTalonWeight(talonId: string, weight: number): Promis
   }
 
   return database.write(async () => {
-    const collection = database.collections.get<ICreateTalonsParams>(TalonsOfCombainers.table);
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
