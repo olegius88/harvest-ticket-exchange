@@ -229,6 +229,25 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     return true;
   };
 
+  // Дополнительная валидация для мобильного приложения
+  validateWeightInput = (text: string): boolean => {
+    // Проверяем, что значение не слишком большое (например, не больше 999999)
+    const numValue = parseFloat(text);
+    if (!isNaN(numValue) && numValue > 999999) {
+      return false;
+    }
+
+    // Проверяем количество знаков после запятой (не больше 3)
+    if (text.includes('.')) {
+      const [, decimalPart] = text.split('.');
+      if (decimalPart && decimalPart.length > 3) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   // Обработчик успешной отправки формы.
   onSubmitForm = async () => {
     if (!this.validateWeight()) return;
@@ -388,6 +407,32 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         },
       ]
     );
+  }; // Дополнительная обработка для контроля ввода
+  handleWeightChangeWithValidation = (text: string) => {
+    // Проверяем дополнительные ограничения
+    if (!this.validateWeightInput(text)) {
+      return; // Не обновляем состояние, если валидация не прошла
+    }
+
+    // Сохраняем предыдущее значение для сравнения
+    const prevValue = this.previousWeight;
+
+    // Обработка случая, когда пользователь удаляет символы из '0.'
+    if (prevValue === '0.' && (text === '0' || text === '.')) {
+      this.setState({ weightValue: '', weightError: null });
+      this.previousWeight = '';
+      return;
+    }
+
+    // Обработка случая, когда после удаления остается только точка
+    if (text === '.' && prevValue !== '0.') {
+      this.setState({ weightValue: '0.', weightError: null });
+      this.previousWeight = '0.';
+      return;
+    }
+
+    // Вызываем основную логику
+    this.handleWeightChange(text);
   };
 
   // Обработчик изменения значения веса
@@ -396,14 +441,24 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     const regex = /^[0-9]*\.?[0-9]*$/;
     if (!regex.test(text)) return;
 
-    // Для очистки поля
-    if (text === '') {
+    // Предотвращаем ввод нескольких точек
+    if ((text.match(/\./g) || []).length > 1) return;
+
+    // Если пытаются удалить автоматически вставленный '0.' (text='.' после удаления '0')
+    if (text === '.' && this.previousWeight === '0.') {
       this.setState({ weightValue: '', weightError: null });
       this.previousWeight = '';
       return;
     }
 
     const previousValue = this.previousWeight;
+
+    // Удаление всего значения
+    if (text === '') {
+      this.setState({ weightValue: '', weightError: null });
+      this.previousWeight = '';
+      return;
+    }
 
     // Ввод точки в пустое поле -> 0.
     if (text === '.') {
@@ -448,8 +503,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     const trimmed = decimalPart.replace(/0+$/, '');
     const formatted = trimmed ? `${integerPart}.${trimmed}` : integerPart;
 
-    this.setState({ weightValue: formatted });
-    this.previousWeight = formatted;
+    // Обновляем состояние только если значение изменилось
+    if (formatted !== weightValue) {
+      this.setState({ weightValue: formatted });
+      this.previousWeight = formatted;
+    }
   };
 
   componentWillUnmount() {
@@ -581,7 +639,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                     ]}
                     placeholder="Введите вес"
                     value={weightValue}
-                    onChangeText={this.handleWeightChange}
+                    onChangeText={this.handleWeightChangeWithValidation}
                     onBlur={this.handleWeightBlur}
                     keyboardType="decimal-pad"
                     editable={
