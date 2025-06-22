@@ -65,7 +65,8 @@ export const connectToTcpServer = ({
       try {
         message = JSON.parse(dataString);
       } catch (error) {
-        console.error('TCP клиент|Ошибка парсинга JSON:', error);
+        console.error('TCP клиент|Ошибка парсинга JSON|error=', error);
+        console.error('TCP клиент|Ошибка парсинга JSON|dataString=:', dataString);
         return;
       }
 
