@@ -334,26 +334,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   };
 
   handleApproveClick = async () => {
-    // Если событие voditelSignTicket уже получено, сразу переходим
-    if (this.state.voditelSignReceived) {
-      try {
-        // Отправляем TCP-запрос для подписания талона комбайнером
-        const data = await tcpServerSendRequest({
-          type: 'kombainer_sign_ticket',
-        });
-        console.log('KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|data=', data);
-
-        this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
-      } catch (error: any) {
-        console.error(
-          'KombainerTicketDetailAfterVoditelConfirm|kombainer_sign_ticket|error =',
-          error
-        );
-        Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
-      }
-      return;
-    }
-
     // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
       'Подтверждение',
