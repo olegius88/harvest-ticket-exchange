@@ -35,18 +35,24 @@ const REQUEST_TIMEOUT = 30000;
  * Возвращает Promise, который резолвится сообщением об успешном подключении
  * или отклоняется при возникновении ошибки.
  */
-export const connectToTcpServer = ({ ip: host }: { ip: string }): Promise<string> => {
-  console.log('connectToTcpServer|host=', host);
+export const connectToTcpServer = ({
+  ip: host,
+  port = 3290,
+}: {
+  ip: string;
+  port?: number;
+}): Promise<string> => {
+  console.log('connectToTcpServer|host=', host, 'port=', port);
   return new Promise((resolve, reject) => {
     if (client) {
       ToastAndroid.show(`TCP клиент уже подключен`, ToastAndroid.SHORT);
       resolve('TCP клиент уже подключен');
       return;
     }
-    client = TcpSocket.createConnection({ port: 3290, host }, () => {
-      console.log('TCP клиент подключился к серверу');
-      ToastAndroid.show(`TCP клиент успешно подключился`, ToastAndroid.SHORT);
-      resolve('TCP клиент успешно подключился');
+    client = TcpSocket.createConnection({ port, host }, () => {
+      console.log(`TCP клиент подключился к серверу ${host}:${port}`);
+      ToastAndroid.show(`TCP клиент успешно подключился к ${host}:${port}`, ToastAndroid.SHORT);
+      resolve(`TCP клиент успешно подключился к ${host}:${port}`);
     });
 
     // Глобальный обработчик входящих сообщений от сервера,
@@ -296,14 +302,14 @@ export const sendHeartbeat = async (): Promise<boolean> => {
  * Функция для переподключения к TCP-серверу с повторными попытками
  */
 export const reconnectToTcpServer = async (
-  { ip }: { ip: string },
+  { ip, port = 3290 }: { ip: string; port?: number },
   maxRetries: number = 5,
   retryDelay: number = 2000
 ): Promise<string> => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`reconnectToTcpServer|Попытка ${attempt} из ${maxRetries}`);
-      const result = await connectToTcpServer({ ip });
+      const result = await connectToTcpServer({ ip, port });
       return result;
     } catch (error) {
       console.error(`reconnectToTcpServer|Попытка ${attempt} неудачна:`, error);

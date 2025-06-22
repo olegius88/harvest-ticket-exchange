@@ -7,8 +7,11 @@ import { onTcpMessage } from './onTcpMessage';
 import Socket from 'react-native-tcp-socket/lib/types/Socket';
 
 let server: Server | null = null;
-// Массив для хранения активных соединений (подключён может быть только один клиент)
-let activeSockets: TcpSocket.Socket[] = [];
+// Единственное активное соединение
+let activeSocket: TcpSocket.Socket | null = null;
+
+// Текущий порт сервера
+let currentPort: number = 3290;
 
 // Интерфейс для сообщений с ID
 interface IMessageWithId {
@@ -31,21 +34,33 @@ const generateMessageId = (): string => {
   return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
+// Функция для генерации случайного порта в диапазоне 3000-65535
+const generateRandomPort = (): number => {
+  const minPort = 3000;
+  const maxPort = 65535;
+  return Math.floor(Math.random() * (maxPort - minPort + 1)) + minPort;
+};
+
 // Таймаут для запросов (30 секунд)
 const REQUEST_TIMEOUT = 30000;
 
 /**
- * Запускает TCP-сервер на порту 3290.
- * @returns Promise, который резолвится с сообщением об успешном запуске или отклоняется при ошибке.
+ * Запускает TCP-сервер на случайном порту из диапазона 3000-65535.
+ * @param port - опциональный порт. Если не указан, будет сгенерирован случайный
+ * @returns Promise, который резолвится с объектом содержащим сообщение и порт сервера или отклоняется при ошибке.
  */
-export const startTcpServer = (): Promise<string> => {
+export const startTcpServer = (port?: number): Promise<{ message: string; port: number }> => {
   return new Promise((resolve, reject) => {
     if (server) {
       console.log('startTcpServer|TCP-сервер уже запущен');
       ToastAndroid.show(`startTcpServer|TCP-сервер уже запущен`, ToastAndroid.SHORT);
-      resolve('startTcpServer|TCP-сервер уже запущен');
+      resolve({ message: 'startTcpServer|TCP-сервер уже запущен', port: currentPort });
       return;
     }
+
+    // Генерируем случайный порт если не передан
+    const targetPort = port || generateRandomPort();
+    currentPort = targetPort;
 
     // Сначала попробуем создать сервер
     try {
@@ -53,8 +68,12 @@ export const startTcpServer = (): Promise<string> => {
         console.log('startTcpServer|Клиент подключился к TCP-серверу');
         ToastAndroid.show(`startTcpServer|Клиент подключился к TCP-серверу`, ToastAndroid.SHORT);
 
-        // Добавляем сокет в массив активных соединений
-        activeSockets.push(socket);
+        // Если уже есть активное соединение, закрываем предыдущее
+        if (activeSocket) {
+          activeSocket.destroy();
+        }
+        // Сохраняем новое активное соединение
+        activeSocket = socket;
 
         // Обработка полученных данных от клиента
         socket.on('data', async (data: string | Buffer) => {
@@ -70,6 +89,15 @@ export const startTcpServer = (): Promise<string> => {
             try {
               const json = JSON.parse(data.toString());
               console.log('startTcpServer|socket|on|data (Buffer JSON)=', json);
+              if ((json as any).type === 'force_exit') {
+                console.log('startTcpServer|Получено сообщение force_exit, выполняем destroy');
+                ToastAndroid.show(
+                  'startTcpServer|Получено force_exit, закрываем соединение',
+                  ToastAndroid.SHORT
+                );
+                socket.destroy();
+                return;
+              }
             } catch (error) {
               console.error('startTcpServer|Ошибка парсинга Buffer JSON:', error);
             }
@@ -101,6 +129,17 @@ export const startTcpServer = (): Promise<string> => {
           // Проверяем, является ли это ответом сервера (для обратной совместимости)
           if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
             console.log('startTcpServer|isTcpServerSendResponse|message=', message);
+            return;
+          }
+
+          // Проверяем, является ли это сообщением force_exit
+          if ((message as any).type === 'force_exit') {
+            console.log('startTcpServer|Получено сообщение force_exit, выполняем end');
+            ToastAndroid.show(
+              'startTcpServer|Получено force_exit, закрываем соединение',
+              ToastAndroid.SHORT
+            );
+            socket.end();
             return;
           }
 
@@ -136,8 +175,11 @@ export const startTcpServer = (): Promise<string> => {
         socket.on('close', () => {
           console.log('startTcpServer|socket|close');
           ToastAndroid.show(`startTcpServer|socket|close`, ToastAndroid.SHORT);
-          // Удаляем сокет из массива активных соединений
-          activeSockets = activeSockets.filter((s) => s !== socket);
+
+          // Очищаем активное соединение
+          if (activeSocket === socket) {
+            activeSocket = null;
+          }
         });
       });
     } catch (error) {
@@ -148,8 +190,24 @@ export const startTcpServer = (): Promise<string> => {
     }
 
     server.on('error', (error: any) => {
-      console.log('startTcpServer|Ошибка TCP-сервера|error=', error);
+      console.error(`startTcpServer|Ошибка TCP-сервера на порту ${currentPort}|error=`, error);
       ToastAndroid.show(`startTcpServer|Ошибка TCP-сервера|error`, ToastAndroid.SHORT);
+
+      // Если порт уже используется, попробуем другой порт
+      if (JSON.stringify(error).includes('EADDRINUSE')) {
+        console.log(
+          `startTcpServer|Порт ${currentPort} уже используется, пытаемся сгенерировать новый`
+        );
+
+        // Освобождаем ссылку на сервер
+        server = null;
+
+        // Пытаемся запустить на новом порту
+        startTcpServer()
+          .then((result) => resolve(result))
+          .catch((retryError) => reject(retryError));
+        return;
+      }
 
       // Освобождаем ссылку на сервер, чтобы можно было повторить попытку
       server = null;
@@ -157,16 +215,19 @@ export const startTcpServer = (): Promise<string> => {
       reject(error);
     });
 
-    server.listen({ port: 3290, host: '0.0.0.0', reuseAddress: true }, () => {
+    server.listen({ port: currentPort, host: '0.0.0.0', reuseAddress: true }, () => {
       if (server) {
         const address = server.address();
-        console.log('startTcpServer|TCP-сервер запущен на порту 3290', address);
+        console.log(`startTcpServer|TCP-сервер запущен на порту ${currentPort}`, address);
         ToastAndroid.show(
-          `startTcpServer|TCP-сервер успешно запущен|address=${JSON.stringify(address)}`,
+          `startTcpServer|TCP-сервер успешно запущен на порту ${currentPort}`,
           ToastAndroid.SHORT
         );
       }
-      resolve('startTcpServer|TCP-сервер успешно запущен');
+      resolve({
+        message: `startTcpServer|TCP-сервер успешно запущен на порту ${currentPort}`,
+        port: currentPort,
+      });
     });
   });
 };
@@ -191,15 +252,15 @@ export const stopTcpServer = (): Promise<string> => {
     });
     pendingServerRequests.clear();
 
-    // Закрываем все активные соединения
-    activeSockets.forEach((socket) => {
+    // Закрываем активное соединение
+    if (activeSocket) {
       try {
-        socket.destroy();
+        activeSocket.destroy();
+        activeSocket = null;
       } catch (error) {
         console.error('stopTcpServer|Ошибка при закрытии сокета:', error);
       }
-    });
-    activeSockets = [];
+    }
 
     // Создаем копию ссылки на сервер и очищаем глобальную переменную
     const serverToClose = server;
@@ -238,8 +299,8 @@ export const stopTcpServerGracefully = async (
     return 'stopTcpServerGracefully|TCP-сервер не запущен';
   }
 
-  if (activeSockets.length === 0) {
-    console.log('stopTcpServerGracefully|Нет активных соединений, выполняем обычную остановку');
+  if (!activeSocket) {
+    console.log('stopTcpServerGracefully|Нет активного соединения, выполняем обычную остановку');
     return await stopTcpServer();
   }
 
@@ -253,29 +314,14 @@ export const stopTcpServerGracefully = async (
       timestamp: Date.now(),
     };
 
-    // Отправляем запрос всем клиентам и ждем подтверждения
-    const confirmationPromises = activeSockets.map(async (socket, index) => {
-      try {
-        console.log(`stopTcpServerGracefully|Отправляем запрос клиенту ${index + 1}`);
-        return await tcpServerSendRequest(disconnectRequest);
-      } catch (error) {
-        console.warn(
-          `stopTcpServerGracefully|Не удалось получить подтверждение от клиента ${index + 1}:`,
-          error
-        );
-        return null;
-      }
-    });
-
-    // Ждем подтверждения от всех клиентов или таймаут
-    const responses = await Promise.race([
-      Promise.all(confirmationPromises.map((p) => p.catch((e) => e))),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Таймаут ожидания подтверждения от клиентов')), timeout)
-      ),
-    ]);
-
-    console.log('stopTcpServerGracefully|Получены ответы от клиентов:', responses);
+    // Отправляем запрос клиенту и ждем подтверждения
+    try {
+      console.log('stopTcpServerGracefully|Отправляем запрос клиенту');
+      const response = await tcpServerSendRequest(disconnectRequest);
+      console.log('stopTcpServerGracefully|Получен ответ от клиента:', response);
+    } catch (error) {
+      console.warn('stopTcpServerGracefully|Не удалось получить подтверждение от клиента:', error);
+    }
 
     // Отправляем финальное уведомление об отключении
     const finalMessage = {
@@ -283,18 +329,18 @@ export const stopTcpServerGracefully = async (
       timestamp: Date.now(),
     };
 
-    // Отправляем финальное сообщение всем клиентам
-    activeSockets.forEach((socket, index) => {
+    // Отправляем финальное сообщение клиенту
+    if (activeSocket) {
       try {
-        socket.write(JSON.stringify(finalMessage));
-        console.log(`stopTcpServerGracefully|Отправлено финальное сообщение клиенту ${index + 1}`);
+        activeSocket.write(JSON.stringify(finalMessage));
+        console.log('stopTcpServerGracefully|Отправлено финальное сообщение клиенту');
       } catch (error) {
         console.warn(
-          `stopTcpServerGracefully|Не удалось отправить финальное сообщение клиенту ${index + 1}:`,
+          'stopTcpServerGracefully|Не удалось отправить финальное сообщение клиенту:',
           error
         );
       }
-    });
+    }
 
     // Даем время на отправку финальных сообщений
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -318,16 +364,13 @@ export const stopTcpServerGracefully = async (
  */
 export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseData> => {
   return new Promise((resolve, reject) => {
-    if (activeSockets.length !== 1) {
-      const errMsg =
-        activeSockets.length === 0
-          ? 'tcpServerSendRequest|Нет подключенных TCP-клиентов'
-          : 'tcpServerSendRequest|Подключено более одного TCP-клиента';
+    if (!activeSocket) {
+      const errMsg = 'tcpServerSendRequest|Нет подключенного TCP-клиента';
       ToastAndroid.show(errMsg, ToastAndroid.SHORT);
       return reject(new Error(errMsg));
     }
 
-    const socket = activeSockets[0];
+    const socket = activeSocket;
     const messageId = generateMessageId();
 
     // Создаем таймаут для запроса
@@ -363,6 +406,13 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
 };
 
 /**
+ * Получает текущий порт TCP-сервера
+ */
+export const getCurrentTcpServerPort = (): number => {
+  return currentPort;
+};
+
+/**
  * Проверяет, запущен ли TCP-сервер
  */
 export const isTcpServerRunning = (): boolean => {
@@ -370,10 +420,10 @@ export const isTcpServerRunning = (): boolean => {
 };
 
 /**
- * Получает количество подключенных клиентов
+ * Получает количество подключенных клиентов (0 или 1)
  */
 export const getConnectedClientsCount = (): number => {
-  return activeSockets.length;
+  return activeSocket ? 1 : 0;
 };
 
 /**

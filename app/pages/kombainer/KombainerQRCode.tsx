@@ -24,7 +24,12 @@ import {
   closeKombainerConnections,
   closeKombainerConnectionsGracefully,
 } from '../../services/ConnectionManager';
-import { startTcpServer, isTcpServerRunning, stopTcpServer } from '../../wifi/TcpServer';
+import {
+  startTcpServer,
+  isTcpServerRunning,
+  stopTcpServer,
+  getCurrentTcpServerPort,
+} from '../../wifi/TcpServer';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import {
@@ -198,8 +203,11 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     const isServerRunning = isTcpServerRunning();
     console.log('generateQRCode|isTcpServerRunning=', isServerRunning);
 
+    let tcpPort = 3290; // Значение по умолчанию
+
     if (isServerRunning) {
-      console.log('generateQRCode|TCP-сервер уже запущен, пропускаем перезапуск');
+      console.log('generateQRCode|TCP-сервер уже запущен, получаем текущий порт');
+      tcpPort = getCurrentTcpServerPort();
     } else {
       // Новая часть: запуск TCP-сервера через API
       try {
@@ -211,8 +219,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       }
 
       try {
-        await startTcpServer();
-        console.log('generateQRCode|TCP-сервер успешно запущен');
+        const serverResult = await startTcpServer();
+        console.log('generateQRCode|TCP-сервер успешно запущен:', serverResult);
+        tcpPort = serverResult.port;
       } catch (e) {
         console.error('generateQRCode|Ошибка при запуске TCP-сервера:', e);
 
@@ -222,8 +231,12 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
           try {
             await stopTcpServer();
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Ждем 1 секунду
-            await startTcpServer();
-            console.log('generateQRCode|TCP-сервер успешно запущен после повторной попытки');
+            const serverResult = await startTcpServer();
+            console.log(
+              'generateQRCode|TCP-сервер успешно запущен после повторной попытки:',
+              serverResult
+            );
+            tcpPort = serverResult.port;
           } catch (retryError) {
             console.error('generateQRCode|Ошибка при повторном запуске TCP-сервера:', retryError);
             try {
@@ -246,9 +259,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       }
     }
 
-    // Генерация строки для QR-кода Wi-Fi точки доступа
+    // Генерация строки для QR-кода Wi-Fi точки доступа с портом TCP
     const { ssid, password } = sheRes;
-    const wifiQRCodeContent = `WIFI:S:${ssid};P:${password};;`;
+    const wifiQRCodeContent = `WIFI:S:${ssid};P:${password};T:${tcpPort};;`;
 
     // Устанавливаем значение для QR-кода напрямую
     this.setState({
@@ -259,7 +272,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       retryCount: 0, // Сбрасываем счетчик после успешной генерации
     });
 
-    console.log('QR-код сгенерирован для Wi-Fi:', wifiQRCodeContent);
+    console.log('QR-код сгенерирован для Wi-Fi с TCP портом:', wifiQRCodeContent);
   };
 
   // Новый метод для обработки повторных попыток
@@ -316,6 +329,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя
     this.props.navigation.navigate('KombainerTicketDetailAfterVoditelConfirmScreen', {
       data,
+      talonId: this.state.talonId,
     });
   };
 

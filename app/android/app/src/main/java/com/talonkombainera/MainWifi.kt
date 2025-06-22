@@ -35,12 +35,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.Inet4Address
 
-// Константы и глобальные переменные
-val zero = ByteArray(8) // представляет 64-битное число 0
-val one = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 1) // представляет 64-битное число 1
-const val chunkSize = 5_000_000
-const val PORT = 3290
-
 /**
  * Класс MainWifi предоставляет функциональность для управления локальным Wi‑Fi хотспотом,
  * а также для подключения к существующим хотспотам.

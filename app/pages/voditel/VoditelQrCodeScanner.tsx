@@ -36,22 +36,34 @@ const { MainWifiModule } = NativeModules; // Получаем нативный �
 
 /**
  * Функция для парсинга Wi‑Fi строки.
- * Ожидается формат: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;;"
+ * Ожидается формат: "WIFI:S:AndroidShare_2534;P:68g9e5ec6m3na7i;T:3290;;"
  */
-const parseWifiCredentials = (value: string): { ssid: string; password: string } | null => {
+const parseWifiCredentials = (
+  value: string
+): { ssid: string; password: string; port?: number } | null => {
   if (!value.startsWith('WIFI:')) return null;
   const wifiData = value.slice(5); // удаляем префикс "WIFI:"
   const parts = wifiData.split(';');
   let ssid = '';
   let password = '';
+  let port: number | undefined;
+
   for (const part of parts) {
     if (part.startsWith('S:')) {
       ssid = part.substring(2);
     } else if (part.startsWith('P:')) {
       password = part.substring(2);
+    } else if (part.startsWith('T:')) {
+      const portStr = part.substring(2);
+      const parsedPort = parseInt(portStr, 10);
+      if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+        port = parsedPort;
+      }
     }
   }
-  return ssid && password ? { ssid, password } : null;
+
+  console.log('parseWifiCredentials: parsed data =', { ssid, password, port });
+  return ssid && password ? { ssid, password, port: port || 3290 } : null;
 };
 
 type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
@@ -78,7 +90,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   // Новое состояние для показа инструкции
   const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
   // Сохраняем данные Wi-Fi для передачи в joinHotspot после инструкции
-  const wifiCredentialsRef = useRef<{ ssid: string; password: string } | null>(null);
+  const wifiCredentialsRef = useRef<{ ssid: string; password: string; port?: number } | null>(null);
 
   // При загрузке страницы отключаем все соединения
   useEffect(() => {
@@ -98,6 +110,11 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     };
 
     closeConnections();
+
+    // Cleanup функция при размонтировании компонента
+    return () => {
+      setProcessing(false);
+    };
   }, []);
 
   // Закрываем все соединения перед началом сканирования
@@ -132,11 +149,11 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
       const credentials = parseWifiCredentials(value);
       if (credentials) {
-        const { ssid, password } = credentials;
-        console.log('Parsed Wi‑Fi credentials:', ssid, password);
+        const { ssid, password, port } = credentials;
+        console.log('Parsed Wi‑Fi credentials:', { ssid, password, port });
 
         // Сохраняем данные для дальнейшего использования
-        wifiCredentialsRef.current = { ssid, password };
+        wifiCredentialsRef.current = { ssid, password, port };
         // Блокируем повторное сканирование
         isProcessing.current = true;
         // Показываем инструкцию вместо сканера
@@ -157,7 +174,8 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   // Обработчик для кнопки "Подключиться к Wi-Fi"
   const handleConnectToHotspot = async () => {
     if (!wifiCredentialsRef.current) return;
-    const { ssid, password } = wifiCredentialsRef.current;
+    const { ssid, password, port } = wifiCredentialsRef.current;
+    console.log('handleConnectToHotspot: Starting connection with:', { ssid, password, port });
     setProcessing(true);
 
     try {
@@ -178,7 +196,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       }
       console.log('onCodeScanned|joinData=', joinData);
 
-      await handleNeedRedirect(joinData);
+      await handleNeedRedirect(joinData, port);
     } catch (err: unknown) {
       Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось подключиться к сети');
       // Сбрасываем состояния при ошибке
@@ -188,13 +206,14 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     }
   };
 
-  const handleNeedRedirect = async (joinData: JoinHotspotResponse) => {
-    console.log('Main|needRedirect|joinData=', joinData);
+  const handleNeedRedirect = async (joinData: JoinHotspotResponse, port?: number) => {
+    console.log('Main|needRedirect|joinData=', joinData, 'port=', port);
 
     try {
       // Отправляем запрос на подключение к TCP-серверу
       const message = await connectToTcpServer({
         ip: joinData.ip,
+        port: port || 3290, // Используем переданный порт или значение по умолчанию
       });
       console.log('connectToTcpServer|message=', message);
     } catch (error: unknown) {
@@ -410,6 +429,14 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
           <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
             <IonIcon name="chevron-back" color="white" size={35} />
           </PressableOpacity>
+
+          {/* Кнопка "Отмена" внизу */}
+          <View style={styles.bottomButtonContainer}>
+            <TouchableOpacity style={styles.bottomCancelButton} onPress={navigation.goBack}>
+              <Text style={styles.bottomCancelButtonText}>Отмена</Text>
+            </TouchableOpacity>
+          </View>
+
           {processing && (
             <View style={styles.preloaderContainer}>
               <ActivityIndicator size="large" color="#fff" />
@@ -530,5 +557,30 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: '#666',
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: SAFE_AREA_PADDING.paddingBottom + 20,
+    left: SAFE_AREA_PADDING.paddingLeft,
+    right: SAFE_AREA_PADDING.paddingRight,
+    alignItems: 'center',
+  },
+  bottomCancelButton: {
+    backgroundColor: 'rgba(255, 77, 77, 0.9)',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    minWidth: 120,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  bottomCancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

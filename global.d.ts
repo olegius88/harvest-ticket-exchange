@@ -398,6 +398,7 @@ export interface ISendTcpSendSetTalonOfKombainer {
   userData: ICreateUsersParams;
   weight: number;
   talonNumber?: string;
+  talonData?: ICreateTalonsParams | null;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -923,7 +924,10 @@ export type RootStackParamList = {
   KombainerQRCodeScreen: { talonId: string };
   KombainerTicketDetailScreen: undefined;
   KombainerTicketCreatedSuccessScreen: undefined;
-  KombainerTicketDetailAfterVoditelConfirmScreen: { data: IVoditelConnectedPayload };
+  KombainerTicketDetailAfterVoditelConfirmScreen: {
+    data: IVoditelConnectedPayload;
+    talonId: string;
+  };
   VoditelRegistrationScreen: undefined;
   VoditelCreateTripScreen: undefined;
   VoditelTicketDetailScreen: undefined;
