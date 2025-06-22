@@ -309,6 +309,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     // Устанавливаем состояние загрузки
     this.setState({ confirmWeightLoading: true });
 
+    console.log('onSubmitForm|this.state.talonData=', this.state.talonData);
+
     try {
       // Отправляем запрос через TCP
       const tcpResponse = await tcpServerSendRequest({

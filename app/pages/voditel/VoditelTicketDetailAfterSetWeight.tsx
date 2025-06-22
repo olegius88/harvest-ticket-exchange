@@ -11,7 +11,7 @@ import {
   BackHandler,
   ToastAndroid,
 } from 'react-native';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
@@ -27,9 +27,11 @@ import {
   IPayloadSetTalonOfKombainer,
 } from '../../../global';
 import KeepAwake from 'react-native-keep-awake';
+import { ICreateTalonsParams } from '../../db/talons_of_combainers';
 
 interface VoditelTicketDetailAfterSetWeightProps {
   navigation: NavigationProp<RootStackParamList>;
+  route: RouteProp<RootStackParamList, 'VoditelTicketDetailAfterSetWeightScreen'>;
 }
 
 interface VoditelTicketDetailAfterSetWeightState {
@@ -65,6 +67,7 @@ interface VoditelTicketDetailAfterSetWeightState {
   userData: ICreateUsersParams | null;
   voditelData: ICreateVoditelParams | null;
   kombainerData: ICreateKombainerParams | null;
+  talonData: ICreateTalonsParams | null; // Данные талона
 }
 
 class VoditelTicketDetailAfterSetWeight extends Component<
@@ -113,6 +116,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       userData: null,
       voditelData: null,
       kombainerData: null,
+      talonData: null,
     };
   }
 
@@ -171,13 +175,14 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
   handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
     console.log('VoditelTicketDetailAfterSetWeight|handleSetTalonOfKombainer|data=', data);
-    const { kombainerData, userData, weight } = data;
+    const { kombainerData, userData, weight, talonData } = data;
 
     // Обновляем состояние компонента: данные с весом загружены
     this.setState({
       loadingKombainerDataWithWeight: false,
       loadingKombainerDataWithWeightSuccess: true,
       weight,
+      talonData,
     });
   };
 
@@ -207,13 +212,16 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     let tcpResponse: SendTcpRequestResponse;
     let kombainerData: ICreateKombainerParams;
     let kombainerUserData: ICreateUsersParams;
+    let talonData: ICreateTalonsParams;
 
     // В зависимости от контекста отправляем TCP-запрос за данными комбайнера
     switch (AuthStoreData.context) {
       case 'voditel': {
         try {
+          const { talonId } = this.props.route.params || {};
           const data = await sendTcpRequest({
             type: 'get_kombainer_data',
+            talonId,
           });
           console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|data=', data);
 
@@ -228,6 +236,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             const tcpData = tcpResponse.data as ITcpResponseKombainerData;
             kombainerData = tcpData.kombainerData;
             kombainerUserData = tcpData.kombainerUserData;
+            talonData = tcpData.talonData; // Извлекаем talonData из ответа
           } else {
             throw new Error('Неверная структура ответа TCP');
           }
@@ -258,6 +267,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       voditelData: currentUser.voditelData,
       kombainerData,
       kombainerUserData,
+      talonData,
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|data loaded successfully');
@@ -463,6 +473,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       kombainerUserData,
       userData,
       voditelData,
+      talonData,
     } = this.state;
 
     if (loadingKombainerData) {
@@ -477,9 +488,17 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <VectorLogo />
 
-        <Text style={styles.title}>Талон комбайнера N</Text>
+        <Text style={styles.title}>Талон комбайнера</Text>
 
         <View style={styles.formContainer}>
+          {/* Номер талона комбайнера */}
+          <View style={styles.formRow}>
+            <Text style={styles.label}>Номер талона:</Text>
+            <Text style={[styles.value, styles.talonNumber]}>
+              {talonData?.talonNumber ? String(talonData.talonNumber).padStart(5, '0') : '-'}
+            </Text>
+          </View>
+
           {[
             ['Комбайн', kombainerData?.combine],
             ['Комбайнер', kombainerUserData?.fio],
@@ -678,6 +697,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'left',
+  },
+  talonNumber: {
+    fontWeight: 'bold',
+    color: '#98d642',
+    fontSize: 18,
   },
   submitButton: {
     backgroundColor: '#98d642',
