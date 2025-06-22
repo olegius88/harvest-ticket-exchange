@@ -85,7 +85,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
           {
             closeHotspot: true,
             closeTcpServer: true,
-            closeTcpClient: false,
+            closeTcpClient: true,
           },
           'VoditelQrCodeScanner'
         );
@@ -96,6 +96,31 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
     closeConnections();
   }, []);
+
+  // Закрываем все соединения перед началом сканирования
+  useEffect(() => {
+    if (isActive && !processing && !showHotspotInstruction) {
+      const closeConnectionsBeforeScanning = async () => {
+        try {
+          await closeAllConnections(
+            {
+              closeHotspot: true,
+              closeTcpServer: true,
+              closeTcpClient: true,
+            },
+            'VoditelQrCodeScanner_BeforeScanning'
+          );
+        } catch (error) {
+          console.error(
+            'VoditelQrCodeScanner: Ошибка при закрытии соединений перед сканированием:',
+            error
+          );
+        }
+      };
+
+      closeConnectionsBeforeScanning();
+    }
+  }, [isActive, processing, showHotspotInstruction]);
 
   const onCodeScanned = useCallback(
     (codes: Code[]) => {
