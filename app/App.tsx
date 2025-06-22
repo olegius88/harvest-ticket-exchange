@@ -14,7 +14,6 @@ import KombainerRegistration from './pages/kombainer/KombainerRegistration';
 import KombainerQRCode from './pages/kombainer/KombainerQRCode';
 import KombainerTicketDetail from './pages/kombainer/KombainerTicketDetail';
 import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
-import KombainerWaitTicketConfirm from './pages/kombainer/KombainerWaitTicketConfirm';
 import { RootStackParamList } from '../global';
 import VoditelRegistration from './pages/voditel/VoditelRegistration';
 import VoditelCreateTrip from './pages/voditel/VoditelCreateTrip';
