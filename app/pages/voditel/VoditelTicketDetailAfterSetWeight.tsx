@@ -126,6 +126,9 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       Alert.alert('Ошибка передачи данных комбайнера', e instanceof Error ? e.message : String(e));
     });
 
+    // Удаляем существующие слушатели перед добавлением новых
+    this.removeAllListeners();
+
     // Добавляем слушатель события подписания талона комбайнером
     this.kombainerSignTicketListener = DeviceEventEmitter.addListener(
       'kombainerSignTicket',
@@ -143,13 +146,29 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   }
 
   componentWillUnmount() {
-    this.setTalonOfKombainerListener?.remove();
-    this.kombainerSignTicketListener?.remove();
-    this.backHandlerListener?.remove();
+    this.removeAllListeners();
 
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
   }
+
+  /**
+   * Метод для безопасного удаления всех слушателей
+   */
+  removeAllListeners = () => {
+    if (this.setTalonOfKombainerListener?.remove) {
+      this.setTalonOfKombainerListener.remove();
+      this.setTalonOfKombainerListener = null;
+    }
+    if (this.kombainerSignTicketListener?.remove) {
+      this.kombainerSignTicketListener.remove();
+      this.kombainerSignTicketListener = null;
+    }
+    if (this.backHandlerListener?.remove) {
+      this.backHandlerListener.remove();
+      this.backHandlerListener = null;
+    }
+  };
 
   handleKombainerSignTicket = () => {
     console.log('VoditelTicketDetailAfterSetWeight|handleKombainerSignTicket');
@@ -416,6 +435,11 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
+
+    // Удаляем существующий слушатель перед добавлением нового
+    if (this.setTalonOfKombainerListener?.remove) {
+      this.setTalonOfKombainerListener.remove();
+    }
 
     // Добавляем слушатель события подтверждения от водителя
     this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(

@@ -32,7 +32,9 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
 
     return () => {
-      backHandler.remove();
+      if (backHandler?.remove) {
+        backHandler.remove();
+      }
     };
   }, []);
 

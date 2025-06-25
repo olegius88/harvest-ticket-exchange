@@ -83,6 +83,8 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
   // Очистка соединений при монтировании
   useEffect(() => {
+    let acceptVoditelConnectListener: any = null;
+
     const closeAll = async () => {
       try {
         await closeAllConnections(
@@ -96,7 +98,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     closeAll();
 
     // Добавляем слушатель события acceptVoditelConnect
-    const acceptVoditelConnectListener = DeviceEventEmitter.addListener(
+    acceptVoditelConnectListener = DeviceEventEmitter.addListener(
       'acceptVoditelConnect',
       ({ talonId }) => {
         navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
@@ -106,7 +108,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
     return () => {
       setProcessing(false);
-      acceptVoditelConnectListener.remove();
+      if (acceptVoditelConnectListener?.remove) {
+        acceptVoditelConnectListener.remove();
+        acceptVoditelConnectListener = null;
+      }
     };
   }, []);
 

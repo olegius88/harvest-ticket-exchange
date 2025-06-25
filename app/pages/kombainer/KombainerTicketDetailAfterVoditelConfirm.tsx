@@ -142,6 +142,9 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     // Включаем не гаснущий экран
     KeepAwake.activate();
 
+    // Удаляем существующие слушатели перед добавлением новых
+    this.removeAllListeners();
+
     // Блокируем кнопку "Назад"
     this.backHandlerListener = BackHandler.addEventListener(
       'hardwareBackPress',
@@ -194,6 +197,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       });
 
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|init');
+
+      // Удаляем предыдущий слушатель если он существует
+      if (this.voditelConnectedListener?.remove) {
+        this.voditelConnectedListener.remove();
+        this.voditelConnectedListener = null;
+      }
 
       // Добавляем слушатель события подтверждения от водителя
       this.voditelConnectedListener = DeviceEventEmitter.addListener(
@@ -322,6 +331,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       });
 
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
+
+      // Удаляем предыдущий слушатель если он существует
+      if (this.voditelConfirmWithWeightListener?.remove) {
+        this.voditelConfirmWithWeightListener.remove();
+        this.voditelConfirmWithWeightListener = null;
+      }
 
       // Добавляем слушатель события подтверждения веса водителем
       this.voditelConfirmWithWeightListener = DeviceEventEmitter.addListener(
@@ -575,30 +590,34 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
   };
 
+  /**
+   * Метод для безопасного удаления всех слушателей
+   */
+  removeAllListeners = () => {
+    if (this.voditelConnectedListener?.remove) {
+      this.voditelConnectedListener.remove();
+      this.voditelConnectedListener = null;
+    }
+    if (this.voditelConfirmWithWeightListener?.remove) {
+      this.voditelConfirmWithWeightListener.remove();
+      this.voditelConfirmWithWeightListener = null;
+    }
+    if (this.voditelSignTicketListener?.remove) {
+      this.voditelSignTicketListener.remove();
+      this.voditelSignTicketListener = null;
+    }
+    if (this.backHandlerListener?.remove) {
+      this.backHandlerListener.remove();
+      this.backHandlerListener = null;
+    }
+  };
+
   componentWillUnmount() {
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
 
-    // Удаляем слушатели событий
-    if (this.voditelConnectedListener) {
-      this.voditelConnectedListener.remove();
-      this.voditelConnectedListener = null;
-    }
-
-    if (this.voditelConfirmWithWeightListener) {
-      this.voditelConfirmWithWeightListener.remove();
-      this.voditelConfirmWithWeightListener = null;
-    }
-
-    if (this.voditelSignTicketListener) {
-      this.voditelSignTicketListener.remove();
-      this.voditelSignTicketListener = null;
-    }
-
-    if (this.backHandlerListener) {
-      this.backHandlerListener.remove();
-      this.backHandlerListener = null;
-    }
+    // Удаляем все слушатели
+    this.removeAllListeners();
   }
 
   render() {

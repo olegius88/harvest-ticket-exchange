@@ -80,6 +80,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   generateQr = false;
   waitingVoditelDataCtrl: number | NodeJS.Timeout | null = null;
   voditelConnectedListener: any = null;
+  backHandlerListener: any = null;
   // Новый массив для хранения всех таймеров повторных попыток
   retryTimeouts: Array<NodeJS.Timeout | number> = [];
   _isUnmounted = false; // Флаг размонтирования
@@ -355,8 +356,11 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     this._isUnmounted = false;
     console.log('componentDidMount');
 
+    // Удаляем существующие слушатели перед добавлением новых
+    this.removeAllListeners();
+
     // Обработчик для кнопки "Назад" на Android
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    this.backHandlerListener = BackHandler.addEventListener('hardwareBackPress', () => {
       this.handleCancelClick();
       return true; // Предотвращаем стандартное поведение
     });
@@ -368,9 +372,6 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     );
 
     this.initGenerateQr();
-
-    // Cleanup function
-    return () => backHandler.remove();
   }
 
   // Новая функция для проверки состояния GPS
@@ -528,6 +529,20 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     this.waitingVoditelDataCtrl = 0;
   };
 
+  /**
+   * Метод для безопасного удаления всех слушателей
+   */
+  removeAllListeners = () => {
+    if (this.backHandlerListener?.remove) {
+      this.backHandlerListener.remove();
+      this.backHandlerListener = null;
+    }
+    if (this.voditelConnectedListener?.remove) {
+      this.voditelConnectedListener.remove();
+      this.voditelConnectedListener = null;
+    }
+  };
+
   componentWillUnmount() {
     this._isUnmounted = true;
     // Очищаем все таймеры повторных попыток
@@ -537,11 +552,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     // Установим флаг отмены для предотвращения запуска новых процессов
     this.setState({ isCancelling: true });
 
-    // Удаляем слушатель события подключения водителя
-    if (this.voditelConnectedListener) {
-      this.voditelConnectedListener.remove();
-      this.voditelConnectedListener = null;
-    }
+    // Удаляем все слушатели
+    this.removeAllListeners();
 
     if (this.waitingVoditelDataCtrl !== null) {
       clearTimeout(this.waitingVoditelDataCtrl);
