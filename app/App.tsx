@@ -17,7 +17,7 @@ import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
 import { RootStackParamList } from '../global';
 import VoditelRegistration from './pages/voditel/VoditelRegistration';
 import VoditelCreateTrip from './pages/voditel/VoditelCreateTrip';
-import VoditelTicketDetail from './pages/voditel/VoditelTicketDetailNew';
+import VoditelTicketDetail from './pages/voditel/VoditelTicketDetail.tsx';
 import VoditelWaitKombainerData from './pages/voditel/VoditelWaitKombainerData';
 import VoditelTicketDetailAfterSetWeight from './pages/voditel/VoditelTicketDetailAfterSetWeight';
 import VoditelTicketCreatedSuccess from './pages/voditel/VoditelTicketCreatedSuccess';
