@@ -84,7 +84,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 15
-        versionName "1.5.52"
+        versionName "1.5.53"
     }
     signingConfigs {
         debug {
