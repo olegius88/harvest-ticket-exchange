@@ -976,6 +976,7 @@ export interface CurrentUserResponse {
   kombainerData: ICreateKombainerParams | null;
   voditelData: ICreateVoditelParams | null;
   kombainerUserData: ICreateUsersParams | null;
+  talonData: ICreateTalonsParams | null;
 }
 
 export interface NeedRedirectResponse {

@@ -499,6 +499,24 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             </Text>
           </View>
 
+          <View style={styles.formRow}>
+            <Text style={styles.label}>Дата:</Text>
+            <Text style={styles.value}>
+              {talonData?.created_at
+                ? new Date(talonData.created_at).toLocaleDateString('ru-RU')
+                : '-'}
+            </Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.label}>Время:</Text>
+            <Text style={styles.value}>
+              {talonData?.created_at
+                ? new Date(talonData.created_at).toLocaleTimeString('ru-RU')
+                : '-'}
+            </Text>
+          </View>
+
           {[
             ['Комбайн', kombainerData?.combine],
             ['Комбайнер', kombainerUserData?.fio],

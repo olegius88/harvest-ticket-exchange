@@ -653,6 +653,14 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
 
     const ticketData = [
+      [
+        'Номер талона',
+        this.state.talonData?.talonNumber
+          ? String(this.state.talonData.talonNumber).padStart(5, '0')
+          : 'Не указан',
+      ],
+      ['Дата', new Date(this.state.talonData.created_at).toLocaleDateString('ru-RU')],
+      ['Время', new Date(this.state.talonData.created_at).toLocaleTimeString('ru-RU')],
       ['Комбайн', data?.kombainerData?.combine],
       ['Комбайнер', data?.userData?.fio],
       ['Культура', data?.kombainerData?.culture],
@@ -683,13 +691,15 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
             {/* Данные талона */}
             <View style={styles.formContainer}>
-              {ticketData.map(([label, value]) => (
+              {ticketData.map(([label, value], index) => (
                 <View key={label as string} style={styles.formRow}>
                   <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>{label}:</Text>
                   </View>
                   <View style={styles.valueContainer}>
-                    <Text style={styles.valueText}>{value || '-'}</Text>
+                    <Text style={index === 0 ? styles.talonNumberText : styles.valueText}>
+                      {value || '-'}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -926,6 +936,11 @@ const styles = StyleSheet.create({
   valueText: {
     fontSize: 16,
     color: '#333333',
+  },
+  talonNumberText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#98d642',
   },
   input: {
     height: 40,

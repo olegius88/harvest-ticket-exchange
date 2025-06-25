@@ -65,6 +65,7 @@ const KombainerTicketDetail: React.FC = () => {
   const [weight, setWeight] = useState('');
   const [creatingTalon, setCreatingTalon] = useState(false);
   const [nextTalonNumber, setNextTalonNumber] = useState<string>('');
+  const [talonCreatedAt, setTalonCreatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -124,11 +125,15 @@ const KombainerTicketDetail: React.FC = () => {
               }
 
               // Создаем талон в базе данных
+              const createdAt = Date.now();
               const talonId = await createTalon({
                 kombainerId: data.kombainerData.id,
                 status: 'created',
-                startTime: Date.now(),
+                startTime: createdAt,
               });
+
+              // Сохраняем время создания талона
+              setTalonCreatedAt(createdAt);
 
               console.log('Талон создан с ID:', talonId);
               Alert.alert('Успех', 'Талон успешно создан!', [
@@ -179,6 +184,20 @@ const KombainerTicketDetail: React.FC = () => {
               {nextTalonNumber && data?.userData?.id
                 ? `${String(nextTalonNumber).padStart(5, '0')}`
                 : 'Вычисляется...'}
+            </Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Дата:</Text>
+            <Text style={styles.formValue}>
+              {talonCreatedAt ? new Date(talonCreatedAt).toLocaleDateString('ru-RU') : '-'}
+            </Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Время:</Text>
+            <Text style={styles.formValue}>
+              {talonCreatedAt ? new Date(talonCreatedAt).toLocaleTimeString('ru-RU') : '-'}
             </Text>
           </View>
 

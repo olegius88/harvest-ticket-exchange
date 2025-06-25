@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { NavigationProp } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { sendTcpRequest } from '../../wifi/TcpClient';
 import {
@@ -46,43 +46,19 @@ const VectorLogo: React.FC<{ width?: number; height?: number }> = ({
   );
 };
 
-// Определение типа для навигации
-interface NavigationProps {
-  navigation: NavigationProp<RootStackParamList>;
-}
-
-// Интерфейс состояния компонента
-interface VoditelTicketDetailState {
-  loading: boolean;
-  data: CurrentUserResponse | null;
-  weight: string;
-}
-
 /**
  * Страница "Талон комбайнера" для React Native
  */
-class VoditelTicketDetail extends Component<
-  { navigation: NavigationProp<RootStackParamList> },
-  VoditelTicketDetailState
-> {
-  constructor(props: { navigation: NavigationProp<RootStackParamList> }) {
-    super(props);
-    this.state = {
-      loading: true,
-      data: null,
-      weight: '',
-    };
-  }
-
-  componentDidMount() {
-    this.getKombainerData();
-  }
+const VoditelTicketDetail: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<CurrentUserResponse | null>(null);
 
   /**
    * Метод для получения данных текущего пользователя и отправки TCP-запроса
    * для получения данных комбайнера.
    */
-  getKombainerData = async () => {
+  const getKombainerData = async () => {
     try {
       // Отправляем запрос на получение данных текущего пользователя
       const response = await handleMessage({
@@ -119,7 +95,8 @@ class VoditelTicketDetail extends Component<
           };
 
           // Обновляем состояние компонента
-          this.setState({ loading: false, data: updatedUser });
+          setData(updatedUser);
+          setLoading(false);
           console.log('VoditelTicketDetail|updatedUser=', updatedUser);
         } catch (error: unknown) {
           console.error('VoditelTicketDetail|error=', error);
@@ -128,12 +105,12 @@ class VoditelTicketDetail extends Component<
             'Ошибка получения данных комбайнера: ' +
               (error instanceof Error ? error.message : String(error))
           );
-          this.setState({ loading: false });
+          setLoading(false);
         }
       } else {
         console.error('VoditelTicketDetail|неизвестный context=', AuthStoreData.context);
         Alert.alert('Ошибка', `Неизвестный контекст: ${AuthStoreData.context}`);
-        this.setState({ loading: false });
+        setLoading(false);
       }
     } catch (error: any) {
       console.error('VoditelTicketDetail|currentUser|error=', error);
@@ -141,26 +118,25 @@ class VoditelTicketDetail extends Component<
         'Ошибка',
         'Ошибка получения данных пользователя: ' + (error.message || JSON.stringify(error))
       );
-      this.setState({ loading: false });
+      setLoading(false);
     }
   };
 
   // Подтверждение талона комбайнера
-  confirmKombainerTicket = async () => {
+  const confirmKombainerTicket = async () => {
     try {
-      if (!this.state.data || !this.state.data.voditelData || !this.state.data.userData) {
+      if (!data || !data.voditelData || !data.userData) {
         Alert.alert('Ошибка', 'Отсутствуют необходимые данные для подтверждения');
         return;
       }
 
-      const data = await sendTcpRequest({
+      const tcpData = await sendTcpRequest({
         type: 'confirm_kombainer_ticket',
-        voditelData: this.state.data.voditelData,
-        userData: this.state.data.userData,
+        voditelData: data.voditelData,
+        userData: data.userData,
       });
-      console.log('VoditelTicketDetail|sendTcpRequest|data=', data);
 
-      const sendRes = data as ITcpResponseConfirmKombainerTicket;
+      const sendRes = tcpData as ITcpResponseConfirmKombainerTicket;
 
       if (sendRes.status !== 'ok') {
         Alert.alert('Ошибка', 'Ошибка подтверждения талона: ' + JSON.stringify(sendRes));
@@ -168,7 +144,7 @@ class VoditelTicketDetail extends Component<
       }
 
       // Переходим на страницу ожидания данных от комбайнера
-      this.props.navigation.navigate('VoditelWaitKombainerDataScreen');
+      navigation.navigate('VoditelWaitKombainerDataScreen');
     } catch (error: any) {
       console.error('VoditelTicketDetail|confirmKombainerTicket|error=', error);
       Alert.alert(
@@ -179,76 +155,100 @@ class VoditelTicketDetail extends Component<
   };
 
   // Обработчик возврата назад
-  handleBack = () => {
-    this.props.navigation.goBack();
+  const handleBack = () => {
+    navigation.goBack();
   };
 
-  render() {
-    const { loading, data } = this.state;
+  useEffect(() => {
+    getKombainerData();
+  }, []);
 
-    if (loading) {
-      return (
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color="#5a7d2b" />
-          <Text style={styles.loadingText}>Загрузка данных...</Text>
-        </View>
-      );
-    }
-
+  if (loading) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoContainer}>
-          <VectorLogo />
-        </View>
-
-        <Text style={styles.title}>Талон комбайнера N</Text>
-
-        <View style={styles.formContainer}>
-          {/* Данные комбайнера и комбайна */}
-          {[
-            ['Комбайн', data?.kombainerData?.combine],
-            ['Комбайнер', data?.kombainerUserData?.fio],
-            ['Культура', data?.kombainerData?.culture],
-            ['Поле', data?.kombainerData?.field],
-            ['Бригада', data?.kombainerData?.brigade],
-          ].map(([label, value]) => (
-            <View key={label} style={styles.formRow}>
-              <Text style={styles.formLabel}>{label}:</Text>
-              <Text style={styles.formValue}>{value || '-'}</Text>
-            </View>
-          ))}
-
-          {/* Данные о весе */}
-          <View style={styles.formRow}>
-            <Text style={styles.formLabel}>Вес:</Text>
-            <Text style={styles.formValue}>Будет указан комбайнером</Text>
-          </View>
-
-          {/* Данные водителя */}
-          {[
-            ['Транспорт', data?.voditelData?.transport],
-            ['Водитель', data?.userData?.fio],
-          ].map(([label, value]) => (
-            <View key={label} style={styles.formRow}>
-              <Text style={styles.formLabel}>{label}:</Text>
-              <Text style={styles.formValue}>{value || '-'}</Text>
-            </View>
-          ))}
-
-          {/* Кнопка подтверждения */}
-          <TouchableOpacity style={styles.submitButton} onPress={this.confirmKombainerTicket}>
-            <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
-          </TouchableOpacity>
-
-          {/* Кнопка "Назад" */}
-          <TouchableOpacity style={styles.backButton} onPress={this.handleBack}>
-            <Text style={styles.backButtonText}>Назад</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#5a7d2b" />
+        <Text style={styles.loadingText}>Загрузка данных...</Text>
+      </View>
     );
   }
-}
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.logoContainer}>
+        <VectorLogo />
+      </View>
+
+      <Text style={styles.title}>Талон комбайнера N</Text>
+
+      <View style={styles.formContainer}>
+        {/* Номер талона и дата */}
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Номер талона:</Text>
+          <Text style={[styles.formValue, styles.talonNumber]}>
+            {data?.talonData?.talonNumber
+              ? String(data.talonData.talonNumber).padStart(5, '0')
+              : 'Не указан'}
+          </Text>
+        </View>
+
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Дата:</Text>
+          <Text style={styles.formValue}>
+            {new Date(data.talonData.created_at).toLocaleDateString('ru-RU')}
+          </Text>
+        </View>
+
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Время:</Text>
+          <Text style={styles.formValue}>
+            {new Date(data.talonData.created_at).toLocaleTimeString('ru-RU')}
+          </Text>
+        </View>
+
+        {/* Данные комбайнера и комбайна */}
+        {[
+          ['Комбайн', data?.kombainerData?.combine],
+          ['Комбайнер', data?.kombainerUserData?.fio],
+          ['Культура', data?.kombainerData?.culture],
+          ['Поле', data?.kombainerData?.field],
+          ['Бригада', data?.kombainerData?.brigade],
+        ].map(([label, value]) => (
+          <View key={label} style={styles.formRow}>
+            <Text style={styles.formLabel}>{label}:</Text>
+            <Text style={styles.formValue}>{value || '-'}</Text>
+          </View>
+        ))}
+
+        {/* Данные о весе */}
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Вес:</Text>
+          <Text style={styles.formValue}>Будет указан комбайнером</Text>
+        </View>
+
+        {/* Данные водителя */}
+        {[
+          ['Транспорт', data?.voditelData?.transport],
+          ['Водитель', data?.userData?.fio],
+        ].map(([label, value]) => (
+          <View key={label} style={styles.formRow}>
+            <Text style={styles.formLabel}>{label}:</Text>
+            <Text style={styles.formValue}>{value || '-'}</Text>
+          </View>
+        ))}
+
+        {/* Кнопка подтверждения */}
+        <TouchableOpacity style={styles.submitButton} onPress={confirmKombainerTicket}>
+          <Text style={styles.submitButtonText}>Подтвердить данные талона</Text>
+        </TouchableOpacity>
+
+        {/* Кнопка "Назад" */}
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Text style={styles.backButtonText}>Назад</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -298,6 +298,11 @@ const styles = StyleSheet.create({
     flex: 2,
     fontSize: 16,
     color: '#333333',
+  },
+  talonNumber: {
+    fontWeight: 'bold',
+    color: '#5a7d2b',
+    fontSize: 18,
   },
   submitButton: {
     backgroundColor: '#5a7d2b',
