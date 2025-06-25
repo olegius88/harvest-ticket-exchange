@@ -238,6 +238,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       Alert.alert('Ошибка', 'Не удалось загрузить данные талона');
     }
   }
+
   handleVoditelConfirmAfterConnect = (data: IPayloadConfirmKombainerTicket): any => {
     console.log(
       'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmAfterConnect|data=',
@@ -488,6 +489,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       ]
     );
   }; // Дополнительная обработка для контроля ввода
+
   handleWeightChangeWithValidation = (text: string) => {
     // Проверяем дополнительные ограничения
     if (!this.validateWeightInput(text)) {
@@ -748,10 +750,14 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                   />
                   {weightError ? <Text style={styles.errorHint}>{weightError}</Text> : null}
                 </View>
+              </View>
 
-                <View style={styles.formRow}>
-                  <Text style={styles.labelContainer}>Физический вес зерна:</Text>
-                  <Text style={styles.valueContainer}>-</Text>
+              <View style={styles.formRow}>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.labelText}>Физический вес зерна:</Text>
+                </View>
+                <View style={styles.valueContainer}>
+                  <Text style={styles.valueText}>-</Text>
                 </View>
               </View>
 
