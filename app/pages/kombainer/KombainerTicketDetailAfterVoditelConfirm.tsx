@@ -748,6 +748,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                   />
                   {weightError ? <Text style={styles.errorHint}>{weightError}</Text> : null}
                 </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.labelContainer}>Физический вес зерна:</Text>
+                  <Text style={styles.valueContainer}>-</Text>
+                </View>
               </View>
 
               {/* Данные водителя */}

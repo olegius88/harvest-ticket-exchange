@@ -559,6 +559,11 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             <Text style={styles.value}>{weight || 'Будет указан комбайнером'}</Text>
           </View>
 
+          <View style={styles.formRow}>
+            <Text style={styles.label}>Физический вес зерна:</Text>
+            <Text style={styles.value}>-</Text>
+          </View>
+
           {[
             ['Транспорт', voditelData?.transport],
             ['Водитель', userData?.fio],

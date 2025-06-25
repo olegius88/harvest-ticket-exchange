@@ -239,6 +239,11 @@ const KombainerTicketDetail: React.FC = () => {
           </View>
 
           <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Физический вес зерна:</Text>
+            <Text style={styles.formValue}>-</Text>
+          </View>
+
+          <View style={styles.formRow}>
             <Text style={styles.formLabel}>Транспорт:</Text>
             <Text style={styles.formValue}>-</Text>
           </View>

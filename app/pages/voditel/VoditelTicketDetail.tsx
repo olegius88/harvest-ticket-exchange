@@ -225,6 +225,11 @@ const VoditelTicketDetail: React.FC = () => {
           <Text style={styles.formValue}>Будет указан комбайнером</Text>
         </View>
 
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Физический вес зерна:</Text>
+          <Text style={styles.formValue}>-</Text>
+        </View>
+
         {/* Данные водителя */}
         {[
           ['Транспорт', data?.voditelData?.transport],
