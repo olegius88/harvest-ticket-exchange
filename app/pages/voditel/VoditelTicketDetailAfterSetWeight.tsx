@@ -27,7 +27,7 @@ import {
   IPayloadSetTalonOfKombainer,
 } from '../../../global';
 import KeepAwake from 'react-native-keep-awake';
-import { ICreateTalonsParams } from '../../db/talons_of_combainers';
+import { ICreateTalonsParams, createTalon } from '../../db/talons_of_combainers';
 
 interface VoditelTicketDetailAfterSetWeightProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -238,6 +238,11 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       case 'voditel': {
         try {
           const { talonId } = this.props.route.params || {};
+          console.log(
+            'VoditelTicketDetailAfterSetWeight|getKombainerData|talonId from params=',
+            talonId
+          );
+
           const data = await sendTcpRequest({
             type: 'get_kombainer_data',
             talonId,
@@ -290,6 +295,15 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|data loaded successfully');
+    console.log('VoditelTicketDetailAfterSetWeight|talonData set to state:', {
+      id: talonData?.id,
+      talonNumber: talonData?.talonNumber,
+      voditelId: talonData?.voditelId,
+    });
+    console.log(
+      'VoditelTicketDetailAfterSetWeight|route params talonId:',
+      this.props.route.params?.talonId
+    );
   };
 
   /**
@@ -339,7 +353,6 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    * Обработчик клика на кнопку подтверждения талона с весом
    */
   handleSignTicketClick = async () => {
-    // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
       'Подтверждение',
       'Своим действием Вы подтверждаете правильность созданного талона и записываете его в базу данных.',
@@ -352,32 +365,41 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           text: 'Принять',
           style: 'default',
           onPress: async () => {
-            // Устанавливаем состояние загрузки
             this.setState({ signTicketLoading: true });
-
             try {
-              // Отправляем TCP-запрос для подписания талона водителем
+              console.log('VoditelTicketDetailAfterSetWeight|signTicket|START');
+              const { talonData, voditelData } = this.state;
+              if (!talonData) {
+                throw new Error('Нет данных талона для создания записи');
+              }
+              // Создаём запись талона комбайнера на основе talonData
+              const talonId = await createTalon({
+                kombainerId: talonData.kombainerId,
+                voditelId: voditelData.id,
+                status: 'assigned',
+                startTime: talonData.startTime,
+                endTime: talonData.endTime,
+                weight: talonData.weight,
+                comment: talonData.comment,
+              });
+              console.log('VoditelTicketDetailAfterSetWeight|createTalon|talonId=', talonId);
+              // Далее стандартная логика
               const data = await sendTcpRequest({
                 type: 'voditel_sign_ticket',
               });
               console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
-
-              // Успешное выполнение - блокируем кнопку и устанавливаем состояние ожидания
               this.setState({
                 waitingForKombainerSign: true,
                 signTicketLoading: false,
-                signTicketDisabled: true, // Блокируем кнопку после успешного выполнения
+                signTicketDisabled: true,
               });
-
-              // Если событие уже получено, сразу переходим
               if (this.state.kombainerSignReceived) {
                 this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
               }
             } catch (error: any) {
               console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
-              // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
               this.setState({ signTicketLoading: false });
-              Alert.alert('Ошибка подписания талона', error.message || JSON.stringify(error));
+              Alert.alert('Ошибка создания талона', error.message || JSON.stringify(error));
             }
           },
         },
