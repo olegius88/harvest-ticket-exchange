@@ -243,11 +243,11 @@ const VoditelTalonsExport: React.FC = () => {
         {/* Статистика */}
         <View style={styles.statsContainer}>
           <Text style={styles.statsText}>Найдено талонов: {talons.length}</Text>
-          {talons.length > 0 && (
+          {/* {talons.length > 0 && (
             <TouchableOpacity style={styles.exportButton} onPress={exportToCSV}>
               <Text style={styles.exportButtonText}>Экспортировать CSV</Text>
             </TouchableOpacity>
-          )}
+          )} */}
         </View>
 
         {/* Список талонов */}
