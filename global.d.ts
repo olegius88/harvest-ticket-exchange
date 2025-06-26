@@ -936,6 +936,7 @@ export type RootStackParamList = {
   VoditelWaitKombainerDataScreen: undefined;
   VoditelTicketDetailAfterSetWeightScreen: { talonId?: string };
   VoditelTicketCreatedSuccessScreen: undefined;
+  VoditelTalonsExportScreen: undefined;
   CodeScannerPageScreen: undefined;
 };
 

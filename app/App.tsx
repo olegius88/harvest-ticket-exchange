@@ -24,6 +24,7 @@ import VoditelTicketCreatedSuccess from './pages/voditel/VoditelTicketCreatedSuc
 import KombainerTicketDetailAfterVoditelConfirm from './pages/kombainer/KombainerTicketDetailAfterVoditelConfirm';
 import KombainerTicketCreatedSuccess from './pages/kombainer/KombainerTicketCreatedSuccess';
 import KombainerTalonsExport from './pages/kombainer/KombainerTalonsExport';
+import VoditelTalonsExport from './pages/voditel/VoditelTalonsExport';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -92,6 +93,7 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="CodeScannerPageScreen" component={VoditelQrCodeScanner} />
           <Stack.Screen name="VoditelRegistrationScreen" component={VoditelRegistration} />
           <Stack.Screen name="VoditelCreateTripScreen" component={VoditelCreateTrip} />
+          <Stack.Screen name="VoditelTalonsExportScreen" component={VoditelTalonsExport} />
           <Stack.Screen name="VoditelTicketDetailScreen" component={VoditelTicketDetail} />
           <Stack.Screen
             name="VoditelWaitKombainerDataScreen"
