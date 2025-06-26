@@ -6,6 +6,9 @@ import { database } from './database';
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
 import { ICreateTalonParams, IEditTalonParams, TalonStatus } from '../../global';
+import { Users } from './users';
+import { Kombainers } from './kombainers';
+import { Voditeli } from './viditels';
 
 /**
  * Интерфейс для полей в таблице talons_of_combainers
@@ -17,6 +20,28 @@ export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   created_at: number;
   updated_at: number;
 }
+
+/**
+ * Интерфейс для данных выгрузки талонов
+ */
+export interface ITalonExportData {
+  serialNumber: number;
+  talonNumber: string;
+  unloadWeight: number | null; // выгрузка - данные вбитые в поле вес
+  nominalWeight: number | null; // номинальный вес с весовой (пока то же что и выгрузка)
+  createdTime: number;
+  fio: string; // ФИО комбайнера для водителя или водителя для комбайнера
+  talonId: string;
+  status: string;
+}
+
+export const validStatuses: TalonStatus[] = [
+  'created',
+  'assigned',
+  'in_progress',
+  'completed',
+  'cancelled',
+];
 
 /**
  * Класс TalonsOfCombainers и описание схемы WatermelonDB
@@ -68,13 +93,6 @@ export class TalonsOfCombainers extends Model {
       throw new Error(`Validation Error: Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    const validStatuses: TalonStatus[] = [
-      'created',
-      'driver_assigned',
-      'in_progress',
-      'completed',
-      'cancelled',
-    ];
     if (!validStatuses.includes(fields.status as TalonStatus)) {
       throw new Error(
         `Validation Error: Invalid value for status. Allowed values are: ${validStatuses.join(', ')}`
@@ -402,16 +420,90 @@ export async function assignDriverToTalon(talonId: string, voditelId: string): P
 }
 
 /**
+ * Обновить voditelId у талона (без изменения статуса).
+ */
+export async function updateTalonVoditelId(talonId: string, voditelId: string): Promise<string> {
+  console.log('updateTalonVoditelId|talonId=', talonId, 'voditelId=', voditelId);
+
+  // Сначала проверим, существует ли запись
+  try {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+
+    // Попробуем найти запись без write операции для диагностики
+    const allTalons = await database.read(async () => {
+      return await collection.query().fetch();
+    });
+
+    console.log('updateTalonVoditelId|total talons count=', allTalons.length);
+
+    const existingRecord = allTalons.find((t) => t.id === talonId);
+    if (!existingRecord) {
+      console.log('updateTalonVoditelId|record not found in all talons');
+      console.log(
+        'updateTalonVoditelId|available talons:',
+        allTalons.map((t) => ({ id: t.id, talonNumber: t.talonNumber }))
+      );
+      throw new Error(`Талон с ID ${talonId} не найден в базе данных`);
+    }
+
+    console.log('updateTalonVoditelId|found record:', {
+      id: existingRecord.id,
+      talonNumber: existingRecord.talonNumber,
+      currentVoditelId: existingRecord.voditelId,
+      status: existingRecord.status,
+    });
+
+    return database.write(async () => {
+      const record = await collection.find(talonId);
+
+      if (!record) {
+        throw new Error(`Талон с ID ${talonId} не найден при попытке обновления`);
+      }
+
+      const now = Date.now();
+      await record.update((r) => {
+        console.log(
+          'updateTalonVoditelId|updating record, old voditelId=',
+          r.voditelId,
+          'new voditelId=',
+          voditelId.trim()
+        );
+        r.voditelId = voditelId.trim();
+        r.updated_at = now;
+      });
+
+      console.log('updateTalonVoditelId|successfully updated record');
+      return record.id;
+    });
+  } catch (error) {
+    console.error('updateTalonVoditelId|error=', error);
+    throw error;
+  }
+}
+
+/**
+ * Попытаться обновить voditelId у талона (мягкая ошибка если талон не найден).
+ */
+export async function tryUpdateTalonVoditelId(
+  talonId: string,
+  voditelId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log('tryUpdateTalonVoditelId|talonId=', talonId, 'voditelId=', voditelId);
+
+  try {
+    await updateTalonVoditelId(talonId, voditelId);
+    return { success: true };
+  } catch (error) {
+    console.error('tryUpdateTalonVoditelId|error=', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
  * Обновить статус талона.
  */
 export async function updateTalonStatus(talonId: string, status: TalonStatus): Promise<string> {
-  const validStatuses: TalonStatus[] = [
-    'created',
-    'driver_assigned',
-    'in_progress',
-    'completed',
-    'cancelled',
-  ];
   if (!validStatuses.includes(status)) {
     throw new Error(
       `Validation Error: Invalid value for status. Allowed values are: ${validStatuses.join(', ')}`
@@ -462,5 +554,210 @@ export async function updateTalonWeight(talonId: string, weight: number): Promis
       r.updated_at = now;
     });
     return record.id;
+  });
+}
+
+/**
+ * Получить талоны комбайнера с фильтром по дате для выгрузки
+ */
+export async function getTalonsForKombainerExport(
+  kombainerId: string,
+  startDate: number,
+  endDate: number
+): Promise<ITalonExportData[]> {
+  return database.read(async () => {
+    const talonCollection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const userCollection = database.collections.get<Users>('users');
+    const voditelCollection = database.collections.get<Voditeli>('voditeli');
+
+    // Получаем талоны комбайнера за указанный период
+    const talons = await talonCollection
+      .query(
+        Q.and(
+          Q.where('kombainerId', kombainerId),
+          Q.where('created_at', Q.gte(startDate)),
+          Q.where('created_at', Q.lte(endDate))
+        ),
+        Q.sortBy('created_at', Q.asc)
+      )
+      .fetch();
+
+    const exportData: ITalonExportData[] = [];
+
+    for (let i = 0; i < talons.length; i++) {
+      const talon = talons[i];
+      let voditelFio = 'Не назначен';
+
+      // Если у талона есть водитель, получаем его ФИО
+      if (talon.voditelId) {
+        try {
+          const voditel = await voditelCollection.find(talon.voditelId);
+          if (voditel) {
+            const user = await userCollection.find(voditel.userId);
+            if (user) {
+              voditelFio = user.fio;
+            }
+          }
+        } catch (error) {
+          console.log('Водитель не найден для талона:', talon.id);
+        }
+      }
+
+      exportData.push({
+        serialNumber: i + 1,
+        talonNumber: talon.talonNumber,
+        unloadWeight: talon.weight,
+        nominalWeight: talon.weight, // пока используем то же значение
+        createdTime: talon.created_at,
+        fio: voditelFio,
+        talonId: talon.id,
+        status: talon.status,
+      });
+    }
+
+    return exportData;
+  });
+}
+
+/**
+ * Получить талоны водителя с фильтром по дате для выгрузки
+ */
+export async function getTalonsForVoditelExport(
+  voditelId: string,
+  startDate: number,
+  endDate: number
+): Promise<ITalonExportData[]> {
+  return database.read(async () => {
+    console.log(
+      'getTalonsForVoditelExport|voditelId=',
+      voditelId,
+      'startDate=',
+      startDate,
+      'endDate=',
+      endDate
+    );
+    const talonCollection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const userCollection = database.collections.get<Users>('users');
+    const kombainerCollection = database.collections.get<Kombainers>('kombainers');
+
+    // Получаем талоны водителя за указанный период
+    const talons = await talonCollection
+      .query(
+        Q.and(
+          Q.where('voditelId', voditelId),
+          Q.where('created_at', Q.gte(startDate)),
+          Q.where('created_at', Q.lte(endDate))
+        ),
+        Q.sortBy('created_at', Q.asc)
+      )
+      .fetch();
+
+    const exportData: ITalonExportData[] = [];
+
+    for (let i = 0; i < talons.length; i++) {
+      const talon = talons[i];
+      let kombainerFio = 'Не найден';
+
+      // Получаем ФИО комбайнера
+      try {
+        const kombainer = await kombainerCollection.find(talon.kombainerId);
+        if (kombainer) {
+          const user = await userCollection.find(kombainer.userId);
+          if (user) {
+            kombainerFio = user.fio;
+          }
+        }
+      } catch (error) {
+        console.log('Комбайнер не найден для талона:', talon.id);
+      }
+
+      exportData.push({
+        serialNumber: i + 1,
+        talonNumber: talon.talonNumber,
+        unloadWeight: talon.weight,
+        nominalWeight: talon.weight, // пока используем то же значение
+        createdTime: talon.created_at,
+        fio: kombainerFio,
+        talonId: talon.id,
+        status: talon.status,
+      });
+    }
+
+    return exportData;
+  });
+}
+
+/**
+ * Проверить существование талона по ID.
+ */
+export async function checkTalonExists(talonId: string): Promise<boolean> {
+  try {
+    return database.read(async () => {
+      const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+      const record = await collection.find(talonId);
+      return !!record;
+    });
+  } catch (error) {
+    console.error('checkTalonExists|error=', error);
+    return false;
+  }
+}
+
+/**
+ * Получить информацию о талоне для отладки.
+ */
+export async function getTalonDebugInfo(talonId: string): Promise<any> {
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+
+    try {
+      const record = await collection.find(talonId);
+      return {
+        found: true,
+        id: record.id,
+        talonNumber: record.talonNumber,
+        voditelId: record.voditelId,
+        status: record.status,
+        created_at: record.created_at,
+      };
+    } catch (error) {
+      // Если не найдено, проверим все талоны
+      const allTalons = await collection.query().fetch();
+      return {
+        found: false,
+        error: error instanceof Error ? error.message : String(error),
+        totalTalonsCount: allTalons.length,
+        allTalonIds: allTalons.map((t) => t.id).slice(0, 10), // первые 10 ID для отладки
+      };
+    }
+  });
+}
+
+/**
+ * Получить список всех талонов для диагностики.
+ */
+export async function getAllTalonsForDebug(): Promise<
+  { id: string; kombainerId?: string; voditelId?: string; created_at: number }[]
+> {
+  console.log('getAllTalonsForDebug|getting all talons...');
+
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const allTalons = await collection.query().fetch();
+
+    const talonsInfo = allTalons.map((talon) => ({
+      id: talon.id,
+      kombainerId: talon.kombainerId,
+      voditelId: talon.voditelId,
+      created_at: talon.created_at,
+    }));
+
+    console.log(
+      'getAllTalonsForDebug|found',
+      talonsInfo.length,
+      'talons:',
+      JSON.stringify(talonsInfo, null, 2)
+    );
+    return talonsInfo;
   });
 }
