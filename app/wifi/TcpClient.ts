@@ -58,8 +58,24 @@ export const connectToTcpServer = ({
     // Глобальный обработчик входящих сообщений от сервера,
     // если сообщение не получено как ответ на sendTcpRequest.
     client.on('data', async (data: string | Buffer) => {
-      const dataString = typeof data === 'string' ? data : data.toString();
+      let dataString = typeof data === 'string' ? data : data.toString();
       console.log('TCP клиент|Получены данные:', dataString);
+
+      // Разбиваем строку по границе объектов '}{' и берём только последнюю часть
+      const parts = dataString.split(/}\s*\{/g);
+      if (parts.length > 1) {
+        dataString = '{' + parts[parts.length - 1].replace(/^\{/, '').replace(/}$/, '') + '}';
+      }
+
+      /*
+      // Разбиваем строку по границе объектов: '}{' или '}\n{'
+      // Оставляем только последнюю часть
+      const parts = dataString.split(/}\s*\{/g);
+      if (parts.length > 1) {
+        // Восстанавливаем последнюю часть как валидный JSON
+        dataString = '{' + parts[parts.length - 1].replace(/^\{/, '').replace(/}$/, '') + '}';
+      }
+      */
 
       let message: IMessageWithId;
       try {
