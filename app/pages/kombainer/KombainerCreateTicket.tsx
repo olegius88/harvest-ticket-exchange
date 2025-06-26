@@ -15,6 +15,10 @@ const KombainerCreateTicket: React.FC = () => {
     navigation.navigate('KombainerRegistrationScreen');
   };
 
+  const handleTalonsRegistry = () => {
+    navigation.navigate('KombainerTalonsExportScreen');
+  };
+
   const handleGoBack = () => {
     navigation.navigate('MainScreen');
   };
@@ -32,6 +36,10 @@ const KombainerCreateTicket: React.FC = () => {
 
         <TouchableOpacity style={styles.linkButton} onPress={handleEditRegistration}>
           <Text style={styles.linkText}>Изменить регистрационные данные</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.linkButton} onPress={handleTalonsRegistry}>
+          <Text style={styles.linkText}>Реестр талонов</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.linkButton, styles.backButton]} onPress={handleGoBack}>

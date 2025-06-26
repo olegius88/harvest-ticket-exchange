@@ -929,6 +929,7 @@ export type RootStackParamList = {
     data: IVoditelConnectedPayload;
     talonId: string;
   };
+  KombainerTalonsExportScreen: undefined;
   VoditelRegistrationScreen: undefined;
   VoditelCreateTripScreen: undefined;
   VoditelTicketDetailScreen: undefined;
