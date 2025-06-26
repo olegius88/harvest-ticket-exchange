@@ -21,9 +21,19 @@ const ScanningOverlay = () => {
         toValue: SCANNING_AREA_SIZE,
         duration: ANIMATION_DURATION,
         useNativeDriver: true,
-      }).start(() => animateLine());
+      }).start((finished) => {
+        // Продолжаем анимацию только если она завершилась успешно
+        if (finished) {
+          animateLine();
+        }
+      });
     };
     animateLine();
+    // Очистка анимации при размонтировании
+    return () => {
+      scanLineAnim.stopAnimation();
+      scanLineAnim.setValue(0);
+    };
   }, [scanLineAnim]);
 
   return (

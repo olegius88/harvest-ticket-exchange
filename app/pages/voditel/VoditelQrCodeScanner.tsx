@@ -81,6 +81,10 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
   const wifiCredentialsRef = useRef<{ ssid: string; password: string; port?: number } | null>(null);
 
+  // Рефы для очистки таймеров
+  const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Очистка соединений при монтировании
   useEffect(() => {
     let acceptVoditelConnectListener: any = null;
@@ -108,9 +112,18 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
 
     return () => {
       setProcessing(false);
+      // Очищаем слушатель acceptVoditelConnect при размонтировании
       if (acceptVoditelConnectListener?.remove) {
         acceptVoditelConnectListener.remove();
-        acceptVoditelConnectListener = null;
+      }
+      // Очищаем таймеры при размонтировании
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+      if (cancelTimeoutRef.current) {
+        clearTimeout(cancelTimeoutRef.current);
+        cancelTimeoutRef.current = null;
       }
     };
   }, []);
@@ -126,7 +139,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         wifiCredentialsRef.current = credentials;
         isProcessing.current = true;
         setShowHotspotInstruction(true);
-        setTimeout(() => handleConnectToHotspot(), 500);
+        connectTimeoutRef.current = setTimeout(() => handleConnectToHotspot(), 500);
       } else {
         Alert.alert('Ошибка считывания QR-кода');
       }
@@ -226,7 +239,7 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
               setShowHotspotInstruction(false);
               setProcessing(false);
               isProcessing.current = false;
-              setTimeout(() => setCancelInProgress(false), 600);
+              cancelTimeoutRef.current = setTimeout(() => setCancelInProgress(false), 600);
             }}
             disabled={cancelInProgress}
           >

@@ -4,6 +4,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
 import { closeKombainerConnections } from '../../services/ConnectionManager';
+import { useResourceCleanup } from '../../hooks/useResourceCleanup';
 
 /**
  * Компонент отображения успешного создания талона комбайнера для мобильного приложения
@@ -26,9 +27,7 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
     // Блокируем кнопку "Назад"
     const handleBackPress = () => {
       console.log('KombainerTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
-
       ToastAndroid.show('Для продолжения нажмите кнопку "Ок" на экране', ToastAndroid.SHORT);
-
       return true;
     };
 

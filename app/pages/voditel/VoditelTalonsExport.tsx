@@ -263,7 +263,9 @@ const VoditelTalonsExport: React.FC = () => {
                 <Text style={styles.emptyText}>Талоны за выбранный период не найдены</Text>
               </View>
             ) : (
-              talons.map((item) => renderTalonItem({ item }))
+              talons.map((item) => (
+                <React.Fragment key={item.serialNumber}>{renderTalonItem({ item })}</React.Fragment>
+              ))
             )}
           </View>
         )}

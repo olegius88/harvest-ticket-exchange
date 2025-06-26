@@ -80,9 +80,14 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   kombainerSignTicketListener: any = null;
   // Слушатель для блокировки кнопки "Назад"
   backHandlerListener: any = null;
+  // Контроллер для периодического опроса данных
+  waitingKombainerDataWithWeightConfirmCtrl: NodeJS.Timeout | number | null = null;
+  // Флаг размонтирования компонента
+  _isUnmounted = false;
 
   constructor(props: VoditelTicketDetailAfterSetWeightProps) {
     super(props);
+    this._isUnmounted = false;
     this.state = {
       isKombainerData: true,
       loadingKombainerData: false,
@@ -146,11 +151,28 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   }
 
   componentWillUnmount() {
+    this._isUnmounted = true;
+
+    // Останавливаем периодический опрос
+    if (this.waitingKombainerDataWithWeightConfirmCtrl !== null) {
+      clearTimeout(this.waitingKombainerDataWithWeightConfirmCtrl);
+      this.waitingKombainerDataWithWeightConfirmCtrl = null;
+    }
+
     this.removeAllListeners();
 
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
   }
+
+  /**
+   * Безопасный setState - проверяет, не размонтирован ли компонент
+   */
+  safeSetState = (stateUpdate: any) => {
+    if (!this._isUnmounted) {
+      this.setState(stateUpdate);
+    }
+  };
 
   /**
    * Метод для безопасного удаления всех слушателей
@@ -311,7 +333,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    */
   confirmKombainerTicketWithWeight = async () => {
     // Устанавливаем состояние загрузки
-    this.setState({ approveTicketLoading: true });
+    this.safeSetState({ approveTicketLoading: true });
 
     let sendRes: any;
     try {
@@ -329,20 +351,20 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         error
       );
       // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
-      this.setState({ approveTicketLoading: false });
+      this.safeSetState({ approveTicketLoading: false });
       Alert.alert('Ошибка отправки данных талона', error.message || JSON.stringify(error));
       return;
     }
 
     if (sendRes.status !== 'ok') {
       // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
-      this.setState({ approveTicketLoading: false });
+      this.safeSetState({ approveTicketLoading: false });
       Alert.alert('Ошибка подтверждения талона', JSON.stringify(sendRes));
       return;
     }
 
     // После успешного подтверждения показываем кнопку "Подписать талон" и блокируем текущую
-    this.setState({
+    this.safeSetState({
       canSignTicket: true,
       approveTicketLoading: false,
       approveTicketDisabled: true, // Блокируем кнопку после успешного выполнения
@@ -381,6 +403,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
                 endTime: talonData.endTime,
                 weight: talonData.weight,
                 comment: talonData.comment,
+                talonNumber: talonData.talonNumber,
               });
               console.log('VoditelTicketDetailAfterSetWeight|createTalon|talonId=', talonId);
               // Далее стандартная логика

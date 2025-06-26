@@ -112,13 +112,14 @@ export async function createTalon({
   endTime,
   weight,
   comment,
+  talonNumber: initialTalonNumber, // Новый параметр для передачи номера талона
 }: ICreateTalonParams): Promise<string> {
   // Валидация входных данных
   TalonsOfCombainers.validateFields({ kombainerId, status, startTime });
   return database.write(async () => {
     const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
 
-    // Генерация номера талона
+    // Если номер талона передан, используем его, иначе генерируем новый
     // Получаем все не отмененные талоны данного комбайнера
     const existingTalons = await collection
       .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))))
@@ -136,16 +137,14 @@ export async function createTalon({
       return aNum - bNum;
     });
 
-    let talonNumber: string;
-
-    // Если есть отмененные талоны, используем номер первого отмененного
-    if (sortedCancelledTalons.length > 0) {
-      // Берем номер из первого отмененного талона, убирая префикс 'A'
-      talonNumber = sortedCancelledTalons[0].talonNumber.replace('A', '');
+    let newTalonNumber: string;
+    if (initialTalonNumber) {
+      newTalonNumber = initialTalonNumber.trim();
+    } else if (sortedCancelledTalons.length > 0) {
+      newTalonNumber = sortedCancelledTalons[0].talonNumber.replace('A', '');
     } else {
-      // Иначе создаем новый порядковый номер
       const sequentialNumber = existingTalons.length + 1;
-      talonNumber = `${sequentialNumber}`;
+      newTalonNumber = `${sequentialNumber}`;
     }
 
     const now = Date.now();
@@ -158,7 +157,7 @@ export async function createTalon({
       record.endTime = endTime || undefined;
       record.weight = weight || undefined;
       record.comment = comment ? comment.trim() : undefined;
-      record.talonNumber = talonNumber;
+      record.talonNumber = newTalonNumber; // Используем новый или существующий номер талона
       record.cancellationReason = undefined;
       record.created_at = now;
       record.updated_at = now;

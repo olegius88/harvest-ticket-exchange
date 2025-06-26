@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { RootStackParamList, OpenCodeScannerResponse } from '../../../global';
 import { VectorLogo } from '../../components/VectorLogo';
+import { useResourceCleanup } from '../../hooks/useResourceCleanup';
 
 const VoditelCreateTrip: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [isLoading, setIsLoading] = useState(false);
+  const { safeSetTimeout, isMounted } = useResourceCleanup();
+
+  // Очистка таймера при размонтировании компонента (теперь автоматически)
+  // useEffect(() => {
+  //   return () => {
+  //     // Очистка обрабатывается автоматически хуком useResourceCleanup
+  //   };
+  // }, []);
 
   const handleCreateTrip = async () => {
+    if (!isMounted()) return;
+
     setIsLoading(true);
     try {
       const response = await handleMessage({
@@ -19,6 +30,8 @@ const VoditelCreateTrip: React.FC = () => {
         reqId: 'openCodeScannerPage_' + Date.now(),
       });
 
+      if (!isMounted()) return;
+
       if (response.type === 'openCodeScannerPage' && response.status === 'scannerOpened') {
         // Переходим на страницу сканера QR-кода
         navigation.navigate('CodeScannerPageScreen');
@@ -27,6 +40,8 @@ const VoditelCreateTrip: React.FC = () => {
       }
     } catch (error: unknown) {
       console.error('Ошибка открытия сканера:', error);
+      if (!isMounted()) return;
+
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -34,7 +49,7 @@ const VoditelCreateTrip: React.FC = () => {
       Alert.alert('Ошибка', errorMessage);
     } finally {
       // Задержка для отображения состояния загрузки
-      setTimeout(() => {
+      safeSetTimeout(() => {
         setIsLoading(false);
       }, 2000);
     }

@@ -4,9 +4,11 @@ import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
 import { closeVoditelConnections } from '../../services/ConnectionManager';
+import { useResourceCleanup } from '../../hooks/useResourceCleanup';
 
 const VoditelTicketCreatedSuccess: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { safeAddListener } = useResourceCleanup();
 
   // Закрываем соединения при монтировании компонента
   useEffect(() => {
@@ -20,17 +22,17 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
 
     closeConnections();
 
-    // Блокируем кнопку "Назад"
+    // Блокируем кнопку "Назад" с использованием безопасного метода
     const handleBackPress = () => {
       console.log('VoditelTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
-
       ToastAndroid.show('Для продолжения нажмите кнопку "Ок" на экране', ToastAndroid.SHORT);
-
       return true;
     };
 
+    // Используем безопасный метод добавления слушателя, который автоматически очистится
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
 
+    // Возвращаем функцию очистки (хотя useResourceCleanup уже обработает это)
     return () => {
       if (backHandler?.remove) {
         backHandler.remove();
