@@ -47,6 +47,7 @@ import {
 } from '../../../global';
 import { createUser, getUserById } from '../../db/users';
 import { createVoditel, getVoditelByUserId } from '../../db/viditels';
+import { getTalonById, editTalon } from '../../db/talons_of_combainers';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
 import KeepAwake from 'react-native-keep-awake';
@@ -320,7 +321,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
   // Обработчик события подключения водителя
   handleVoditelConnected = async (data: IVoditelConnectedPayload) => {
-    console.log('Водитель подключился:', data);
+    console.log('handleVoditelConnected|Водитель подключился:', data);
 
     const { voditelData, voditelUserData } = data;
 
@@ -333,68 +334,105 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       this.waitingVoditelDataCtrl = null;
     }
 
-    // Отправляем водителю событие о принятии подключения с talonId
-    try {
-      await tcpServerSendRequest({
-        type: 'accept_voditel_connect',
-        talonId: this.state.talonId,
-      });
-      console.log('Отправлено событие accept_voditel_connect с talonId:', this.state.talonId);
-    } catch (error) {
-      console.error('Ошибка при отправке accept_voditel_connect:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      Alert.alert(
-        'Ошибка подключения',
-        `Не удалось отправить подтверждение подключения водителю: ${errorMessage}`
-      );
-      return; // Прекращаем выполнение при ошибке
-    }
-
     // Сохраняем данные, полученные с другого устройства (from_remote=true) с уведомлениями об ошибках
     // Пользователь
     try {
       await getUserById(voditelUserData.id);
-      console.log('Пользователь уже существует, пропускаем сохранение:', voditelUserData.id);
+      console.log(
+        'handleVoditelConnected|Пользователь уже существует, пропускаем сохранение:',
+        voditelUserData.id
+      );
     } catch (err) {
       // Если пользователь не найден, сохраняем
       try {
         await createUser({
+          id: voditelUserData.id,
           fio: voditelUserData.fio,
           phone: voditelUserData.phone,
           position: voditelUserData.position,
           password: voditelUserData.password,
           from_remote: true,
         });
-        console.log('Удаленный пользователь сохранен:', voditelUserData.id);
+        console.log('handleVoditelConnected|Удаленный пользователь сохранен:', voditelUserData.id);
       } catch (e: any) {
-        console.error('Ошибка сохранения пользователя:', e);
+        console.error('handleVoditelConnected|Ошибка сохранения пользователя:', e);
         Alert.alert('Ошибка сохранения', `Не удалось сохранить пользователя: ${e.message || e}`);
         return;
       }
     }
+
     // Водитель
     try {
       const existingVoditel = await getVoditelByUserId(voditelData.userId);
       if (existingVoditel) {
-        console.log('Водитель уже существует, пропускаем сохранение:', existingVoditel.id);
+        console.log(
+          'handleVoditelConnected|Водитель уже существует, пропускаем сохранение:',
+          existingVoditel.id
+        );
       } else {
         try {
           await createVoditel({
+            id: voditelData.id,
             userId: voditelData.userId,
             transport: voditelData.transport,
             from_remote: true,
           });
-          console.log('Удаленный водитель сохранен:', voditelData.userId);
+          console.log('handleVoditelConnected|Удаленный водитель сохранен:', voditelData.userId);
         } catch (e: any) {
-          console.error('Ошибка сохранения водителя:', e);
+          console.error('handleVoditelConnected|Ошибка сохранения водителя:', e);
           Alert.alert('Ошибка сохранения', `Не удалось сохранить водителя: ${e.message || e}`);
           return;
         }
       }
     } catch (err: any) {
-      console.error('Ошибка при проверке существования водителя:', err);
+      console.error('handleVoditelConnected|Ошибка при проверке существования водителя:', err);
       Alert.alert('Ошибка', `Не удалось проверить водителя: ${err.message || err}`);
       return;
+    }
+
+    // Обновление voditelId для талона
+    try {
+      const talon = await getTalonById(this.state.talonId);
+      await editTalon(this.state.talonId, {
+        talonId: this.state.talonId,
+        kombainerId: talon.kombainerId,
+        voditelId: voditelData.id,
+        voditelUserId: voditelUserData.id,
+        status: talon.status,
+        startTime: talon.startTime,
+        endTime: talon.endTime,
+        weight: talon.weight,
+        comment: talon.comment,
+      });
+      console.log('handleVoditelConnected|Обновлен voditelId у талона:', this.state.talonId);
+      {
+        const talon = await getTalonById(this.state.talonId);
+        console.log('Обновленный талон:', talon);
+      }
+    } catch (error) {
+      console.error('handleVoditelConnected|Ошибка при обновлении voditelId у талона:', error);
+      Alert.alert('Ошибка', `Не удалось обновить voditelId у талона: ${error.message || error}`);
+      return;
+    }
+
+    // Отправляем водителю событие о принятии подключения с talonId
+    try {
+      await tcpServerSendRequest({
+        type: 'accept_voditel_connect',
+        talonId: this.state.talonId,
+      });
+      console.log(
+        'handleVoditelConnected|Отправлено событие accept_voditel_connect с talonId:',
+        this.state.talonId
+      );
+    } catch (error) {
+      console.error('handleVoditelConnected|Ошибка при отправке accept_voditel_connect:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert(
+        'Ошибка подключения',
+        `Не удалось отправить подтверждение подключения водителю: ${errorMessage}`
+      );
+      return; // Прекращаем выполнение при ошибке
     }
 
     // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя
