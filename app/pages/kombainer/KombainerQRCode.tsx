@@ -45,6 +45,8 @@ import {
   SetHotspotEnabledResponse,
   IVoditelConnectedPayload,
 } from '../../../global';
+import { createUser, getUserById } from '../../db/users';
+import { createVoditel, getVoditelByUserId } from '../../db/viditels';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
 import KeepAwake from 'react-native-keep-awake';
@@ -320,6 +322,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
   handleVoditelConnected = async (data: IVoditelConnectedPayload) => {
     console.log('Водитель подключился:', data);
 
+    const { voditelData, voditelUserData } = data;
+
     // Устанавливаем флаг подключения водителя
     this.setState({ voditelConnected: true });
 
@@ -344,6 +348,53 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         `Не удалось отправить подтверждение подключения водителю: ${errorMessage}`
       );
       return; // Прекращаем выполнение при ошибке
+    }
+
+    // Сохраняем данные, полученные с другого устройства (from_remote=true) с уведомлениями об ошибках
+    // Пользователь
+    try {
+      await getUserById(voditelUserData.id);
+      console.log('Пользователь уже существует, пропускаем сохранение:', voditelUserData.id);
+    } catch (err) {
+      // Если пользователь не найден, сохраняем
+      try {
+        await createUser({
+          fio: voditelUserData.fio,
+          phone: voditelUserData.phone,
+          position: voditelUserData.position,
+          password: voditelUserData.password,
+          from_remote: true,
+        });
+        console.log('Удаленный пользователь сохранен:', voditelUserData.id);
+      } catch (e: any) {
+        console.error('Ошибка сохранения пользователя:', e);
+        Alert.alert('Ошибка сохранения', `Не удалось сохранить пользователя: ${e.message || e}`);
+        return;
+      }
+    }
+    // Водитель
+    try {
+      const existingVoditel = await getVoditelByUserId(voditelData.userId);
+      if (existingVoditel) {
+        console.log('Водитель уже существует, пропускаем сохранение:', existingVoditel.id);
+      } else {
+        try {
+          await createVoditel({
+            userId: voditelData.userId,
+            transport: voditelData.transport,
+            from_remote: true,
+          });
+          console.log('Удаленный водитель сохранен:', voditelData.userId);
+        } catch (e: any) {
+          console.error('Ошибка сохранения водителя:', e);
+          Alert.alert('Ошибка сохранения', `Не удалось сохранить водителя: ${e.message || e}`);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.error('Ошибка при проверке существования водителя:', err);
+      Alert.alert('Ошибка', `Не удалось проверить водителя: ${err.message || err}`);
+      return;
     }
 
     // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя
