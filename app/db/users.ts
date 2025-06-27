@@ -14,7 +14,6 @@ export interface ICreateUsersParams extends Model, ICreateUserParams {
   readonly id: string;
   created_at: number;
   updated_at: number;
-  from_remote: boolean;
 }
 
 export class Users extends Model {
@@ -71,7 +70,8 @@ export async function createUser({
   phone,
   position,
   password,
-}: ICreateUsersParams): Promise<string> {
+  from_remote = false,
+}: ICreateUserParams): Promise<string> {
   // Валидация входных данных
   Users.validateFields({ fio, phone, position, password });
   return database.write(async () => {
@@ -83,7 +83,7 @@ export async function createUser({
       user.phone = phone.trim();
       user.position = position;
       user.password = password.trim();
-      user.from_remote = false;
+      user.from_remote = from_remote;
       // Устанавливаем временные метки
       user.created_at = now;
       user.updated_at = now;

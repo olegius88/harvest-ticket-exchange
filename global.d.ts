@@ -602,6 +602,7 @@ export interface ICreateUserParams {
   phone: string;
   position: string;
   password: string;
+  from_remote: boolean;
 }
 
 /**
