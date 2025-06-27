@@ -12,6 +12,7 @@ import {
   Linking,
   DeviceEventEmitter,
   NativeModules,
+  Platform,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import {
@@ -448,11 +449,15 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     try {
+      // Формируем массив разрешений с учетом версии Android
       const permissions = [
-        PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
       ];
+      // Проверяем версию Android для NEARBY_WIFI_DEVICES
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        permissions.push(PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES);
+      }
       const granted = await PermissionsAndroid.requestMultiple(permissions);
       console.log('initGenerateQr|requestMultiple|granted=', granted);
 
