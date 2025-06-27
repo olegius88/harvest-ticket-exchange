@@ -1,6 +1,5 @@
 // Файл: app/wifi/hotspot.ts
 
-import HotspotManager, { Network } from '@react-native-tethering/hotspot';
 import {
   isHotspotEnabled as checkHotspotStatus,
   setHotspotDisabled as disableHotspot,
@@ -19,10 +18,6 @@ export const isHotspotEnabled = async () => {
     console.error('isHotspotEnabled|error=', error);
     return false;
   }
-};
-
-export const setHotspotEnabled = async (): Promise<Network> => {
-  return HotspotManager.setLocalHotspotEnabled(true);
 };
 
 export const setHotspotDisabled = async (): Promise<void> => {
