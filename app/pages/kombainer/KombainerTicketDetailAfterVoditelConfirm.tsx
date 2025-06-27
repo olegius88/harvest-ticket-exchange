@@ -19,7 +19,11 @@ import { handleMessage } from '../../services/MessageHandler';
 import { tcpServerSendRequest } from '../../wifi/TcpServer';
 import { closeKombainerConnections } from '../../services/ConnectionManager';
 import { VectorLogo } from '../../components/VectorLogo';
-import { ICreateTalonsParams, getTalonById } from '../../db/talons_of_combainers';
+import {
+  ICreateTalonsParams,
+  getTalonById,
+  updateTalonWeight,
+} from '../../db/talons_of_combainers';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
 import {
@@ -308,11 +312,15 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   onSubmitForm = async () => {
     if (!this.validateWeight()) return;
 
-    const { data, weightValue } = this.state;
+    const { data, weightValue, talonId } = this.state;
 
     // Проверка наличия необходимых данных
     if (!data || !data.kombainerData || !data.userData) {
       Alert.alert('Ошибка', 'Отсутствуют необходимые данные комбайнера для отправки');
+      return;
+    }
+    if (!talonId) {
+      Alert.alert('Ошибка', 'Не найден ID талона для обновления веса');
       return;
     }
 
@@ -322,13 +330,18 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     console.log('onSubmitForm|this.state.talonData=', this.state.talonData);
 
     try {
+      const talonData = await getTalonById(talonId);
+
+      // Сначала обновляем вес талона в базе данных
+      await updateTalonWeight(talonId, parseFloat(weightValue));
+
       // Отправляем запрос через TCP
       const tcpResponse = await tcpServerSendRequest({
         type: 'set_talon_of_kombainer',
         kombainerData: data.kombainerData,
         userData: data.userData,
         weight: parseFloat(weightValue),
-        talonData: this.state.talonData,
+        talonData,
       });
 
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
@@ -355,7 +368,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       console.error('onFinish|set_talon_of_kombainer|error =', error);
       // При ошибке сбрасываем загрузку, но НЕ блокируем кнопку
       this.setState({ confirmWeightLoading: false });
-      Alert.alert('Ошибка подключения к устройству', error.message || JSON.stringify(error));
+      Alert.alert('Ошибка', error.message || JSON.stringify(error));
     }
   };
 
