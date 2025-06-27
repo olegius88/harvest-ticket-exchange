@@ -1,6 +1,7 @@
 // Файл: java/com/talonkombainera/MainWifiModule.kt
 package com.talonkombainera
 
+import android.net.wifi.WifiManager
 import android.util.Log
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -25,7 +26,7 @@ class MainWifiModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
                     ssid: String,
                     password: String,
                     key: ByteArray,
-                    reservation: android.net.wifi.WifiManager.LocalOnlyHotspotReservation
+                    reservation: WifiManager.LocalOnlyHotspotReservation
                 ) {
                     Log.d("MainWifiModule", "onHotspotStarted: ssid=$ssid, password=$password")
                     // Здесь ничего не делаем, так как promise разрешается при получении IP-адреса
