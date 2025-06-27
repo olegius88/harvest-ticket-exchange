@@ -14,6 +14,7 @@ export interface ICreateUsersParams extends Model, ICreateUserParams {
   readonly id: string;
   created_at: number;
   updated_at: number;
+  from_remote: boolean;
 }
 
 export class Users extends Model {
@@ -25,6 +26,7 @@ export class Users extends Model {
   @field('password') password!: string;
   @field('created_at') created_at!: number;
   @field('updated_at') updated_at!: number;
+  @field('from_remote') from_remote!: boolean;
 
   static get tableSchema() {
     return tableSchema({
@@ -36,6 +38,7 @@ export class Users extends Model {
         { name: 'password', type: 'string' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
+        { name: 'from_remote', type: 'boolean' },
       ],
     });
   }
@@ -80,6 +83,7 @@ export async function createUser({
       user.phone = phone.trim();
       user.position = position;
       user.password = password.trim();
+      user.from_remote = false;
       // Устанавливаем временные метки
       user.created_at = now;
       user.updated_at = now;
@@ -138,6 +142,7 @@ export async function getUserById(userId: string): Promise<ICreateUsersParams> {
       phone: user.phone,
       position: user.position,
       password: user.password,
+      from_remote: user.from_remote,
       created_at: user.created_at,
       updated_at: user.updated_at,
     } as ICreateUsersParams;

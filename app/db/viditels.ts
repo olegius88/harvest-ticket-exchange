@@ -14,6 +14,7 @@ export interface ICreateVoditeliParams extends Model, ICreateVoditelParams {
   readonly id: string;
   created_at: number;
   updated_at: number;
+  from_remote: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export class Voditeli extends Model {
   @field('transport') transport!: string;
   @field('created_at') created_at!: number;
   @field('updated_at') updated_at!: number;
+  @field('from_remote') from_remote!: boolean;
 
   static get tableSchema() {
     return tableSchema({
@@ -35,6 +37,7 @@ export class Voditeli extends Model {
         { name: 'transport', type: 'string' },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
+        { name: 'from_remote', type: 'boolean' },
       ],
     });
   }
@@ -67,6 +70,7 @@ export async function createVoditel({ userId, transport }: ICreateVoditelParams)
       record.transport = transport.trim();
       record.created_at = now;
       record.updated_at = now;
+      record.from_remote = false;
     });
     return newVoditel.id;
   });
@@ -100,6 +104,7 @@ export async function getVoditelById(voditelId: string): Promise<ICreateVoditeli
       transport: record.transport,
       created_at: record.created_at,
       updated_at: record.updated_at,
+      from_remote: record.from_remote,
     } as ICreateVoditeliParams;
   });
 }
@@ -117,6 +122,7 @@ export async function getVoditelByUserId(userId: string): Promise<ICreateVoditel
       transport: record.transport,
       created_at: record.created_at,
       updated_at: record.updated_at,
+      from_remote: record.from_remote,
     })) as ICreateVoditeliParams[];
 
     return res.length > 0 ? res[0] : null;

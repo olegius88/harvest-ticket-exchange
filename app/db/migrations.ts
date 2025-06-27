@@ -100,7 +100,29 @@ const migrationTo13 = {
   ],
 };
 
-export const schemaVersion = 13;
+// Миграция для версии 14: добавляем столбец from_remote в таблицу users.
+const migrationTo14 = {
+  toVersion: 14,
+  steps: [
+    addColumns({
+      table: 'users',
+      columns: [{ name: 'from_remote', type: 'boolean' }],
+    }),
+  ],
+};
+
+// Миграция для версии 15: добавляем столбец from_remote в таблицу voditeli.
+const migrationTo15 = {
+  toVersion: 15,
+  steps: [
+    addColumns({
+      table: 'voditeli',
+      columns: [{ name: 'from_remote', type: 'boolean' }],
+    }),
+  ],
+};
+
+export const schemaVersion = 15;
 export const migrations = schemaMigrations({
   migrations: [
     migrationTo8,
@@ -109,5 +131,7 @@ export const migrations = schemaMigrations({
     migrationTo11,
     migrationTo12,
     migrationTo13,
+    migrationTo14,
+    migrationTo15,
   ],
 });
