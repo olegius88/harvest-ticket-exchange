@@ -59,7 +59,12 @@ export class Voditeli extends Model {
 /**
  * Создание записи в таблице "voditeli".
  */
-export async function createVoditel({ userId, transport }: ICreateVoditelParams): Promise<string> {
+export async function createVoditel(params: {
+  userId: string;
+  transport: string;
+  from_remote?: boolean;
+}): Promise<string> {
+  const { userId, transport, from_remote = false } = params;
   Voditeli.validateFields({ userId, transport });
   return database.write(async () => {
     const collection = database.collections.get<ICreateVoditeliParams>(Voditeli.table);
@@ -70,7 +75,7 @@ export async function createVoditel({ userId, transport }: ICreateVoditelParams)
       record.transport = transport.trim();
       record.created_at = now;
       record.updated_at = now;
-      record.from_remote = false;
+      record.from_remote = from_remote;
     });
     return newVoditel.id;
   });
