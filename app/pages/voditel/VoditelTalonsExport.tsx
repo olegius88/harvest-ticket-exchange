@@ -149,7 +149,7 @@ const VoditelTalonsExport: React.FC = () => {
   };
 
   const renderTalonItem = ({ item }: { item: ITalonExportData }) => (
-    <View style={styles.talonItem}>
+    <View style={styles.talonItem} key={item.serialNumber}>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>№ {item.serialNumber}</Text>
         <Text style={styles.talonNumber}>Талон {item.talonNumber}</Text>
@@ -263,9 +263,10 @@ const VoditelTalonsExport: React.FC = () => {
                 <Text style={styles.emptyText}>Талоны за выбранный период не найдены</Text>
               </View>
             ) : (
-              talons.map((item) => (
-                <React.Fragment key={item.serialNumber}>{renderTalonItem({ item })}</React.Fragment>
-              ))
+              // Сортируем талоны по убыванию времени создания
+              [...talons]
+                .sort((a, b) => b.createdTime - a.createdTime)
+                .map((item) => renderTalonItem({ item }))
             )}
           </View>
         )}

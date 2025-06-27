@@ -263,7 +263,10 @@ const KombainerTalonsExport: React.FC = () => {
                 <Text style={styles.emptyText}>Талоны за выбранный период не найдены</Text>
               </View>
             ) : (
-              talons.map((item) => renderTalonItem({ item }))
+              // Сортируем талоны по убыванию времени создания
+              [...talons]
+                .sort((a, b) => b.createdTime - a.createdTime)
+                .map((item) => renderTalonItem({ item }))
             )}
           </View>
         )}
