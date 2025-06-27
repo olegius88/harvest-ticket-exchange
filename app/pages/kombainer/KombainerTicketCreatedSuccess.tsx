@@ -41,7 +41,7 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
   }, []);
 
   const handleOkPress = () => {
-    navigation.navigate('MainScreen');
+    navigation.navigate('KombainerCreateTicketScreen');
   };
 
   return (
