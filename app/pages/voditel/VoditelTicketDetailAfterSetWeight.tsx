@@ -219,6 +219,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     const { kombainerData, userData, weight, talonData } = data;
 
     // Обновляем состояние компонента: данные с весом загружены
+    talonData.weight = weight; // Обновляем вес в данных талона
+
     this.setState({
       loadingKombainerDataWithWeight: false,
       loadingKombainerDataWithWeightSuccess: true,
@@ -391,6 +393,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             try {
               console.log('VoditelTicketDetailAfterSetWeight|signTicket|START');
               const { talonData, voditelData } = this.state;
+              console.log('VoditelTicketDetailAfterSetWeight|signTicket|talonData=', talonData);
+
               if (!talonData) {
                 throw new Error('Нет данных талона для создания записи');
               }
