@@ -357,6 +357,9 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     this._isUnmounted = false;
     console.log('componentDidMount');
 
+    // Включаем не гаснущий экран при отображении QR-кода
+    KeepAwake.activate();
+
     // Удаляем существующие слушатели перед добавлением новых
     this.removeAllListeners();
 

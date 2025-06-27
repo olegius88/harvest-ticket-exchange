@@ -30,6 +30,7 @@ import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { useIsForeground } from '../../hooks/useIsForeground';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import KeepAwake from 'react-native-keep-awake';
 import type { Routes } from '../../Routes';
 
 const { MainWifiModule } = NativeModules;
@@ -89,6 +90,9 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   useEffect(() => {
     let acceptVoditelConnectListener: any = null;
 
+    // Включаем не гаснущий экран при сканировании и подключении
+    KeepAwake.activate();
+
     const closeAll = async () => {
       try {
         await closeAllConnections(
@@ -105,6 +109,8 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
     acceptVoditelConnectListener = DeviceEventEmitter.addListener(
       'acceptVoditelConnect',
       ({ talonId }) => {
+        // Деактивируем не гаснущий экран при успешном подключении
+        KeepAwake.deactivate();
         navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
         Alert.alert('Подключение к устройству прошло успешно');
       }
@@ -125,6 +131,8 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         clearTimeout(cancelTimeoutRef.current);
         cancelTimeoutRef.current = null;
       }
+      // Деактивируем не гаснущий экран при размонтировании
+      KeepAwake.deactivate();
     };
   }, []);
 
@@ -150,10 +158,12 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
   const handleConnectToHotspot = async () => {
     if (!wifiCredentialsRef.current) return;
     const { ssid, password, port } = wifiCredentialsRef.current;
+    console.log('handleConnectToHotspot|=', { ssid, password, port });
     setProcessing(true);
     try {
       const joinDataRes = await MainWifiModule.joinHotspot(ssid, password);
-      let joinData: JoinHotspotResponse = JSON.parse(joinDataRes);
+      console.log('handleConnectToHotspot|joinDataRes=', joinDataRes);
+      const joinData: JoinHotspotResponse = JSON.parse(joinDataRes);
       await handleNeedRedirect(joinData, port);
     } catch (error: unknown) {
       Alert.alert(
@@ -229,6 +239,23 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
           <View style={styles.instructionLoader}>
             <ActivityIndicator size="large" color="#5a7d2b" />
             <Text style={styles.instructionLoaderText}>Подключение...</Text>
+            <TouchableOpacity
+              style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
+              onPress={() => {
+                setCancelInProgress(true);
+                setShowHotspotInstruction(false);
+                setProcessing(false);
+                isProcessing.current = false;
+                cancelTimeoutRef.current = setTimeout(() => setCancelInProgress(false), 600);
+              }}
+              disabled={cancelInProgress}
+            >
+              <Text
+                style={[styles.cancelButtonText, cancelInProgress && styles.disabledButtonText]}
+              >
+                Отмена
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
         {!processing && (
