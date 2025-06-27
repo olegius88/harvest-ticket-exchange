@@ -14,7 +14,6 @@ export interface ICreateVoditeliParams extends Model, ICreateVoditelParams {
   readonly id: string;
   created_at: number;
   updated_at: number;
-  from_remote: boolean;
 }
 
 /**
@@ -59,18 +58,19 @@ export class Voditeli extends Model {
 /**
  * Создание записи в таблице "voditeli".
  */
-export async function createVoditel(params: {
-  userId: string;
-  transport: string;
-  from_remote?: boolean;
-}): Promise<string> {
-  const { userId, transport, from_remote = false } = params;
+export async function createVoditel({
+  id,
+  userId,
+  transport,
+  from_remote = false,
+}: ICreateVoditelParams): Promise<string> {
   Voditeli.validateFields({ userId, transport });
   return database.write(async () => {
     const collection = database.collections.get<ICreateVoditeliParams>(Voditeli.table);
     const now = Date.now();
     const newVoditel = await collection.create((record) => {
-      record._raw.id = uuid.v4();
+      // Если передан внешний ID, используем его, иначе генерируем новый
+      record._raw.id = id ? id : uuid.v4();
       record.userId = userId.trim();
       record.transport = transport.trim();
       record.created_at = now;

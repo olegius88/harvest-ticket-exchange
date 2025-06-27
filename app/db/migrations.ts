@@ -122,7 +122,18 @@ const migrationTo15 = {
   ],
 };
 
-export const schemaVersion = 15;
+// Миграция для версии 16: добавляем поле voditelUserId в таблицу talons_of_combainers.
+const migrationTo16 = {
+  toVersion: 16,
+  steps: [
+    addColumns({
+      table: 'talons_of_combainers',
+      columns: [{ name: 'voditelUserId', type: 'string' }],
+    }),
+  ],
+};
+
+export const schemaVersion = 16;
 export const migrations = schemaMigrations({
   migrations: [
     migrationTo8,
@@ -133,5 +144,6 @@ export const migrations = schemaMigrations({
     migrationTo13,
     migrationTo14,
     migrationTo15,
+    migrationTo16,
   ],
 });

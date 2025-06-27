@@ -66,6 +66,7 @@ export class Users extends Model {
 }
 
 export async function createUser({
+  id,
   fio,
   phone,
   position,
@@ -78,7 +79,7 @@ export async function createUser({
     const collection = database.collections.get<ICreateUsersParams>(Users.table);
     const now = Date.now();
     const newUser = await collection.create((user) => {
-      user._raw.id = uuid.v4();
+      user._raw.id = id ? id : uuid.v4();
       user.fio = fio;
       user.phone = phone.trim();
       user.position = position;

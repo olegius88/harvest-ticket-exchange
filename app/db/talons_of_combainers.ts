@@ -5,7 +5,7 @@ import uuid from 'react-native-uuid';
 import { database } from './database';
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
-import { ICreateTalonParams, IEditTalonParams, TalonStatus } from '../../global';
+import { ICreateTalonParams, IEditTalonParams, TalonStatus, IVoditelData } from '../../global';
 import { Users } from './users';
 import { Kombainers } from './kombainers';
 import { Voditeli } from './viditels';
@@ -17,6 +17,7 @@ export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   readonly id: string;
   readonly talonNumber: string;
   readonly cancellationReason?: string | null;
+  voditelUserId?: string | null; // Новый параметр для хранения ID пользователя водителя
   created_at: number;
   updated_at: number;
 }
@@ -33,6 +34,8 @@ export interface ITalonExportData {
   fio: string; // ФИО комбайнера для водителя или водителя для комбайнера
   talonId: string;
   status: string;
+  voditelId?: string | null; // ID водителя, если назначен
+  voditelData?: IVoditelData | null; // данные водителя
 }
 
 export const validStatuses: TalonStatus[] = [
@@ -51,6 +54,7 @@ export class TalonsOfCombainers extends Model {
 
   @field('kombainerId') kombainerId!: string;
   @field('voditelId') voditelId?: string | null;
+  @field('voditelUserId') voditelUserId?: string | null;
   @field('status') status!: string;
   @field('startTime') startTime!: number;
   @field('endTime') endTime?: number | null;
@@ -67,6 +71,7 @@ export class TalonsOfCombainers extends Model {
       columns: [
         { name: 'kombainerId', type: 'string' },
         { name: 'voditelId', type: 'string' },
+        { name: 'voditelUserId', type: 'string', isOptional: true },
         { name: 'status', type: 'string' },
         { name: 'startTime', type: 'number' },
         { name: 'endTime', type: 'number' },
@@ -107,6 +112,7 @@ export class TalonsOfCombainers extends Model {
 export async function createTalon({
   kombainerId,
   voditelId,
+  voditelUserId, // Новый параметр для хранения ID пользователя водителя
   status,
   startTime,
   endTime,
@@ -152,6 +158,7 @@ export async function createTalon({
       record._raw.id = uuid.v4();
       record.kombainerId = kombainerId.trim();
       record.voditelId = voditelId ? voditelId.trim() : undefined;
+      record.voditelUserId = voditelUserId ? voditelUserId.trim() : undefined; // Сохраняем ID пользователя водителя
       record.status = status;
       record.startTime = startTime;
       record.endTime = endTime || undefined;
@@ -206,6 +213,7 @@ export async function getCancelledTalons(): Promise<ICreateTalonsParams[]> {
           id: record.id,
           kombainerId: record.kombainerId,
           voditelId: record.voditelId,
+          voditelUserId: record.voditelUserId || null,
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -233,6 +241,7 @@ export async function getAllTalons(): Promise<ICreateTalonsParams[]> {
           id: record.id,
           kombainerId: record.kombainerId,
           voditelId: record.voditelId,
+          voditelUserId: record.voditelUserId || null,
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -263,6 +272,7 @@ export async function getTalonById(talonId: string): Promise<ICreateTalonsParams
       id: record.id,
       kombainerId: record.kombainerId,
       voditelId: record.voditelId,
+      voditelUserId: record.voditelUserId || null,
       status: record.status as TalonStatus,
       startTime: record.startTime,
       endTime: record.endTime,
@@ -289,6 +299,7 @@ export async function getTalonsByKombainerId(kombainerId: string): Promise<ICrea
           id: record.id,
           kombainerId: record.kombainerId,
           voditelId: record.voditelId,
+          voditelUserId: record.voditelUserId || null,
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -316,6 +327,7 @@ export async function getTalonsByVoditelId(voditelId: string): Promise<ICreateTa
           id: record.id,
           kombainerId: record.kombainerId,
           voditelId: record.voditelId,
+          voditelUserId: record.voditelUserId || null,
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -348,6 +360,7 @@ export async function getLastTalonByKombainerId(
         id: record.id,
         kombainerId: record.kombainerId,
         voditelId: record.voditelId,
+        voditelUserId: record.voditelUserId,
         status: record.status as TalonStatus,
         startTime: record.startTime,
         endTime: record.endTime,
@@ -385,6 +398,8 @@ export async function editTalon(talonId: string, params: IEditTalonParams): Prom
     await record.update((r) => {
       r.kombainerId = params.kombainerId.trim();
       r.voditelId = params.voditelId ? params.voditelId.trim() : undefined;
+      // Добавляем обновление поля voditelUserId
+      r.voditelUserId = params.voditelUserId ? params.voditelUserId.trim() : undefined;
       r.status = params.status;
       r.startTime = params.startTime;
       r.endTime = params.endTime || undefined;
@@ -586,12 +601,25 @@ export async function getTalonsForKombainerExport(
     for (let i = 0; i < talons.length; i++) {
       const talon = talons[i];
       let voditelFio = 'Не назначен';
+      let voditelData: IVoditelData | null = null;
+      const voditelIdForExport = talon.voditelId || null;
+
+      // console.log(`getTalonsForKombainerExport|talon=`, i, talon);
+      console.log(`getTalonsForKombainerExport|talon.voditelId=`, i, talon.voditelId);
 
       // Если у талона есть водитель, получаем его ФИО
       if (talon.voditelId) {
         try {
           const voditel = await voditelCollection.find(talon.voditelId);
           if (voditel) {
+            // Сохраняем данные водителя
+            voditelData = {
+              id: voditel.id,
+              userId: voditel.userId,
+              transport: voditel.transport,
+              created_at: voditel.created_at,
+              updated_at: voditel.updated_at,
+            };
             const user = await userCollection.find(voditel.userId);
             if (user) {
               voditelFio = user.fio;
@@ -610,6 +638,8 @@ export async function getTalonsForKombainerExport(
         createdTime: talon.created_at,
         fio: voditelFio,
         talonId: talon.id,
+        voditelId: voditelIdForExport,
+        voditelData,
         status: talon.status,
       });
     }

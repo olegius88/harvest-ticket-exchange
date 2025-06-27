@@ -40,6 +40,7 @@ export interface ICreateVoditelParams {
   id?: string;
   userId: string;
   transport: string;
+  from_remote: boolean;
   created_at?: number;
   updated_at?: number;
 }
@@ -598,6 +599,7 @@ export interface IPostMessageCallback {
  * Интерфейс для создания пользователя.
  */
 export interface ICreateUserParams {
+  id?: string;
   fio: string;
   phone: string;
   position: string;
@@ -761,6 +763,7 @@ export interface IEditTalonParams {
   talonId: string; // ID талона
   kombainerId: string; // ID комбайнера
   voditelId?: string; // ID водителя (может быть не назначен)
+  voditelUserId?: string; // ID пользователя водителя
   status: TalonStatus; // Статус талона
   startTime: number; // Время начала
   endTime?: number; // Время окончания (может быть не заполнено)
@@ -774,6 +777,7 @@ export interface IEditTalonParams {
 export interface ICreateTalonParams {
   kombainerId: string; // ID комбайнера
   voditelId?: string; // ID водителя (может быть не назначен)
+  voditelUserId?: string; // ID пользователя водителя
   status: TalonStatus; // Статус талона
   startTime: number; // Время начала
   endTime?: number; // Время окончания (может быть не заполнено)
