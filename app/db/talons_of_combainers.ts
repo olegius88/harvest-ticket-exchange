@@ -595,11 +595,16 @@ export async function getTalonsForKombainerExport(
         Q.sortBy('created_at', Q.asc)
       )
       .fetch();
+    console.log(
+      'getTalonsForKombainerExport talons raw:',
+      talons.map((t) => t._raw)
+    );
 
     const exportData: ITalonExportData[] = [];
 
     for (let i = 0; i < talons.length; i++) {
       const talon = talons[i];
+      console.log(`talon ${i} raw:`, talon._raw);
       let voditelFio = 'Не назначен';
       let voditelData: IVoditelData | null = null;
       const voditelIdForExport = talon.voditelId || null;
@@ -611,6 +616,7 @@ export async function getTalonsForKombainerExport(
       if (talon.voditelId) {
         try {
           const voditel = await voditelCollection.find(talon.voditelId);
+          console.log('voditel raw:', voditel._raw);
           if (voditel) {
             // Сохраняем данные водителя
             voditelData = {
@@ -621,6 +627,7 @@ export async function getTalonsForKombainerExport(
               updated_at: voditel.updated_at,
             };
             const user = await userCollection.find(voditel.userId);
+            console.log('user raw:', user._raw);
             if (user) {
               voditelFio = user.fio;
             }

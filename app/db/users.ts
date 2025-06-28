@@ -120,7 +120,12 @@ export async function loginUser({ phone, password }: ILoginUserParams): Promise<
 export async function getAllUsers(): Promise<ICreateUsersParams[]> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateUsersParams>(Users.table);
-    return await collection.query().fetch();
+    const users = await collection.query().fetch();
+    console.log(
+      'getAllUsers raw:',
+      users.map((u) => u._raw)
+    );
+    return users;
   });
 }
 

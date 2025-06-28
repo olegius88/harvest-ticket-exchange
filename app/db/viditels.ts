@@ -87,7 +87,12 @@ export async function createVoditel({
 export async function getAllVoditeli(): Promise<ICreateVoditeliParams[]> {
   return database.read(async () => {
     const collection = database.collections.get<ICreateVoditeliParams>(Voditeli.table);
-    return await collection.query().fetch();
+    const voditeli = await collection.query().fetch();
+    console.log(
+      'getAllVoditeli raw:',
+      voditeli.map((v) => v._raw)
+    );
+    return voditeli;
   });
 }
 

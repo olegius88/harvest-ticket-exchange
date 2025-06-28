@@ -17,6 +17,8 @@ import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
 import { CurrentUserResponse, PositionOptionValue, RootStackParamList } from '../../../global';
 import { getTalonsForKombainerExport, ITalonExportData } from '../../db/talons_of_combainers';
+import { getAllUsers } from '../../db/users';
+import { getAllVoditeli } from '../../db/viditels';
 
 /**
  * Экран выгрузки талонов комбайнера
@@ -53,6 +55,19 @@ const KombainerTalonsExport: React.FC = () => {
           // Автоматически загружаем талоны за последние 7 дней
           if (response.kombainerData?.id) {
             await loadTalons(response.kombainerData.id, startDate, endDate);
+          }
+          // Логируем всех пользователей и водителей
+          try {
+            const users = await getAllUsers();
+            console.log('All users:', users);
+          } catch (e) {
+            console.error('Error fetching users:', e);
+          }
+          try {
+            const voditeli = await getAllVoditeli();
+            console.log('All voditeli:', voditeli);
+          } catch (e) {
+            console.error('Error fetching voditeli:', e);
           }
         } else {
           throw new Error('Failed to get current user');
@@ -129,11 +144,11 @@ const KombainerTalonsExport: React.FC = () => {
     }
 
     const headers =
-      'Порядковый номер,Номер талона,Выгрузка (кг),Вес (кг),Время создания,ФИО водителя,Статус\n';
+      'Порядковый номер,Номер талона,Выгрузка (кг),Вес (кг),Время создания,ФИО водителя,Транспорт,Статус\n';
     const csvContent = talons
       .map(
         (talon) =>
-          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${talon.status}"`
+          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${talon.voditelData?.transport || ''}","${talon.status}"`
       )
       .join('\n');
 
@@ -178,6 +193,12 @@ const KombainerTalonsExport: React.FC = () => {
         <Text style={styles.talonLabel}>Статус:</Text>
         <Text style={[styles.talonValue, styles.statusText]}>{item.status}</Text>
       </View>
+      {item.voditelData?.transport && (
+        <View style={styles.talonRow}>
+          <Text style={styles.talonLabel}>Транспорт:</Text>
+          <Text style={styles.talonValue}>{item.voditelData.transport}</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -266,7 +287,11 @@ const KombainerTalonsExport: React.FC = () => {
               // Сортируем талоны по убыванию времени создания
               [...talons]
                 .sort((a, b) => b.createdTime - a.createdTime)
-                .map((item) => renderTalonItem({ item }))
+                .map((item) => (
+                  <React.Fragment key={item.talonNumber || item.serialNumber}>
+                    {renderTalonItem({ item })}
+                  </React.Fragment>
+                ))
             )}
           </View>
         )}
