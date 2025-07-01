@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
-import { sendTcpRequest } from '../../wifi/TcpClient';
+import { sendTcpRequest, disconnectTcpClientGracefully } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { VectorLogo } from '../../components/VectorLogo';
 import { ICreateUsersParams } from '../../db/users';
@@ -164,6 +164,19 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     // Отключаем не гаснущий экран
     KeepAwake.deactivate();
   }
+
+  /**
+   * Метод для корректного закрытия TCP соединения
+   */
+  cleanupTcpConnection = async () => {
+    try {
+      console.log('VoditelTicketDetailAfterSetWeight|cleanupTcpConnection|start');
+      await disconnectTcpClientGracefully('Переход на другой экран');
+      console.log('VoditelTicketDetailAfterSetWeight|cleanupTcpConnection|success');
+    } catch (error) {
+      console.error('VoditelTicketDetailAfterSetWeight|cleanupTcpConnection|error=', error);
+    }
+  };
 
   /**
    * Безопасный setState - проверяет, не размонтирован ли компонент
@@ -519,7 +532,17 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         },
         {
           text: 'Да',
-          onPress: () => this.props.navigation.navigate('VoditelCreateTripScreen'),
+          onPress: async () => {
+            try {
+              // Корректно закрываем TCP соединение перед переходом
+              await this.cleanupTcpConnection();
+              this.props.navigation.navigate('VoditelCreateTripScreen');
+            } catch (error) {
+              console.error('handleCancelClick|error=', error);
+              // Все равно переходим, даже если произошла ошибка
+              this.props.navigation.navigate('VoditelCreateTripScreen');
+            }
+          },
         },
       ]
     );
