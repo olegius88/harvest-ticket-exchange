@@ -764,9 +764,11 @@ export type TalonStatus =
   | 'created'
   | 'assigned'
   | 'in_progress'
-  | 'driver_signed'
+  | 'voditel_signed'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'cancelled_by_kombainer'
+  | 'cancelled_by_voditel';
 
 /**
  * Интерфейс для редактирования талона комбайнера
@@ -787,6 +789,7 @@ export interface IEditTalonParams {
  * Интерфейс для создания талона комбайнера
  */
 export interface ICreateTalonParams {
+  id?: string; // ID талона (может быть не заполнен, если генерируется новый)
   kombainerId: string; // ID комбайнера
   voditelId?: string; // ID водителя (может быть не назначен)
   voditelUserId?: string; // ID пользователя водителя
