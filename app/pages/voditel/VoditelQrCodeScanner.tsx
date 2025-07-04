@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Component } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  EmitterSubscription,
 } from 'react-native';
 import type { Code } from 'react-native-vision-camera';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
@@ -16,20 +17,19 @@ import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, SAFE_AREA_PADDING } from '../../C
 import { StatusBarBlurBackground } from '../../views/StatusBarBlurBackground';
 import { PressableOpacity } from 'react-native-pressable-opacity';
 import IonIcon from 'react-native-vector-icons/Ionicons';
-import { useIsFocused } from '@react-navigation/core';
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 import ScanningOverlay from '../../views/ScanningOverlay';
 import {
   JoinHotspotResponse,
   SendTcpRequestResponse,
   ITcpResponseConnectEstablishedOk,
   CurrentUserResponse,
+  RootStackParamList,
 } from '../../../global';
 import { closeAllConnections } from '../../services/ConnectionManager';
 import { handleMessage } from '../../services/MessageHandler';
 import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
-import { useIsForeground } from '../../hooks/useIsForeground';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import KeepAwake from 'react-native-keep-awake';
 import type { Routes } from '../../Routes';
 
@@ -61,123 +61,185 @@ function parseWifiCredentials(
   return ssid && password ? { ssid, password, port: port || 3290 } : null;
 }
 
-type Props = NativeStackScreenProps<Routes, 'CodeScannerPageScreen'>;
+interface VoditelQrCodeScannerProps {
+  navigation: NavigationProp<RootStackParamList>;
+  route: RouteProp<RootStackParamList, 'CodeScannerPageScreen'>;
+}
 
-export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement {
-  // Камера
-  const device = useCameraDevice('back');
-  const isFocused = useIsFocused();
-  const isForeground = useIsForeground();
-  const isActive = isFocused && isForeground;
+interface VoditelQrCodeScannerState {
+  torch: boolean;
+  processing: boolean;
+  cancelInProgress: boolean;
+  showHotspotInstruction: boolean;
+  isFocused: boolean;
+  isForeground: boolean;
+}
 
-  // Фонарик
-  const [torch, setTorch] = useState(false);
+// HOC для передачи device и codeScanner в классовый компонент
+function withCameraHooks(Component: typeof VoditelQrCodeScannerClass) {
+  return (props: VoditelQrCodeScannerProps) => {
+    const device = useCameraDevice('back');
+    const codeScanner = useCodeScanner({
+      codeTypes: ['qr', 'ean-13'],
+      onCodeScanned: (codes: Code[]) => {
+        // Будет переопределено в классе
+      },
+    });
 
-  // Флаги процесса
-  const isProcessing = useRef(false);
-  const [processing, setProcessing] = useState(false);
-  const [cancelInProgress, setCancelInProgress] = useState(false);
+    return <Component {...props} device={device} codeScanner={codeScanner} />;
+  };
+}
 
-  // Поддержка инструкции
-  const [showHotspotInstruction, setShowHotspotInstruction] = useState(false);
-  const wifiCredentialsRef = useRef<{ ssid: string; password: string; port?: number } | null>(null);
+class VoditelQrCodeScannerClass extends Component<
+  VoditelQrCodeScannerProps & {
+    device: ReturnType<typeof useCameraDevice>;
+    codeScanner: ReturnType<typeof useCodeScanner>;
+  },
+  VoditelQrCodeScannerState
+> {
+  // Рефы для процесса
+  isProcessing: boolean = false;
+  wifiCredentialsRef: { ssid: string; password: string; port?: number } | null = null;
 
-  // Рефы для очистки таймеров
-  const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const cancelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Таймеры
+  connectTimeoutRef: NodeJS.Timeout | null = null;
+  cancelTimeoutRef: NodeJS.Timeout | null = null;
 
-  // Очистка соединений при монтировании
-  useEffect(() => {
-    let acceptVoditelConnectListener: any = null;
+  // Слушатели
+  acceptVoditelConnectListener: EmitterSubscription | null = null;
+  focusListener: (() => void) | null = null;
+  blurListener: (() => void) | null = null;
 
+  constructor(
+    props: VoditelQrCodeScannerProps & {
+      device: ReturnType<typeof useCameraDevice>;
+      codeScanner: ReturnType<typeof useCodeScanner>;
+    }
+  ) {
+    super(props);
+
+    this.state = {
+      torch: false,
+      processing: false,
+      cancelInProgress: false,
+      showHotspotInstruction: false,
+      isFocused: true,
+      isForeground: true,
+    };
+
+    // Переопределяем обработчик сканирования
+    if (props.codeScanner) {
+      props.codeScanner.onCodeScanned = this.handleCodeScanned;
+    }
+  }
+
+  componentDidMount() {
     // Включаем не гаснущий экран при сканировании и подключении
     KeepAwake.activate();
 
-    const closeAll = async () => {
-      try {
-        await closeAllConnections(
-          { closeHotspot: true, closeTcpServer: true, closeTcpClient: true },
-          'VoditelQrCodeScanner'
-        );
-      } catch (error) {
-        console.error('Ошибки при закрытии соединений:', error);
-      }
-    };
-    closeAll();
+    // Закрываем все соединения
+    this.closeAllConnectionsAsync();
 
-    // Добавляем слушатель события acceptVoditelConnect
-    acceptVoditelConnectListener = DeviceEventEmitter.addListener(
+    // Слушатель события acceptVoditelConnect
+    this.acceptVoditelConnectListener = DeviceEventEmitter.addListener(
       'acceptVoditelConnect',
       ({ talonId }) => {
-        // Деактивируем не гаснущий экран при успешном подключении
-        KeepAwake.deactivate();
-        navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
+        this.acceptVoditelConnectListener?.remove();
+        this.props.navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
         Alert.alert('Подключение к устройству прошло успешно');
       }
     );
 
-    return () => {
-      setProcessing(false);
-      // Очищаем слушатель acceptVoditelConnect при размонтировании
-      if (acceptVoditelConnectListener?.remove) {
-        acceptVoditelConnectListener.remove();
-      }
-      // Очищаем таймеры при размонтировании
-      if (connectTimeoutRef.current) {
-        clearTimeout(connectTimeoutRef.current);
-        connectTimeoutRef.current = null;
-      }
-      if (cancelTimeoutRef.current) {
-        clearTimeout(cancelTimeoutRef.current);
-        cancelTimeoutRef.current = null;
-      }
-      // Деактивируем не гаснущий экран при размонтировании
-      KeepAwake.deactivate();
-    };
-  }, []);
+    // Слушатели фокуса навигации
+    this.focusListener = this.props.navigation.addListener('focus', () => {
+      this.setState({ isFocused: true });
+    });
 
-  // Сканер кодов
-  const codeScanner = useCodeScanner({
-    codeTypes: ['qr', 'ean-13'],
-    onCodeScanned: useCallback((codes: Code[]) => {
-      const value = codes[0]?.value;
-      if (!value || isProcessing.current) return;
-      const credentials = parseWifiCredentials(value);
-      if (credentials) {
-        wifiCredentialsRef.current = credentials;
-        isProcessing.current = true;
-        setShowHotspotInstruction(true);
-        connectTimeoutRef.current = setTimeout(() => handleConnectToHotspot(), 500);
-      } else {
-        Alert.alert('Ошибка считывания QR-кода');
-      }
-    }, []),
-  });
+    this.blurListener = this.props.navigation.addListener('blur', () => {
+      this.setState({ isFocused: false });
+    });
+  }
 
-  // Кнопка подключения
-  const handleConnectToHotspot = async () => {
-    if (!wifiCredentialsRef.current) return;
-    const { ssid, password, port } = wifiCredentialsRef.current;
+  componentWillUnmount() {
+    this.setState({ processing: false });
+
+    // Очищаем слушатели
+    if (this.acceptVoditelConnectListener) {
+      this.acceptVoditelConnectListener.remove();
+    }
+
+    if (this.focusListener) {
+      this.focusListener();
+    }
+
+    if (this.blurListener) {
+      this.blurListener();
+    }
+
+    // Очищаем таймеры
+    if (this.connectTimeoutRef) {
+      clearTimeout(this.connectTimeoutRef);
+      this.connectTimeoutRef = null;
+    }
+
+    if (this.cancelTimeoutRef) {
+      clearTimeout(this.cancelTimeoutRef);
+      this.cancelTimeoutRef = null;
+    }
+
+    // Деактивируем не гаснущий экран
+    KeepAwake.deactivate();
+  }
+
+  closeAllConnectionsAsync = async () => {
+    try {
+      await closeAllConnections(
+        { closeHotspot: true, closeTcpServer: true, closeTcpClient: true },
+        'VoditelQrCodeScanner'
+      );
+    } catch (error) {
+      console.error('Ошибки при закрытии соединений:', error);
+    }
+  };
+
+  handleCodeScanned = (codes: Code[]) => {
+    const value = codes[0]?.value;
+    if (!value || this.isProcessing) return;
+
+    const credentials = parseWifiCredentials(value);
+    if (credentials) {
+      this.wifiCredentialsRef = credentials;
+      this.isProcessing = true;
+      this.setState({ showHotspotInstruction: true });
+      this.connectTimeoutRef = setTimeout(() => this.handleConnectToHotspot(), 500);
+    } else {
+      Alert.alert('Ошибка считывания QR-кода');
+    }
+  };
+
+  handleConnectToHotspot = async () => {
+    if (!this.wifiCredentialsRef) return;
+
+    const { ssid, password, port } = this.wifiCredentialsRef;
     console.log('handleConnectToHotspot|=', { ssid, password, port });
-    setProcessing(true);
+    this.setState({ processing: true });
+
     try {
       const joinDataRes = await MainWifiModule.joinHotspot(ssid, password);
       console.log('handleConnectToHotspot|joinDataRes=', joinDataRes);
       const joinData: JoinHotspotResponse = JSON.parse(joinDataRes);
-      await handleNeedRedirect(joinData, port);
+      await this.handleNeedRedirect(joinData, port);
     } catch (error: unknown) {
       Alert.alert(
         'Ошибка',
         error instanceof Error ? error.message : 'Не удалось подключиться к сети'
       );
-      setShowHotspotInstruction(false);
-      setProcessing(false);
-      isProcessing.current = false;
+      this.setState({ showHotspotInstruction: false, processing: false });
+      this.isProcessing = false;
     }
   };
 
-  // Продолжение после Wi-Fi
-  const handleNeedRedirect = async (joinData: JoinHotspotResponse, port?: number) => {
+  handleNeedRedirect = async (joinData: JoinHotspotResponse, port?: number) => {
     try {
       await connectToTcpServer({ ip: joinData.ip, port: port || 3290 });
       const data = await sendTcpRequest({ type: 'test' });
@@ -186,20 +248,19 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       }
     } catch (error: unknown) {
       Alert.alert('Ошибка подключения', error instanceof Error ? error.message : '');
-      setShowHotspotInstruction(false);
-      setProcessing(false);
-      isProcessing.current = false;
+      this.setState({ showHotspotInstruction: false, processing: false });
+      this.isProcessing = false;
       return;
     }
 
     AuthStoreData.context = 'voditel';
     if (!AuthStoreData.context) {
       Alert.alert('Ошибка', 'Не удалось установить контекст');
-      setShowHotspotInstruction(false);
-      setProcessing(false);
-      isProcessing.current = false;
+      this.setState({ showHotspotInstruction: false, processing: false });
+      this.isProcessing = false;
       return;
     }
+
     try {
       const currentUserResp = await handleMessage({
         req: {
@@ -209,13 +270,14 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
         reqId: 'currentUser_' + Date.now(),
       });
       const currentUser = currentUserResp as CurrentUserResponse;
+
       if (!currentUser.voditelData || !currentUser.userData) {
         Alert.alert('Ошибка', 'Отсутствуют данные водителя');
-        setShowHotspotInstruction(false);
-        setProcessing(false);
-        isProcessing.current = false;
+        this.setState({ showHotspotInstruction: false, processing: false });
+        this.isProcessing = false;
         return;
       }
+
       await sendTcpRequest({
         type: 'set_voditel_data',
         voditelData: currentUser.voditelData,
@@ -223,112 +285,131 @@ export function VoditelQrCodeScanner({ navigation }: Props): React.ReactElement 
       });
     } catch (error: any) {
       Alert.alert('Ошибка', error.message || JSON.stringify(error));
-      setShowHotspotInstruction(false);
-      setProcessing(false);
-      isProcessing.current = false;
+      this.setState({ showHotspotInstruction: false, processing: false });
+      this.isProcessing = false;
     }
   };
 
-  // Окно инструкции
-  const HotspotInstruction = () => (
-    <View style={styles.instructionOverlay}>
-      <View style={styles.instructionBox}>
-        <Text style={styles.instructionTitle}>Подключение к устройству</Text>
-        <Text style={styles.instructionStep}>QR-код отсканирован, идет подключение к Wi-Fi...</Text>
-        {processing && (
-          <View style={styles.instructionLoader}>
-            <ActivityIndicator size="large" color="#5a7d2b" />
-            <Text style={styles.instructionLoaderText}>Подключение...</Text>
+  toggleTorch = () => {
+    this.setState((prevState) => ({ torch: !prevState.torch }));
+  };
+
+  handleCancel = () => {
+    this.setState({ cancelInProgress: true, showHotspotInstruction: false, processing: false });
+    this.isProcessing = false;
+    this.cancelTimeoutRef = setTimeout(() => {
+      this.setState({ cancelInProgress: false });
+    }, 600);
+  };
+
+  goBack = () => {
+    this.props.navigation.goBack();
+  };
+
+  renderHotspotInstruction = () => {
+    const { processing, cancelInProgress } = this.state;
+
+    return (
+      <View style={styles.instructionOverlay}>
+        <View style={styles.instructionBox}>
+          <Text style={styles.instructionTitle}>Подключение к устройству</Text>
+          <Text style={styles.instructionStep}>
+            QR-код отсканирован, идет подключение к Wi-Fi...
+          </Text>
+          {processing && (
+            <View style={styles.instructionLoader}>
+              <ActivityIndicator size="large" color="#5a7d2b" />
+              <Text style={styles.instructionLoaderText}>Подключение...</Text>
+              <TouchableOpacity
+                style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
+                onPress={this.handleCancel}
+                disabled={cancelInProgress}
+              >
+                <Text
+                  style={[styles.cancelButtonText, cancelInProgress && styles.disabledButtonText]}
+                >
+                  Отмена
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {!processing && (
             <TouchableOpacity
               style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
-              onPress={() => {
-                setCancelInProgress(true);
-                setShowHotspotInstruction(false);
-                setProcessing(false);
-                isProcessing.current = false;
-                cancelTimeoutRef.current = setTimeout(() => setCancelInProgress(false), 600);
-              }}
+              onPress={this.handleCancel}
               disabled={cancelInProgress}
             >
               <Text
                 style={[styles.cancelButtonText, cancelInProgress && styles.disabledButtonText]}
               >
-                Отмена
+                Назад к сканеру
               </Text>
             </TouchableOpacity>
-          </View>
-        )}
-        {!processing && (
-          <TouchableOpacity
-            style={[styles.cancelButton, cancelInProgress && styles.disabledButton]}
-            onPress={() => {
-              setCancelInProgress(true);
-              setShowHotspotInstruction(false);
-              setProcessing(false);
-              isProcessing.current = false;
-              cancelTimeoutRef.current = setTimeout(() => setCancelInProgress(false), 600);
-            }}
-            disabled={cancelInProgress}
-          >
-            <Text style={[styles.cancelButtonText, cancelInProgress && styles.disabledButtonText]}>
-              Назад к сканеру
-            </Text>
-          </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  render() {
+    const { device, codeScanner } = this.props;
+    const { torch, processing, showHotspotInstruction, isFocused, isForeground } = this.state;
+    const isActive = isFocused && isForeground;
+
+    return (
+      <View style={styles.container}>
+        {showHotspotInstruction ? (
+          this.renderHotspotInstruction()
+        ) : (
+          <>
+            {device && (
+              <Camera
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={isActive && !this.isProcessing}
+                codeScanner={codeScanner}
+                torch={torch ? 'on' : 'off'}
+                enableZoomGesture
+              />
+            )}
+
+            <StatusBarBlurBackground />
+            {!this.isProcessing && <ScanningOverlay />}
+
+            <View style={styles.rightButtonRow}>
+              <PressableOpacity
+                style={styles.button}
+                onPress={this.toggleTorch}
+                disabledOpacity={0.4}
+              >
+                <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
+              </PressableOpacity>
+            </View>
+
+            <PressableOpacity style={styles.backButton} onPress={this.goBack}>
+              <IonIcon name="chevron-back" color="white" size={35} />
+            </PressableOpacity>
+
+            <View style={styles.bottomButtonContainer}>
+              <TouchableOpacity style={styles.bottomCancelButton} onPress={this.goBack}>
+                <Text style={styles.bottomCancelButtonText}>Отмена</Text>
+              </TouchableOpacity>
+            </View>
+
+            {processing && (
+              <View style={styles.preloaderContainer}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            )}
+          </>
         )}
       </View>
-    </View>
-  );
-
-  return (
-    <View style={styles.container}>
-      {showHotspotInstruction ? (
-        <HotspotInstruction />
-      ) : (
-        <>
-          {device && (
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              isActive={isActive && !isProcessing.current}
-              codeScanner={codeScanner}
-              torch={torch ? 'on' : 'off'}
-              enableZoomGesture
-            />
-          )}
-
-          <StatusBarBlurBackground />
-          {!isProcessing.current && <ScanningOverlay />}
-
-          <View style={styles.rightButtonRow}>
-            <PressableOpacity
-              style={styles.button}
-              onPress={() => setTorch(!torch)}
-              disabledOpacity={0.4}
-            >
-              <IonIcon name={torch ? 'flash' : 'flash-off'} color="white" size={24} />
-            </PressableOpacity>
-          </View>
-
-          <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
-            <IonIcon name="chevron-back" color="white" size={35} />
-          </PressableOpacity>
-
-          <View style={styles.bottomButtonContainer}>
-            <TouchableOpacity style={styles.bottomCancelButton} onPress={navigation.goBack}>
-              <Text style={styles.bottomCancelButtonText}>Отмена</Text>
-            </TouchableOpacity>
-          </View>
-
-          {processing && (
-            <View style={styles.preloaderContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  );
+    );
+  }
 }
+
+// Экспортируем компонент с HOC
+export const VoditelQrCodeScanner = withCameraHooks(VoditelQrCodeScannerClass);
 
 const styles = StyleSheet.create({
   container: {
