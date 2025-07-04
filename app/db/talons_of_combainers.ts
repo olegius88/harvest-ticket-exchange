@@ -42,6 +42,7 @@ export const validStatuses: TalonStatus[] = [
   'created',
   'assigned',
   'in_progress',
+  'driver_signed',
   'completed',
   'cancelled',
 ];

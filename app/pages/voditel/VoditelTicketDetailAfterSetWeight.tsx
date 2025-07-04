@@ -409,7 +409,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
               const talonId = await createTalon({
                 kombainerId: talonData.kombainerId,
                 voditelId: voditelData.id,
-                status: 'assigned',
+                status: 'driver_signed',
                 startTime: talonData.startTime,
                 endTime: talonData.endTime,
                 weight: talonData.weight,

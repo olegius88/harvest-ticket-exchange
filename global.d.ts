@@ -760,7 +760,13 @@ export type TNeedRedirectPayload =
 /**
  * Возможные статусы талона
  */
-export type TalonStatus = 'created' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+export type TalonStatus =
+  | 'created'
+  | 'assigned'
+  | 'in_progress'
+  | 'driver_signed'
+  | 'completed'
+  | 'cancelled';
 
 /**
  * Интерфейс для редактирования талона комбайнера
