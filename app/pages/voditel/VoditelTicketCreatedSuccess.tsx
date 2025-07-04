@@ -5,6 +5,7 @@ import { VectorLogo } from '../../components/VectorLogo';
 import { RootStackParamList } from '../../../global';
 import { closeVoditelConnections } from '../../services/ConnectionManager';
 import { useResourceCleanup } from '../../hooks/useResourceCleanup';
+import KeepAwake from 'react-native-keep-awake';
 
 const VoditelTicketCreatedSuccess: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -12,22 +13,9 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
 
   // Закрываем соединения при монтировании компонента
   useEffect(() => {
-    const closeConnections = async () => {
-      try {
-        await closeVoditelConnections('VoditelTicketCreatedSuccess');
-      } catch (error) {
-        console.error('VoditelTicketCreatedSuccess: Ошибка при закрытии соединений:', error);
-      }
-    };
-
     closeConnections();
 
-    // Блокируем кнопку "Назад" с использованием безопасного метода
-    const handleBackPress = () => {
-      console.log('VoditelTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
-      ToastAndroid.show('Для продолжения нажмите кнопку "Ок" на экране', ToastAndroid.SHORT);
-      return true;
-    };
+    KeepAwake.deactivate();
 
     // Используем безопасный метод добавления слушателя, который автоматически очистится
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
@@ -38,6 +26,20 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
     };
   }, []);
 
+  const closeConnections = async () => {
+    try {
+      await closeVoditelConnections('VoditelTicketCreatedSuccess');
+    } catch (error) {
+      console.error('VoditelTicketCreatedSuccess: Ошибка при закрытии соединений:', error);
+    }
+  };
+
+  // Блокируем кнопку "Назад" с использованием безопасного метода
+  const handleBackPress = () => {
+    console.log('VoditelTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
+    ToastAndroid.show('Для продолжения нажмите кнопку "Ок" на экране', ToastAndroid.SHORT);
+    return true;
+  };
   const handleOkPress = () => {
     navigation.navigate('VoditelCreateTripScreen');
   };
