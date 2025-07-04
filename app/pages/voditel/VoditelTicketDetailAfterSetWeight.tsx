@@ -250,8 +250,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
     try {
       // Отменяем талон со статусом cancelled_by_kombainer
-      await cancelTalonByKombainer(talonId, reason);
-      console.log('handleKombainerCancelTalon: Талон отменен комбайнером');
+      try {
+        await cancelTalonByKombainer(talonId, reason);
+        console.log('handleKombainerCancelTalon: Талон отменен комбайнером');
+      } catch (error: any) {
+        console.error('handleKombainerCancelTalon|error =', error);
+      }
 
       // Показываем уведомление пользователю
       Alert.alert('Отмена талона', `Комбайнер отменил талон.\nПричина: ${reason}`, [
