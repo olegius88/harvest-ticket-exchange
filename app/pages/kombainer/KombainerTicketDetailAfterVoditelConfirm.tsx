@@ -75,6 +75,7 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
 
   talonData?: ICreateTalonsParams | null; // Данные талона с правильной типизацией
   talonId?: string; // ID талона для загрузки данных
+  closingConnections?: boolean; // Новое состояние для отслеживания закрытия соединений
 }
 
 /**
@@ -128,6 +129,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
       talonData: null, // Инициализация данных талона
       talonId: props.route?.params?.talonId || '', // Получаем talonId из параметров навигации
+      closingConnections: false, // Инициализируем новое состояние
     };
   }
 
@@ -159,6 +161,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     this.voditelSignTicketListener = DeviceEventEmitter.addListener(
       'voditelSignTicket',
       this.handleVoditelSignTicket
+    );
+
+    // Добавляем слушатель события подтверждения от водителя здесь, один раз
+    this.voditelConnectedListener = DeviceEventEmitter.addListener(
+      'voditelConfirmAfterConnect',
+      this.handleVoditelConfirmAfterConnect
     );
 
     Alert.alert(
@@ -201,18 +209,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       });
 
       console.log('KombainerWaitTicketConfirm|waitingVoditelConfirm|init');
-
-      // Удаляем предыдущий слушатель если он существует
-      if (this.voditelConnectedListener?.remove) {
-        this.voditelConnectedListener.remove();
-        this.voditelConnectedListener = null;
-      }
-
-      // Добавляем слушатель события подтверждения от водителя
-      this.voditelConnectedListener = DeviceEventEmitter.addListener(
-        'voditelConfirmAfterConnect',
-        this.handleVoditelConfirmAfterConnect
-      );
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     } finally {
@@ -244,6 +240,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   }
 
   handleVoditelConfirmAfterConnect = (data: IPayloadConfirmKombainerTicket): any => {
+    this.voditelConnectedListener.remove();
     console.log(
       'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmAfterConnect|data=',
       data
@@ -257,6 +254,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
   // Обработчик события подтверждения веса водителем
   handleVoditelConfirmWithWeight = (data: any): any => {
+    this.voditelConfirmWithWeightListener.remove();
     console.log(
       'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmWithWeight|data=',
       data
@@ -347,7 +345,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
 
       // Удаляем предыдущий слушатель если он существует
-      if (this.voditelConfirmWithWeightListener?.remove) {
+      if (this.voditelConfirmWithWeightListener) {
         this.voditelConfirmWithWeightListener.remove();
         this.voditelConfirmWithWeightListener = null;
       }
@@ -438,12 +436,29 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
   };
 
-  handleVoditelSignTicket = () => {
+  handleVoditelSignTicket = async () => {
+    this.voditelSignTicketListener?.remove();
     console.log('KombainerTicketDetailAfterVoditelConfirm|handleVoditelSignTicket');
 
-    // Если мы ожидаем подписания, сразу переходим на следующий экран
+    // Если мы ожидаем подписания, закрываем соединения и переходим на следующий экран
     if (this.state.waitingForVoditelSign) {
-      this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+      // Показываем прелоадер
+      this.setState({ closingConnections: true });
+
+      try {
+        // Закрываем соединения
+        console.log('handleVoditelSignTicket: Закрытие TCP-соединения...');
+        await closeKombainerConnections(
+          'KombainerTicketDetailAfterVoditelConfirm.handleVoditelSignTicket'
+        );
+        console.log('handleVoditelSignTicket: TCP-соединение закрыто успешно');
+      } catch (error) {
+        console.error('handleVoditelSignTicket: Ошибка при закрытии соединений:', error);
+        // Продолжаем выполнение даже при ошибке
+      } finally {
+        // После закрытия соединений переходим на следующий экран
+        this.props.navigation.navigate('KombainerTicketCreatedSuccessScreen');
+      }
     } else {
       // Если событие пришло до нажатия на "Принять", запоминаем это для отображения в UI
       this.setState({ voditelSignReceived: true });
@@ -609,22 +624,10 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
    * Метод для безопасного удаления всех слушателей
    */
   removeAllListeners = () => {
-    if (this.voditelConnectedListener?.remove) {
-      this.voditelConnectedListener.remove();
-      this.voditelConnectedListener = null;
-    }
-    if (this.voditelConfirmWithWeightListener?.remove) {
-      this.voditelConfirmWithWeightListener.remove();
-      this.voditelConfirmWithWeightListener = null;
-    }
-    if (this.voditelSignTicketListener?.remove) {
-      this.voditelSignTicketListener.remove();
-      this.voditelSignTicketListener = null;
-    }
-    if (this.backHandlerListener?.remove) {
-      this.backHandlerListener.remove();
-      this.backHandlerListener = null;
-    }
+    this.voditelConnectedListener?.remove();
+    this.voditelConfirmWithWeightListener?.remove();
+    this.voditelSignTicketListener?.remove();
+    this.backHandlerListener?.remove();
   };
 
   componentWillUnmount() {
@@ -657,6 +660,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       confirmWeightDisabled,
       signTicketLoading,
       signTicketDisabled,
+      closingConnections,
     } = this.state;
 
     if (confirmDataError) {
@@ -682,6 +686,17 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#98d642" />
           <Text style={styles.loadingText}>Загрузка данных...</Text>
+        </View>
+      );
+    }
+
+    // Отображаем прелоадер закрытия соединений, если необходимо
+    if (closingConnections) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#98d642" />
+          <Text style={styles.loadingText}>Закрытие соединений...</Text>
+          <Text style={styles.loadingSubText}>Пожалуйста, подождите</Text>
         </View>
       );
     }
@@ -1057,6 +1072,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
+    textAlign: 'center',
+  },
+  loadingSubText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999999',
     textAlign: 'center',
   },
   loadingStateContainer: {

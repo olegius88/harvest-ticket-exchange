@@ -14,16 +14,6 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
 
   // Закрываем соединения при монтировании компонента
   useEffect(() => {
-    const closeConnections = async () => {
-      try {
-        await closeKombainerConnections('KombainerTicketCreatedSuccess');
-      } catch (error) {
-        console.error('KombainerTicketCreatedSuccess: Ошибка при закрытии соединений:', error);
-      }
-    };
-
-    closeConnections();
-
     // Блокируем кнопку "Назад"
     const handleBackPress = () => {
       console.log('KombainerTicketCreatedSuccess|handleBackPress - блокировка возврата назад');
@@ -34,7 +24,7 @@ const KombainerTicketCreatedSuccess: React.FC = () => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
 
     return () => {
-      if (backHandler?.remove) {
+      if (backHandler) {
         backHandler.remove();
       }
     };

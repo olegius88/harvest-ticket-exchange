@@ -402,6 +402,11 @@ export interface ISendTcpSendSetTalonOfKombainer {
   talonData: ICreateTalonsParams;
 }
 
+export interface ISendTcpAcceptVoditelConnect {
+  type: 'accept_voditel_connect';
+  talonId: string;
+}
+
 export interface IIsTcpServerSendResponse {
   isTcpServerSendResponse: boolean;
 }
@@ -443,7 +448,8 @@ export type ISendTcpRequestData =
   | ISendTcpGetKombainerData
   | ISendTcpConfirmKombainerTicket
   | ISendTcpConfirmKombainerTicketWithWeight
-  | ISendTcpSendSetTalonOfKombainer;
+  | ISendTcpSendSetTalonOfKombainer
+  | ISendTcpAcceptVoditelConnect;
 
 export type ISendTcpResponseData =
   | ITcpResponseConnectEstablishedOk
@@ -1146,6 +1152,30 @@ export interface IVoditelConnectedPayload {
 /**
  * Интерфейс для запроса планового отключения TCP соединения
  */
+export interface ITcpDisconnectRequest {
+  type: 'tcp_disconnect_request';
+  reason?: string;
+  timestamp: number;
+}
+
+/**
+ * Интерфейс для подтверждения готовности к отключению TCP соединения
+ */
+export interface ITcpDisconnectConfirmation {
+  type: 'tcp_disconnect_confirmation';
+  ready: boolean;
+  reason?: string;
+  timestamp: number;
+}
+
+/**
+ * Интерфейс для финального уведомления об отключении TCP соединения
+ */
+export interface ITcpDisconnectFinal {
+  type: 'tcp_disconnect_final';
+  timestamp: number;
+}
+
 export interface ITcpDisconnectRequest {
   type: 'tcp_disconnect_request';
   reason?: string;

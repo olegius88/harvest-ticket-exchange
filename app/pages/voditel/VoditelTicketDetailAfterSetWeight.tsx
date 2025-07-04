@@ -191,21 +191,14 @@ class VoditelTicketDetailAfterSetWeight extends Component<
    * Метод для безопасного удаления всех слушателей
    */
   removeAllListeners = () => {
-    if (this.setTalonOfKombainerListener?.remove) {
-      this.setTalonOfKombainerListener.remove();
-      this.setTalonOfKombainerListener = null;
-    }
-    if (this.kombainerSignTicketListener?.remove) {
-      this.kombainerSignTicketListener.remove();
-      this.kombainerSignTicketListener = null;
-    }
-    if (this.backHandlerListener?.remove) {
-      this.backHandlerListener.remove();
-      this.backHandlerListener = null;
-    }
+    this.setTalonOfKombainerListener?.remove();
+
+    this.kombainerSignTicketListener?.remove();
+    this.backHandlerListener?.remove();
   };
 
   handleKombainerSignTicket = () => {
+    this.kombainerSignTicketListener?.remove();
     console.log('VoditelTicketDetailAfterSetWeight|handleKombainerSignTicket');
 
     // Если мы ожидаем подписания, сразу переходим на следующий экран
@@ -228,6 +221,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   };
 
   handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
+    this.setTalonOfKombainerListener?.remove();
     console.log('VoditelTicketDetailAfterSetWeight|handleSetTalonOfKombainer|data=', data);
     const { kombainerData, userData, weight, talonData } = data;
 
@@ -499,9 +493,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
 
     // Удаляем существующий слушатель перед добавлением нового
-    if (this.setTalonOfKombainerListener?.remove) {
-      this.setTalonOfKombainerListener.remove();
-    }
+    this.setTalonOfKombainerListener?.remove();
 
     // Добавляем слушатель события подтверждения от водителя
     this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(

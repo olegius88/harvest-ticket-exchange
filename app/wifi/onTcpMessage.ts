@@ -217,6 +217,9 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
         timestamp: message.timestamp,
       });
 
+      // Добавляем асинхронный таймаут в 1 секунду
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Подтверждаем готовность к отключению
       return {
         type: 'tcp_disconnect_confirmation',
@@ -251,6 +254,11 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     default:
+      if (message?.status === 'ok') {
+        // Если сообщение уже содержит статус 'ok', просто возвращаем его
+        console.log('onTcpMessage|Получено сообщение со статусом ok, возвращаем его');
+        return { status: 'ok' };
+      }
       console.error(`onTcpMessage|Получено неизвестное сообщение|type=`, type);
       console.error(`onTcpMessage|Получено неизвестное сообщение|message=`, message);
       ToastAndroid.show(

@@ -12,7 +12,7 @@ export const useIsForeground = (): boolean => {
     };
 
     // Удаляем предыдущий слушатель, если он существует
-    if (listenerRef.current?.remove) {
+    if (listenerRef.current) {
       listenerRef.current.remove();
     }
 
@@ -21,7 +21,7 @@ export const useIsForeground = (): boolean => {
 
     return () => {
       // Очищаем слушатель при размонтировании
-      if (listenerRef.current?.remove) {
+      if (listenerRef.current) {
         listenerRef.current.remove();
         listenerRef.current = null;
       }

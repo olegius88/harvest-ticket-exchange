@@ -34,9 +34,7 @@ const VoditelTicketCreatedSuccess: React.FC = () => {
 
     // Возвращаем функцию очистки (хотя useResourceCleanup уже обработает это)
     return () => {
-      if (backHandler?.remove) {
-        backHandler.remove();
-      }
+      backHandler?.remove();
     };
   }, []);
 

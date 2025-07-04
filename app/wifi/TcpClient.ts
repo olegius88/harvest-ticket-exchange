@@ -6,30 +6,6 @@ import { onTcpMessage } from './onTcpMessage';
 
 let client: TcpSocket.Socket | null = null;
 
-// Интерфейс для сообщений с ID
-interface IMessageWithId {
-  messageId?: string;
-  [key: string]: unknown;
-}
-
-// Map для хранения pending запросов от клиента к серверу
-const pendingClientRequests = new Map<
-  string,
-  {
-    resolve: (value: ISendTcpResponseData) => void;
-    reject: (reason?: any) => void;
-    timeout: NodeJS.Timeout;
-  }
->();
-
-// Функция для генерации уникального ID
-const generateMessageId = (): string => {
-  return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
-// Таймаут для запросов (30 секунд)
-const REQUEST_TIMEOUT = 30000;
-
 /**
  * Функция для подключения к TCP-серверу.
  * Возвращает Promise, который резолвится сообщением об успешном подключении
@@ -57,47 +33,19 @@ export const connectToTcpServer = ({
 
     // Глобальный обработчик входящих сообщений от сервера,
     // если сообщение не получено как ответ на sendTcpRequest.
-    client.on('data', async (data: string | Buffer) => {
-      let dataString = typeof data === 'string' ? data : data.toString();
+    client.on('data', async (data: Buffer) => {
+      const dataString = data.toString();
       console.log('TCP клиент|Получены данные:', dataString);
-
-      // Разбиваем строку по границе объектов '}{' и берём только последнюю часть
-      const parts = dataString.split(/}\s*\{/g);
-      if (parts.length > 1) {
-        dataString = '{' + parts[parts.length - 1].replace(/^\{/, '').replace(/}$/, '') + '}';
-      }
-
-      /*
-      // Разбиваем строку по границе объектов: '}{' или '}\n{'
-      // Оставляем только последнюю часть
-      const parts = dataString.split(/}\s*\{/g);
-      if (parts.length > 1) {
-        // Восстанавливаем последнюю часть как валидный JSON
-        dataString = '{' + parts[parts.length - 1].replace(/^\{/, '').replace(/}$/, '') + '}';
-      }
-      */
-
-      let message: IMessageWithId;
+      // ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
+      let message: any;
       try {
         message = JSON.parse(dataString);
       } catch (error) {
-        console.error('TCP клиент|Ошибка парсинга JSON|error=', error);
-        console.error('TCP клиент|Ошибка парсинга JSON|dataString=:', dataString);
+        console.error('TCP клиент|Ошибка парсинга JSON:', error);
         return;
       }
-
-      console.log('TCP клиент|Получены данные|message=', message);
-
-      // Проверяем, является ли это ответом на запрос от клиента
-      if (message.messageId && pendingClientRequests.has(message.messageId)) {
-        const pendingRequest = pendingClientRequests.get(message.messageId)!;
-        clearTimeout(pendingRequest.timeout);
-        pendingClientRequests.delete(message.messageId);
-        pendingRequest.resolve(message as unknown as ISendTcpResponseData);
-        return;
-      }
-
-      // Обрабатываем обычное сообщение от сервера
+      // Если данные получили как результат одноразового обработчика (sendTcpRequest),
+      // то данный глобальный обработчик может быть не вызван.
       try {
         // Передаём полученное сообщение в onTcpMessage для обработки
         const response = await onTcpMessage(message as unknown as ISendTcpRequestData);
@@ -128,15 +76,7 @@ export const connectToTcpServer = ({
 
     client.on('close', () => {
       console.log('TCP клиент|Соединение закрыто');
-
-      // Отклоняем все pending запросы
-      pendingClientRequests.forEach(({ reject, timeout }) => {
-        clearTimeout(timeout);
-        reject(new Error('TCP клиент|Соединение закрыто'));
-      });
-      pendingClientRequests.clear();
-
-      client = null;
+      client = undefined;
       ToastAndroid.show(`TCP клиент|Соединение закрыто`, ToastAndroid.SHORT);
     });
   });
@@ -147,19 +87,17 @@ export const connectToTcpServer = ({
  * Возвращает Promise, который резолвится сообщением об успешном отключении.
  */
 export const disconnectTcpClient = (): Promise<string> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (client) {
-      // Отклоняем все pending запросы
-      pendingClientRequests.forEach(({ reject, timeout }) => {
-        clearTimeout(timeout);
-        reject(new Error('disconnectTcpClient|Клиент отключается'));
+      // Устанавливаем одноразовый обработчик для события close
+      client.once('close', () => {
+        console.log('TCP клиент отключился');
+        client = null;
+        resolve('TCP клиент отключен');
       });
-      pendingClientRequests.clear();
 
-      client.destroy();
-      console.log('TCP клиент отключился');
-      client = null;
-      resolve('TCP клиент отключен');
+      // Закрываем соединение
+      client.end();
     } else {
       resolve('TCP клиент не был подключен');
     }
@@ -238,31 +176,22 @@ export const disconnectTcpClientGracefully = async (
  * Объект преобразуется в JSON-строку и отправляется.
  * Функция ожидает ответа от сервера и возвращает его.
  */
-export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> => {
+export const sendTcpRequest = (
+  message: object,
+  timeoutMs: number = 30000
+): Promise<ISendTcpResponseData> => {
   return new Promise((resolve, reject) => {
     if (!client) {
-      const errorMsg = `TCP клиент не подключен ${client === null ? 'null' : 'undefined'}`;
-      ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
-      reject(new Error(errorMsg));
+      ToastAndroid.show(
+        `TCP клиент не подключен ${client === undefined ? 'undefined' : 'null'}`,
+        ToastAndroid.SHORT
+      );
+      reject('TCP клиент не подключен');
       return;
     }
 
-    const messageId = generateMessageId();
-
-    // Создаем таймаут для запроса
-    const timeout = setTimeout(() => {
-      if (pendingClientRequests.has(messageId)) {
-        pendingClientRequests.delete(messageId);
-        reject(new Error('sendTcpRequest|Таймаут ожидания ответа'));
-      }
-    }, REQUEST_TIMEOUT);
-
-    // Сохраняем информацию о pending запросе
-    pendingClientRequests.set(messageId, { resolve, reject, timeout });
-
     const messageWithId = {
       ...message,
-      messageId,
       from: 'TcpClient.ts-sendTcpRequest',
     };
 
@@ -270,8 +199,6 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
     try {
       jsonMessage = JSON.stringify(messageWithId);
     } catch (error) {
-      clearTimeout(timeout);
-      pendingClientRequests.delete(messageId);
       console.error('TCP клиент|Ошибка при сериализации объекта:', error);
       // DEV LOGS
       // ToastAndroid.show(`TCP клиент|Ошибка сериализации объекта`, ToastAndroid.SHORT);
@@ -279,17 +206,87 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
       return;
     }
 
+    // Флаг для отслеживания завершения запроса
+    let isRequestCompleted = false;
+
+    // Таймер для ограничения времени ожидания ответа
+    const timeoutId = setTimeout(() => {
+      if (!isRequestCompleted) {
+        isRequestCompleted = true;
+        cleanupHandlers();
+        reject(new Error(`Таймаут ожидания ответа (${timeoutMs}мс)`));
+      }
+    }, timeoutMs);
+
+    // Функция для очистки всех обработчиков
+    const cleanupHandlers = () => {
+      if (client) {
+        client.removeListener('data', onData);
+        client.removeListener('error', onError);
+        client.removeListener('close', onClose);
+      }
+      clearTimeout(timeoutId);
+    };
+
+    // Обработчик получения данных
+    const onData = (data: Buffer) => {
+      if (isRequestCompleted) return;
+
+      const dataString = data.toString();
+      console.log('TCP клиент|Получен ответ:', dataString);
+      // ToastAndroid.show(`TCP клиент|Получен ответ`, ToastAndroid.SHORT);
+
+      try {
+        const response = JSON.parse(dataString);
+        isRequestCompleted = true;
+        cleanupHandlers();
+        resolve(response);
+      } catch (error) {
+        console.error('TCP клиент|Ошибка при парсинге ответа:', error);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
+        isRequestCompleted = true;
+        cleanupHandlers();
+        reject(error);
+      }
+    };
+
+    // Обработчик ошибок соединения
+    const onError = (error: any) => {
+      if (isRequestCompleted) return;
+
+      console.error('TCP клиент|Ошибка во время ожидания ответа:', error);
+      isRequestCompleted = true;
+      cleanupHandlers();
+      reject(error);
+    };
+
+    // Обработчик закрытия соединения
+    const onClose = () => {
+      if (isRequestCompleted) return;
+
+      console.log('TCP клиент|Соединение закрыто во время ожидания ответа');
+      isRequestCompleted = true;
+      cleanupHandlers();
+      reject(new Error('Соединение закрыто до получения ответа'));
+    };
+
+    // Устанавливаем обработчики событий
+    client.on('data', onData);
+    client.on('error', onError);
+    client.on('close', onClose);
+
     try {
       client.write(jsonMessage, 'utf8', () => {
         console.log('TCP клиент|Запрос отправлен:', JSON.parse(jsonMessage));
         // ToastAndroid.show(`TCP клиент|Запрос отправлен`, ToastAndroid.SHORT);
       });
     } catch (error) {
-      clearTimeout(timeout);
-      pendingClientRequests.delete(messageId);
       console.error('TCP клиент|Ошибка при отправке данных:', error);
       // DEV LOGS
       // ToastAndroid.show(`TCP клиент|Ошибка при отправке данных`, ToastAndroid.SHORT);
+      isRequestCompleted = true;
+      cleanupHandlers();
       reject(error);
     }
   });
@@ -300,45 +297,4 @@ export const sendTcpRequest = (message: object): Promise<ISendTcpResponseData> =
  */
 export const isTcpClientConnected = (): boolean => {
   return client !== null;
-};
-
-/**
- * Отправляет heartbeat сообщение для проверки соединения
- */
-export const sendHeartbeat = async (): Promise<boolean> => {
-  try {
-    await sendTcpRequest({ type: 'heartbeat', timestamp: Date.now() });
-    return true;
-  } catch (error) {
-    console.error('sendHeartbeat|error=', error);
-    return false;
-  }
-};
-
-/**
- * Функция для переподключения к TCP-серверу с повторными попытками
- */
-export const reconnectToTcpServer = async (
-  { ip, port = 3290 }: { ip: string; port?: number },
-  maxRetries: number = 5,
-  retryDelay: number = 2000
-): Promise<string> => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`reconnectToTcpServer|Попытка ${attempt} из ${maxRetries}`);
-      const result = await connectToTcpServer({ ip, port });
-      return result;
-    } catch (error) {
-      console.error(`reconnectToTcpServer|Попытка ${attempt} неудачна:`, error);
-
-      if (attempt === maxRetries) {
-        throw new Error(`reconnectToTcpServer|Не удалось подключиться после ${maxRetries} попыток`);
-      }
-
-      // Ждем перед следующей попыткой
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
-    }
-  }
-
-  throw new Error('reconnectToTcpServer|Неожиданная ошибка');
 };

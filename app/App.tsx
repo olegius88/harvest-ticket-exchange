@@ -41,7 +41,7 @@ export default function App(): React.ReactElement {
   // Подписка на событие openCodeScannerPage для навигации на VoditelQrCodeScanner
   useEffect(() => {
     // Удаляем предыдущую подписку, если она существует
-    if (subscriptionRef.current?.remove) {
+    if (subscriptionRef.current) {
       subscriptionRef.current.remove();
     }
 
@@ -53,7 +53,7 @@ export default function App(): React.ReactElement {
     });
 
     return () => {
-      if (subscriptionRef.current?.remove) {
+      if (subscriptionRef.current) {
         subscriptionRef.current.remove();
         subscriptionRef.current = null;
       }

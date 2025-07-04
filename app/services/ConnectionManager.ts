@@ -1,7 +1,7 @@
 // Файл: app/services/ConnectionManager.ts
 
 import { setHotspotDisabled } from './MessageHandler';
-import { stopTcpServer, stopTcpServerGracefully, isTcpServerRunning } from '../wifi/TcpServer';
+import { stopTcpServer, stopTcpServerGracefully } from '../wifi/TcpServer';
 import { disconnectTcpClient, disconnectTcpClientGracefully } from '../wifi/TcpClient';
 
 /**
@@ -56,40 +56,20 @@ export const closeAllConnections = async (
 
   const errors: string[] = [];
 
-  // Отключаем точку доступа Wi-Fi
-  if (closeHotspot) {
-    try {
-      await setHotspotDisabled();
-      if (verbose) {
-        console.log(`ConnectionManager[${context}]: Точка доступа Wi-Fi отключена`);
-      }
-    } catch (error) {
-      const errorMsg = `Ошибка при отключении точки доступа: ${error}`;
-      errors.push(errorMsg);
-      if (verbose) {
-        console.error(`ConnectionManager[${context}]: ${errorMsg}`);
-      }
-    }
-  }
-
   // Останавливаем TCP-сервер
   if (closeTcpServer) {
     try {
-      if (isTcpServerRunning()) {
-        const message = graceful
-          ? await stopTcpServerGracefully(reason, timeout)
-          : await stopTcpServer();
-        if (verbose) {
-          console.log(`ConnectionManager[${context}]: TCP-сервер остановлен:`, message);
-        }
-      } else if (verbose) {
-        console.log(`ConnectionManager[${context}]: TCP-сервер не запущен, пропускаем остановку`);
+      const message = graceful
+        ? await stopTcpServerGracefully(reason, timeout)
+        : await stopTcpServer();
+      if (verbose) {
+        console.log(`ConnectionManager[${context}]: TCP-сервер остановлен:`, message);
       }
     } catch (error) {
       const errorMsg = `Ошибка при остановке TCP-сервера: ${error}`;
       errors.push(errorMsg);
       if (verbose) {
-        console.error(`ConnectionManager[${context}]: ${errorMsg}`);
+        console.error(`ConnectionManager[${context}]:`, errorMsg);
       }
     }
   }
@@ -107,7 +87,23 @@ export const closeAllConnections = async (
       const errorMsg = `Ошибка при отключении TCP-клиента: ${error}`;
       errors.push(errorMsg);
       if (verbose) {
-        console.error(`ConnectionManager[${context}]: ${errorMsg}`);
+        console.error(`ConnectionManager[${context}]:`, errorMsg);
+      }
+    }
+  }
+
+  // Отключаем точку доступа Wi-Fi
+  if (closeHotspot) {
+    try {
+      await setHotspotDisabled();
+      if (verbose) {
+        console.log(`ConnectionManager[${context}]: Точка доступа Wi-Fi отключена`);
+      }
+    } catch (error) {
+      const errorMsg = `Ошибка при отключении точки доступа: ${error}`;
+      errors.push(errorMsg);
+      if (verbose) {
+        console.error(`ConnectionManager[${context}]:`, errorMsg);
       }
     }
   }
