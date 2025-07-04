@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
   },
   linkButton: {
     paddingVertical: 8,

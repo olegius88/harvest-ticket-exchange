@@ -169,6 +169,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       this.handleVoditelConfirmAfterConnect
     );
 
+    // Добавляем слушатель события подтверждения веса водителем
+    this.voditelConfirmWithWeightListener = DeviceEventEmitter.addListener(
+      'voditelConfirmWithWeight',
+      this.handleVoditelConfirmWithWeight
+    );
+
     Alert.alert(
       'Подключение к устройству прошло успешно',
       'Необходимо дождаться проверки информации талона водителем'
@@ -254,7 +260,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
   // Обработчик события подтверждения веса водителем
   handleVoditelConfirmWithWeight = (data: any): any => {
-    this.voditelConfirmWithWeightListener.remove();
+    this.voditelConfirmWithWeightListener?.remove();
+
     console.log(
       'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmWithWeight|data=',
       data
@@ -344,18 +351,6 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
       console.log('onFinish|set_talon_of_kombainer|tcpResponse=', tcpResponse);
 
-      // Удаляем предыдущий слушатель если он существует
-      if (this.voditelConfirmWithWeightListener) {
-        this.voditelConfirmWithWeightListener.remove();
-        this.voditelConfirmWithWeightListener = null;
-      }
-
-      // Добавляем слушатель события подтверждения веса водителем
-      this.voditelConfirmWithWeightListener = DeviceEventEmitter.addListener(
-        'voditelConfirmWithWeight',
-        this.handleVoditelConfirmWithWeight
-      );
-
       // После успешной отправки блокируем кнопку и показываем состояние ожидания
       this.setState({
         isWaitingVoditelWeightConfirm: true,
@@ -416,7 +411,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
             } catch (error) {
               console.error('handleCancelClick|Ошибка при закрытии соединений:', error);
             }
-            this.props.navigation.navigate('MainScreen');
+            this.props.navigation.navigate('KombainerCreateTicketScreen');
           },
         },
       ]
@@ -869,11 +864,11 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
                   </View>
                 )}
 
-                {/* Если ожидаем подпись водителя после нажатия "Подписать талон" */}
-                {this.state.waitingForVoditelSign ? (
+                {/* Если ожидаем подпись талона водителем */}
+                {!this.state.voditelSignReceived ? (
                   <View style={styles.loadingStateContainer}>
                     <Text style={styles.loadingStateText}>
-                      Ожидание окончательного подтверждения от водителя...
+                      Ожидание подписи талона водителем...
                     </Text>
                     <ActivityIndicator
                       size="large"
