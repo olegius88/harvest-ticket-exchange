@@ -42,9 +42,11 @@ export const validStatuses: TalonStatus[] = [
   'created',
   'assigned',
   'in_progress',
-  'driver_signed',
+  'voditel_signed',
   'completed',
   'cancelled',
+  'cancelled_by_kombainer',
+  'cancelled_by_voditel',
 ];
 
 /**
@@ -111,6 +113,7 @@ export class TalonsOfCombainers extends Model {
  * Создание записи в таблице "talons_of_combainers".
  */
 export async function createTalon({
+  id,
   kombainerId,
   voditelId,
   voditelUserId, // Новый параметр для хранения ID пользователя водителя
@@ -156,7 +159,7 @@ export async function createTalon({
 
     const now = Date.now();
     const newTalon = await collection.create((record: any) => {
-      record._raw.id = uuid.v4();
+      record._raw.id = id || uuid.v4();
       record.kombainerId = kombainerId.trim();
       record.voditelId = voditelId ? voditelId.trim() : undefined;
       record.voditelUserId = voditelUserId ? voditelUserId.trim() : undefined; // Сохраняем ID пользователя водителя
@@ -178,17 +181,50 @@ export async function createTalon({
  * Отменить талон и указать причину отмены
  */
 export async function cancelTalon(talonId: string, reason: string): Promise<string> {
+  console.log('cancelTalon|talonId=', talonId);
+  console.log('cancelTalon|reason=', reason);
   return database.write(async () => {
     const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
     const record = await collection.find(talonId);
 
     if (!record) {
+      console.error(`cancelTalon|Талон с ID ${talonId} не найден.`);
       throw new Error(`Талон с ID ${talonId} не найден.`);
     }
 
     const now = Date.now();
     await record.update((r) => {
       r.status = 'cancelled';
+      r.cancellationReason = reason.trim();
+      r.updated_at = now;
+
+      // Если талон отменяется, автоматически устанавливаем время окончания
+      if (!r.endTime) {
+        r.endTime = now;
+      }
+    });
+    return record.id;
+  });
+}
+
+/**
+ * Отменить талон водителем и указать причину отмены
+ */
+export async function cancelTalonByVoditel(talonId: string, reason: string): Promise<string> {
+  console.log('cancelTalonByVoditel|talonId=', talonId);
+  console.log('cancelTalonByVoditel|reason=', reason);
+  return database.write(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const record = await collection.find(talonId);
+
+    if (!record) {
+      console.error(`cancelTalonByVoditel|Талон с ID ${talonId} не найден.`);
+      throw new Error(`Талон с ID ${talonId} не найден.`);
+    }
+
+    const now = Date.now();
+    await record.update((r) => {
+      r.status = 'cancelled_by_voditel';
       r.cancellationReason = reason.trim();
       r.updated_at = now;
 
@@ -427,7 +463,7 @@ export async function assignDriverToTalon(talonId: string, voditelId: string): P
     const now = Date.now();
     await record.update((r) => {
       r.voditelId = voditelId.trim();
-      r.status = 'driver_assigned';
+      r.status = 'voditel_assigned';
       r.updated_at = now;
     });
     return record.id;
