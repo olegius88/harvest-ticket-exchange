@@ -13,6 +13,7 @@ import {
   DeviceEventEmitter,
   BackHandler,
   ToastAndroid,
+  Modal,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -75,6 +76,10 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   signTicketLoading?: boolean; // Загрузка для "Подписать талон"
   signTicketDisabled?: boolean; // Блокировка после успешного выполнения
 
+  // Состояния для модального окна отмены
+  cancelModalVisible?: boolean;
+  cancelComment?: string;
+
   talonData?: ICreateTalonsParams | null; // Данные талона с правильной типизацией
   talonId?: string; // ID талона для загрузки данных
   closingConnections?: boolean; // Новое состояние для отслеживания закрытия соединений
@@ -130,6 +135,10 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
       signTicketLoading: false,
       signTicketDisabled: false,
+
+      // Инициализация состояний для модального окна отмены
+      cancelModalVisible: false,
+      cancelComment: '',
 
       talonData: null, // Инициализация данных талона
       talonId: props.route?.params?.talonId || '', // Получаем talonId из параметров навигации
@@ -399,7 +408,30 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       return;
     }
 
-    this.setState({ cancelInProgress: true });
+    // Открываем модальное окно для ввода комментария
+    this.setState({ cancelModalVisible: true, cancelComment: '' });
+  };
+
+  /**
+   * Обработчик закрытия модального окна отмены
+   */
+  handleCancelModalClose = () => {
+    this.setState({ cancelModalVisible: false, cancelComment: '' });
+  };
+
+  /**
+   * Обработчик подтверждения отмены с комментарием
+   */
+  handleCancelConfirm = async () => {
+    const { cancelComment } = this.state;
+
+    // Проверка наличия комментария
+    if (!cancelComment || cancelComment.trim() === '') {
+      Alert.alert('Ошибка', 'Необходимо указать причину отмены талона');
+      return;
+    }
+
+    this.setState({ cancelInProgress: true, cancelModalVisible: false });
 
     // Показываем уведомление о закрытии TCP-соединения
     Alert.alert(
@@ -416,10 +448,39 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
           style: 'destructive',
           onPress: async () => {
             try {
+              // Сохраняем причину отмены талона в базе данных
+              if (this.state.talonId) {
+                try {
+                  await cancelTalon(this.state.talonId, cancelComment.trim());
+                  console.log('Талон отменен с комментарием:', cancelComment.trim());
+                } catch (error) {
+                  console.error('Ошибка при отмене талона:', error);
+                  // Показываем ошибку пользователю и не переходим на другой экран
+                  Alert.alert(
+                    'Ошибка отмены талона',
+                    error instanceof Error ? error.message : 'Произошла ошибка при отмене талона',
+                    [{ text: 'OK', onPress: () => this.setState({ cancelInProgress: false }) }]
+                  );
+                  return; // Останавливаем выполнение, не переходим на другой экран
+                }
+              }
+
               await this.cancel();
               console.log('handleCancelClick|Соединения закрыты');
             } catch (error) {
               console.error('handleCancelClick|Ошибка при закрытии соединений:', error);
+              // Ошибка при закрытии соединения - показываем уведомление, но все равно переходим
+              Alert.alert(
+                'Предупреждение',
+                'Произошла ошибка при закрытии соединения, но операция отмены выполнена',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => this.props.navigation.navigate('KombainerCreateTicketScreen'),
+                  },
+                ]
+              );
+              return;
             }
             this.props.navigation.navigate('KombainerCreateTicketScreen');
           },
@@ -983,6 +1044,48 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Модальное окно для ввода комментария при отмене */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={this.state.cancelModalVisible || false}
+          onRequestClose={this.handleCancelModalClose}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Отмена талона</Text>
+              <Text style={styles.modalText}>Укажите причину отмены талона:</Text>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Введите комментарий"
+                value={this.state.cancelComment || ''}
+                onChangeText={(text) => this.setState({ cancelComment: text })}
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+                autoFocus={true}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={this.handleCancelModalClose}
+                >
+                  <Text style={styles.modalCancelButtonText}>Отмена</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalConfirmButton]}
+                  onPress={this.handleCancelConfirm}
+                >
+                  <Text style={styles.modalConfirmButtonText}>Подтвердить</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     );
   }
@@ -1167,6 +1270,83 @@ const styles = StyleSheet.create({
     color: '#52c41a',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  // Стили для модального окна
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#98d642',
+  },
+  modalConfirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
