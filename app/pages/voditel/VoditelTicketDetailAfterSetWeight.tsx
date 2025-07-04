@@ -10,6 +10,8 @@ import {
   DeviceEventEmitter,
   BackHandler,
   ToastAndroid,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
@@ -27,7 +29,7 @@ import {
   IPayloadSetTalonOfKombainer,
 } from '../../../global';
 import KeepAwake from 'react-native-keep-awake';
-import { ICreateTalonsParams, createTalon } from '../../db/talons_of_combainers';
+import { ICreateTalonsParams, createTalon, cancelTalon } from '../../db/talons_of_combainers';
 
 interface VoditelTicketDetailAfterSetWeightProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -61,6 +63,10 @@ interface VoditelTicketDetailAfterSetWeightState {
 
   signTicketLoading: boolean; // Загрузка для "Подписать талон"
   signTicketDisabled: boolean; // Блокировка после успешного выполнения
+
+  // Состояния для модального окна отмены
+  cancelModalVisible: boolean;
+  cancelComment: string;
 
   weight: number | null;
   kombainerUserData: ICreateUsersParams | null;
@@ -116,6 +122,10 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       signTicketLoading: false,
       signTicketDisabled: false,
 
+      // Инициализация состояний для модального окна отмены
+      cancelModalVisible: false,
+      cancelComment: '',
+
       weight: null,
       kombainerUserData: null,
       userData: null,
@@ -144,6 +154,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     this.backHandlerListener = BackHandler.addEventListener(
       'hardwareBackPress',
       this.handleBackPress
+    );
+
+    // Добавляем слушатель события подтверждения от водителя
+    this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
+      'setTalonOfKombainer',
+      this.handleSetTalonOfKombainer
     );
 
     // Включаем не гаснущий экран
@@ -222,6 +238,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
   handleSetTalonOfKombainer = (data: IPayloadSetTalonOfKombainer): any => {
     this.setTalonOfKombainerListener?.remove();
+
     console.log('VoditelTicketDetailAfterSetWeight|handleSetTalonOfKombainer|data=', data);
     const { kombainerData, userData, weight, talonData } = data;
 
@@ -398,30 +415,32 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           onPress: async () => {
             this.setState({ signTicketLoading: true });
             try {
-              console.log('VoditelTicketDetailAfterSetWeight|signTicket|START');
+              console.log('handleSignTicketClick|signTicket|START');
               const { talonData, voditelData } = this.state;
-              console.log('VoditelTicketDetailAfterSetWeight|signTicket|talonData=', talonData);
+              console.log('handleSignTicketClick|signTicket|talonData=', talonData);
 
               if (!talonData) {
                 throw new Error('Нет данных талона для создания записи');
               }
               // Создаём запись талона комбайнера на основе talonData
               const talonId = await createTalon({
+                id: talonData.id,
                 kombainerId: talonData.kombainerId,
                 voditelId: voditelData.id,
-                status: 'driver_signed',
+                status: 'voditel_signed',
                 startTime: talonData.startTime,
                 endTime: talonData.endTime,
                 weight: talonData.weight,
                 comment: talonData.comment,
                 talonNumber: talonData.talonNumber,
               });
-              console.log('VoditelTicketDetailAfterSetWeight|createTalon|talonId=', talonId);
+              console.log('handleSignTicketClick|createTalon|talonId=', talonId);
+              console.log('handleSignTicketClick|createTalon|talonData.id=', talonData.id);
               // Далее стандартная логика
               const data = await sendTcpRequest({
                 type: 'voditel_sign_ticket',
               });
-              console.log('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|data=', data);
+              console.log('handleSignTicketClick|voditel_sign_ticket|data=', data);
               this.setState({
                 waitingForKombainerSign: true,
                 signTicketLoading: false,
@@ -431,7 +450,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
                 this.props.navigation.navigate('VoditelTicketCreatedSuccessScreen');
               }
             } catch (error: any) {
-              console.error('VoditelTicketDetailAfterSetWeight|voditel_sign_ticket|error =', error);
+              console.error('handleSignTicketClick|voditel_sign_ticket|error =', error);
               this.setState({ signTicketLoading: false });
               Alert.alert('Ошибка создания талона', error.message || JSON.stringify(error));
             }
@@ -491,15 +510,6 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|waitingKombainerDataWithWeightConfirm|init');
-
-    // Удаляем существующий слушатель перед добавлением нового
-    this.setTalonOfKombainerListener?.remove();
-
-    // Добавляем слушатель события подтверждения от водителя
-    this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
-      'setTalonOfKombainer',
-      this.handleSetTalonOfKombainer
-    );
   };
 
   /**
@@ -511,20 +521,21 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       return;
     }
 
-    this.setState({ cancelInProgress: true });
-
-    Alert.alert(
-      'Закрытие соединения',
-      'Вы уверены, что хотите отменить процесс и вернуться назад?',
-      [
+    // Если талон уже подписан (signTicketDisabled == true), запрашиваем комментарий
+    if (this.state.signTicketDisabled) {
+      // Открываем модальное окно для ввода комментария
+      this.setState({ cancelModalVisible: true, cancelComment: '' });
+    } else {
+      // Если талон еще не подписан, показываем предупреждение
+      Alert.alert('Предупреждение', 'Будет завершена работа с созданием талона. Вы уверены?', [
         {
           text: 'Отмена',
           style: 'cancel',
-          onPress: () => this.setState({ cancelInProgress: false }),
         },
         {
           text: 'Да',
           onPress: async () => {
+            this.setState({ cancelInProgress: true });
             try {
               // Корректно закрываем TCP соединение перед переходом
               await this.cleanupTcpConnection();
@@ -536,8 +547,70 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             }
           },
         },
-      ]
-    );
+      ]);
+    }
+  };
+
+  /**
+   * Обработчик закрытия модального окна отмены
+   */
+  handleCancelModalClose = () => {
+    this.setState({ cancelModalVisible: false, cancelComment: '' });
+  };
+
+  /**
+   * Обработчик подтверждения отмены с комментарием
+   */
+  handleCancelConfirm = async () => {
+    const { cancelComment } = this.state;
+
+    // Проверка наличия комментария
+    if (!cancelComment || cancelComment.trim() === '') {
+      Alert.alert('Ошибка', 'Необходимо указать причину отмены талона');
+      return;
+    }
+
+    this.setState({ cancelInProgress: true, cancelModalVisible: false });
+
+    try {
+      // Сохраняем причину отмены талона в базе данных, если есть идентификатор
+      const talonId = this.state.talonData?.id;
+      if (talonId) {
+        try {
+          await cancelTalon(talonId, cancelComment.trim());
+
+          const data = await sendTcpRequest({
+            type: 'voditel_cancel_talon',
+            talonId,
+            reason: cancelComment.trim(),
+          });
+          console.log('handleCancelConfirm|voditel_cancel_talon|data=', data);
+
+          console.log('Талон отменен с комментарием:', cancelComment.trim());
+        } catch (error) {
+          console.error('Ошибка при отмене талона:', error);
+          // Показываем ошибку пользователю и не переходим на другой экран
+          Alert.alert(
+            'Ошибка отмены талона',
+            error instanceof Error ? error.message : 'Произошла ошибка при отмене талона',
+            [{ text: 'OK', onPress: () => this.setState({ cancelInProgress: false }) }]
+          );
+          return; // Останавливаем выполнение, не переходим на другой экран
+        }
+      }
+
+      // Корректно закрываем TCP соединение перед переходом
+      await this.cleanupTcpConnection();
+      this.props.navigation.navigate('VoditelCreateTripScreen');
+    } catch (error) {
+      console.error('handleCancelConfirm|error=', error);
+      // Ошибка при закрытии соединения - показываем уведомление, но все равно переходим
+      Alert.alert(
+        'Предупреждение',
+        'Произошла ошибка при закрытии соединения, но операция отмены выполнена',
+        [{ text: 'OK', onPress: () => this.props.navigation.navigate('VoditelCreateTripScreen') }]
+      );
+    }
   };
 
   render() {
@@ -754,6 +827,48 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             {this.state.cancelInProgress ? 'Отмена...' : 'Отмена'}
           </Text>
         </TouchableOpacity>
+
+        {/* Модальное окно для ввода комментария при отмене */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={this.state.cancelModalVisible}
+          onRequestClose={this.handleCancelModalClose}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Отмена талона</Text>
+              <Text style={styles.modalText}>Укажите причину отмены талона:</Text>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Введите комментарий"
+                value={this.state.cancelComment}
+                onChangeText={(text) => this.setState({ cancelComment: text })}
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+                autoFocus={true}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={this.handleCancelModalClose}
+                >
+                  <Text style={styles.modalCancelButtonText}>Отмена</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalConfirmButton]}
+                  onPress={this.handleCancelConfirm}
+                >
+                  <Text style={styles.modalConfirmButtonText}>Подтвердить</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     );
   }
@@ -878,6 +993,83 @@ const styles = StyleSheet.create({
     color: '#52c41a',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Стили для модального окна
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#98d642',
+  },
+  modalConfirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

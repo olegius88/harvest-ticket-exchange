@@ -23,6 +23,8 @@ import {
   ICreateTalonsParams,
   getTalonById,
   updateTalonWeight,
+  cancelTalon,
+  cancelTalonByVoditel,
 } from '../../db/talons_of_combainers';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -94,6 +96,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   voditelConfirmWithWeightListener: any = null;
   // Слушатель для события подписания талона водителем
   voditelSignTicketListener: any = null;
+  // Слушатель для события отмены талона водителем
+  voditelCancelTalonListener: any = null;
   // Слушатель для блокировки кнопки "Назад"
   backHandlerListener: any = null;
 
@@ -161,6 +165,12 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     this.voditelSignTicketListener = DeviceEventEmitter.addListener(
       'voditelSignTicket',
       this.handleVoditelSignTicket
+    );
+
+    // Добавляем слушатель события отмены талона водителем
+    this.voditelCancelTalonListener = DeviceEventEmitter.addListener(
+      'voditelCancelTalon',
+      this.handleVoditelCancelTalon
     );
 
     // Добавляем слушатель события подтверждения от водителя здесь, один раз
@@ -246,7 +256,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
   }
 
   handleVoditelConfirmAfterConnect = (data: IPayloadConfirmKombainerTicket): any => {
-    this.voditelConnectedListener.remove();
+    this.voditelConnectedListener?.remove();
     console.log(
       'KombainerTicketDetailAfterVoditelConfirm|handleVoditelConfirmAfterConnect|data=',
       data
@@ -460,6 +470,54 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     }
   };
 
+  // Обработчик события отмены талона водителем
+  handleVoditelCancelTalon = async (data: { talonId: string; reason: string }) => {
+    this.voditelCancelTalonListener?.remove();
+    console.log('KombainerTicketDetailAfterVoditelConfirm|handleVoditelCancelTalon|data=', data);
+
+    const { talonId, reason } = data;
+
+    try {
+      // Отменяем талон со статусом cancelled_by_voditel
+      await cancelTalonByVoditel(talonId, reason);
+      console.log('handleVoditelCancelTalon: Талон отменен водителем');
+
+      // Показываем прелоадер
+      this.setState({ closingConnections: true });
+
+      try {
+        // Закрываем соединения
+        console.log('handleVoditelCancelTalon: Закрытие TCP-соединения...');
+        await closeKombainerConnections(
+          'KombainerTicketDetailAfterVoditelConfirm.handleVoditelCancelTalon'
+        );
+        console.log('handleVoditelCancelTalon: TCP-соединение закрыто успешно');
+      } catch (error) {
+        console.error('handleVoditelCancelTalon: Ошибка при закрытии соединений:', error);
+        // Продолжаем выполнение даже при ошибке
+      } finally {
+        // После закрытия соединений переходим на экран создания талона
+        this.props.navigation.navigate('KombainerCreateTicketScreen');
+      }
+
+      // Показываем уведомление пользователю
+      Alert.alert('Отмена талона', `Водитель отменил талон.\nПричина: ${reason}`, [
+        {
+          text: 'OK',
+          onPress: async () => {},
+        },
+      ]);
+    } catch (error) {
+      console.error('handleVoditelCancelTalon: Ошибка при отмене талона:', error);
+      Alert.alert('Ошибка', 'Произошла ошибка при обработке отмены талона водителем', [
+        {
+          text: 'OK',
+          onPress: () => this.props.navigation.navigate('KombainerCreateTicketScreen'),
+        },
+      ]);
+    }
+  };
+
   handleApproveClick = async () => {
     // Показываем диалог подтверждения перед подписанием талона
     Alert.alert(
@@ -622,6 +680,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
     this.voditelConnectedListener?.remove();
     this.voditelConfirmWithWeightListener?.remove();
     this.voditelSignTicketListener?.remove();
+    this.voditelCancelTalonListener?.remove();
     this.backHandlerListener?.remove();
   };
 
