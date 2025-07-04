@@ -452,9 +452,28 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
               if (this.state.talonId) {
                 try {
                   await cancelTalon(this.state.talonId, cancelComment.trim());
-                  console.log('Талон отменен с комментарием:', cancelComment.trim());
+
+                  try {
+                    const tcpResponse = await tcpServerSendRequest({
+                      type: 'kombainer_cancel_talon',
+                      talonId: this.state.talonId,
+                      reason: cancelComment.trim(),
+                    });
+
+                    console.log(
+                      'handleCancelConfirm|kombainer_cancel_talon|tcpResponse=',
+                      tcpResponse
+                    );
+                  } catch (error) {
+                    console.error('Ошибка при отправке TCP-запроса:', error);
+                  }
+
+                  console.log(
+                    'handleCancelConfirm|Талон отменен с комментарием:',
+                    cancelComment.trim()
+                  );
                 } catch (error) {
-                  console.error('Ошибка при отмене талона:', error);
+                  console.error('handleCancelConfirm|Ошибка при отмене талона:', error);
                   // Показываем ошибку пользователю и не переходим на другой экран
                   Alert.alert(
                     'Ошибка отмены талона',
@@ -466,9 +485,9 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
               }
 
               await this.cancel();
-              console.log('handleCancelClick|Соединения закрыты');
+              console.log('handleCancelConfirm|Соединения закрыты');
             } catch (error) {
-              console.error('handleCancelClick|Ошибка при закрытии соединений:', error);
+              console.error('handleCancelConfirm|Ошибка при закрытии соединений:', error);
               // Ошибка при закрытии соединения - показываем уведомление, но все равно переходим
               Alert.alert(
                 'Предупреждение',
