@@ -238,6 +238,36 @@ export async function cancelTalonByVoditel(talonId: string, reason: string): Pro
 }
 
 /**
+ * Отменить талон комбайнером и указать причину отмены
+ */
+export async function cancelTalonByKombainer(talonId: string, reason: string): Promise<string> {
+  console.log('cancelTalonByKombainer|talonId=', talonId);
+  console.log('cancelTalonByKombainer|reason=', reason);
+  return database.write(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const record = await collection.find(talonId);
+
+    if (!record) {
+      console.error(`cancelTalonByKombainer|Талон с ID ${talonId} не найден.`);
+      throw new Error(`Талон с ID ${talonId} не найден.`);
+    }
+
+    const now = Date.now();
+    await record.update((r) => {
+      r.status = 'cancelled_by_kombainer';
+      r.cancellationReason = reason.trim();
+      r.updated_at = now;
+
+      // Если талон отменяется, автоматически устанавливаем время окончания
+      if (!r.endTime) {
+        r.endTime = now;
+      }
+    });
+    return record.id;
+  });
+}
+
+/**
  * Получить все отмененные талоны
  */
 export async function getCancelledTalons(): Promise<ICreateTalonsParams[]> {
