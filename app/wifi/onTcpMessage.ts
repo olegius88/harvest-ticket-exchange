@@ -30,6 +30,17 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       return { status: 'ok' };
     }
 
+    case 'kombainer_cancel_talon': {
+      const { talonId, reason } = message;
+
+      setTimeout(() => {
+        // Отправляем событие о подключении водителя
+        DeviceEventEmitter.emit('kombainerCancelTalon', { talonId, reason });
+      });
+
+      return { status: 'ok' };
+    }
+
     case 'voditel_cancel_talon': {
       const { talonId, reason } = message;
 
