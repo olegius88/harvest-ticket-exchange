@@ -29,7 +29,12 @@ import {
   IPayloadSetTalonOfKombainer,
 } from '../../../global';
 import KeepAwake from 'react-native-keep-awake';
-import { ICreateTalonsParams, createTalon, cancelTalon } from '../../db/talons_of_combainers';
+import {
+  ICreateTalonsParams,
+  createTalon,
+  cancelTalon,
+  cancelTalonByKombainer,
+} from '../../db/talons_of_combainers';
 
 interface VoditelTicketDetailAfterSetWeightProps {
   navigation: NavigationProp<RootStackParamList>;
@@ -84,6 +89,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   setTalonOfKombainerListener: any = null;
   // Слушатель для события подписания талона комбайнером
   kombainerSignTicketListener: any = null;
+  // Слушатель для события отмены талона комбайнером
+  kombainerCancelTalonListener: any = null;
   // Слушатель для блокировки кнопки "Назад"
   backHandlerListener: any = null;
   // Контроллер для периодического опроса данных
@@ -150,6 +157,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       this.handleKombainerSignTicket
     );
 
+    // Добавляем слушатель события отмены талона комбайнером
+    this.kombainerCancelTalonListener = DeviceEventEmitter.addListener(
+      'kombainerCancelTalon',
+      this.handleKombainerCancelTalon
+    );
+
     // Блокируем кнопку "Назад"
     this.backHandlerListener = BackHandler.addEventListener(
       'hardwareBackPress',
@@ -210,6 +223,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     this.setTalonOfKombainerListener?.remove();
 
     this.kombainerSignTicketListener?.remove();
+    this.kombainerCancelTalonListener?.remove();
     this.backHandlerListener?.remove();
   };
 
@@ -223,6 +237,50 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     } else {
       // Если событие пришло до нажатия на "Принять", запоминаем это
       this.setState({ kombainerSignReceived: true });
+    }
+  };
+
+  // Обработчик события отмены талона комбайнером
+  handleKombainerCancelTalon = async (data: { talonId: string; reason: string }) => {
+    this.kombainerCancelTalonListener?.remove();
+
+    console.log('handleKombainerCancelTalon|data=', data);
+
+    const { talonId, reason } = data;
+
+    try {
+      // Отменяем талон со статусом cancelled_by_kombainer
+      await cancelTalonByKombainer(talonId, reason);
+      console.log('handleKombainerCancelTalon: Талон отменен комбайнером');
+
+      // Показываем уведомление пользователю
+      Alert.alert('Отмена талона', `Комбайнер отменил талон.\nПричина: ${reason}`, [
+        {
+          text: 'OK',
+          onPress: async () => {},
+        },
+      ]);
+
+      try {
+        // Корректно закрываем TCP соединение
+        console.log('handleKombainerCancelTalon: Закрытие TCP-соединения...');
+        await this.cleanupTcpConnection();
+        console.log('handleKombainerCancelTalon: TCP-соединение закрыто успешно');
+      } catch (error) {
+        console.error('handleKombainerCancelTalon: Ошибка при закрытии соединения:', error);
+        // Продолжаем выполнение даже при ошибке
+      } finally {
+        // После закрытия соединения переходим на экран создания поездки
+        this.props.navigation.navigate('VoditelCreateTripScreen');
+      }
+    } catch (error) {
+      console.error('handleKombainerCancelTalon: Ошибка при отмене талона:', error);
+      Alert.alert('Ошибка', 'Произошла ошибка при обработке отмены талона комбайнером', [
+        {
+          text: 'OK',
+          onPress: () => this.props.navigation.navigate('VoditelCreateTripScreen'),
+        },
+      ]);
     }
   };
 
@@ -579,16 +637,20 @@ class VoditelTicketDetailAfterSetWeight extends Component<
         try {
           await cancelTalon(talonId, cancelComment.trim());
 
-          const data = await sendTcpRequest({
-            type: 'voditel_cancel_talon',
-            talonId,
-            reason: cancelComment.trim(),
-          });
-          console.log('handleCancelConfirm|voditel_cancel_talon|data=', data);
+          try {
+            const data = await sendTcpRequest({
+              type: 'voditel_cancel_talon',
+              talonId,
+              reason: cancelComment.trim(),
+            });
+            console.log('handleCancelConfirm|voditel_cancel_talon|data=', data);
+          } catch (error: any) {
+            console.error('handleCancelConfirm|voditel_cancel_talon|error =', error);
+          }
 
           console.log('Талон отменен с комментарием:', cancelComment.trim());
         } catch (error) {
-          console.error('Ошибка при отмене талона:', error);
+          console.error('handleCancelConfirm|Ошибка при отмене талона:', error);
           // Показываем ошибку пользователю и не переходим на другой экран
           Alert.alert(
             'Ошибка отмены талона',
