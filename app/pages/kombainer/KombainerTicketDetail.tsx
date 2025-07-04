@@ -64,6 +64,7 @@ const KombainerTicketDetail: React.FC = () => {
   const [data, setData] = useState<CurrentUserResponse | null>(null);
   const [weight, setWeight] = useState('');
   const [creatingTalon, setCreatingTalon] = useState(false);
+  const [talonId, setTalonId] = useState<string | null>(null);
   const [nextTalonNumber, setNextTalonNumber] = useState<string>('');
   const [talonCreatedAt, setTalonCreatedAt] = useState<number | null>(null);
 
@@ -105,6 +106,19 @@ const KombainerTicketDetail: React.FC = () => {
     fetchData();
   }, []);
 
+  const voditelConnect = () => {
+    console.log('voditelConnect|talonId=', talonId);
+    if (!talonId) {
+      Alert.alert(
+        'Ошибка',
+        'Талон не создан. Пожалуйста, создайте талон перед подключением водителя.'
+      );
+      return;
+    }
+    // Переходим к экрану QR-кода для сканирования водителем
+    navigation.navigate('KombainerQRCodeScreen', { talonId });
+  };
+
   const handleCreateTalon = () => {
     Alert.alert(
       'Подтверждение',
@@ -132,6 +146,10 @@ const KombainerTicketDetail: React.FC = () => {
                 startTime: createdAt,
               });
 
+              console.log('handleCreateTalon|talonId=', talonId);
+
+              setTalonId(talonId);
+
               // Сохраняем время создания талона
               setTalonCreatedAt(createdAt);
 
@@ -139,10 +157,6 @@ const KombainerTicketDetail: React.FC = () => {
               Alert.alert('Успех', 'Талон успешно создан!', [
                 {
                   text: 'ОК',
-                  onPress: () => {
-                    // Переходим к экрану QR-кода для сканирования водителем
-                    navigation.navigate('KombainerQRCodeScreen', { talonId });
-                  },
                 },
               ]);
             } catch (error) {
@@ -203,27 +217,27 @@ const KombainerTicketDetail: React.FC = () => {
 
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Комбайн:</Text>
-            <Text style={styles.formValue}>{data?.kombainerData?.combine || 'Класс'}</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.combine || '-'}</Text>
           </View>
 
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Комбайнер:</Text>
-            <Text style={styles.formValue}>{data?.userData?.fio || 'Иванов'}</Text>
+            <Text style={styles.formValue}>{data?.userData?.fio || '-'}</Text>
           </View>
 
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Культура:</Text>
-            <Text style={styles.formValue}>{data?.kombainerData?.culture || 'ОмскаЯ'}</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.culture || '-'}</Text>
           </View>
 
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Поле:</Text>
-            <Text style={styles.formValue}>{data?.kombainerData?.field || '55'}</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.field || '-'}</Text>
           </View>
 
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Бригада:</Text>
-            <Text style={styles.formValue}>{data?.kombainerData?.brigade || '1'}</Text>
+            <Text style={styles.formValue}>{data?.kombainerData?.brigade || '-'}</Text>
           </View>
 
           <View style={styles.formRow}>
@@ -255,11 +269,15 @@ const KombainerTicketDetail: React.FC = () => {
 
           <TouchableOpacity
             style={[styles.createTalonButton, creatingTalon && styles.disabledButton]}
-            onPress={handleCreateTalon}
+            onPress={talonCreatedAt ? voditelConnect : handleCreateTalon}
             disabled={creatingTalon}
           >
             <Text style={styles.createTalonButtonText}>
-              {creatingTalon ? 'Создание талона...' : 'Создать талон'}
+              {creatingTalon
+                ? 'Создание талона...'
+                : talonCreatedAt
+                  ? 'Подключить водителя'
+                  : 'Создать талон'}
             </Text>
           </TouchableOpacity>
 
