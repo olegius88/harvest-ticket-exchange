@@ -17,8 +17,6 @@ import KombainerCreateTicket from './pages/kombainer/KombainerCreateTicket';
 import { RootStackParamList } from '../global';
 import VoditelRegistration from './pages/voditel/VoditelRegistration';
 import VoditelCreateTrip from './pages/voditel/VoditelCreateTrip';
-import VoditelTicketDetail from './pages/voditel/VoditelTicketDetail.tsx';
-import VoditelWaitKombainerData from './pages/voditel/VoditelWaitKombainerData';
 import VoditelTicketDetailAfterSetWeight from './pages/voditel/VoditelTicketDetailAfterSetWeight';
 import VoditelTicketCreatedSuccess from './pages/voditel/VoditelTicketCreatedSuccess';
 import KombainerTicketDetailAfterVoditelConfirm from './pages/kombainer/KombainerTicketDetailAfterVoditelConfirm';
@@ -94,11 +92,6 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="VoditelRegistrationScreen" component={VoditelRegistration} />
           <Stack.Screen name="VoditelCreateTripScreen" component={VoditelCreateTrip} />
           <Stack.Screen name="VoditelTalonsExportScreen" component={VoditelTalonsExport} />
-          <Stack.Screen name="VoditelTicketDetailScreen" component={VoditelTicketDetail} />
-          <Stack.Screen
-            name="VoditelWaitKombainerDataScreen"
-            component={VoditelWaitKombainerData}
-          />
           <Stack.Screen
             name="VoditelTicketDetailAfterSetWeightScreen"
             component={VoditelTicketDetailAfterSetWeight}
