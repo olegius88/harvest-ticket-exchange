@@ -54,8 +54,8 @@ interface VoditelTicketDetailAfterSetWeightState {
 
   canSignTicket: boolean; // Новое состояние для отображения кнопки "Подписать талон"
 
-  waitingForKombainerSign: boolean; // Ожидание события kombainerSignTicket
-  kombainerSignReceived: boolean; // Получено ли событие kombainerSignTicket
+  waitingForKombainerSign: boolean; // Ожидание события kombainer_sign_ticket
+  kombainerSignReceived: boolean; // Получено ли событие kombainer_sign_ticket
 
   cancelInProgress: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
 
@@ -153,13 +153,13 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
     // Добавляем слушатель события подписания талона комбайнером
     this.kombainerSignTicketListener = DeviceEventEmitter.addListener(
-      'kombainerSignTicket',
+      'kombainer_sign_ticket',
       this.handleKombainerSignTicket
     );
 
     // Добавляем слушатель события отмены талона комбайнером
     this.kombainerCancelTalonListener = DeviceEventEmitter.addListener(
-      'kombainerCancelTalon',
+      'kombainer_cancel_talon',
       this.handleKombainerCancelTalon
     );
 
@@ -171,7 +171,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
     // Добавляем слушатель события подтверждения от водителя
     this.setTalonOfKombainerListener = DeviceEventEmitter.addListener(
-      'setTalonOfKombainer',
+      'set_talon_of_kombainer',
       this.handleSetTalonOfKombainer
     );
 
@@ -343,52 +343,47 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     let kombainerUserData: ICreateUsersParams;
     let talonData: ICreateTalonsParams;
 
-    // В зависимости от контекста отправляем TCP-запрос за данными комбайнера
-    switch (AuthStoreData.context) {
-      case 'voditel': {
-        try {
-          const { talonId } = this.props.route.params || {};
-          console.log(
-            'VoditelTicketDetailAfterSetWeight|getKombainerData|talonId from params=',
-            talonId
-          );
+    try {
+      const {
+        talonId,
+        kombainerData: routeKombainerData,
+        kombainerUserData: routeKombainerUserData,
+      } = this.props.route.params || {};
+      console.log(
+        'VoditelTicketDetailAfterSetWeight|getKombainerData|talonId from params=',
+        talonId
+      );
+      console.log(
+        'VoditelTicketDetailAfterSetWeight|getKombainerData|kombainerData from params=',
+        routeKombainerData
+      );
+      console.log(
+        'VoditelTicketDetailAfterSetWeight|getKombainerData|kombainerUserData from params=',
+        routeKombainerUserData
+      );
 
-          const data = await sendTcpRequest({
-            type: 'get_kombainer_data',
-            talonId,
-          });
-          console.log('VoditelTicketDetailAfterSetWeight|get_kombainer_data|data=', data);
+      console.log('VoditelTicketDetailAfterSetWeight|Using data from navigation params');
+      kombainerData = routeKombainerData;
+      kombainerUserData = routeKombainerUserData as ICreateUsersParams;
 
-          tcpResponse = { type: 'sendTcpRequest', data };
-          console.log(
-            'VoditelTicketDetailAfterSetWeight|get_kombainer_data|tcpResponse=',
-            tcpResponse
-          );
+      // Всё ещё получаем данные талона через TCP
+      const data = await sendTcpRequest({
+        type: 'get_talon_data',
+        talonId,
+      });
+      console.log('VoditelTicketDetailAfterSetWeight|get_talon_data|data=', data);
+      talonData = (data as any).talonData;
 
-          // Проверяем, что данные имеют правильную структуру
-          if (tcpResponse.type === 'sendTcpRequest' && tcpResponse.data) {
-            const tcpData = tcpResponse.data as ITcpResponseKombainerData;
-            kombainerData = tcpData.kombainerData;
-            kombainerUserData = tcpData.kombainerUserData;
-            talonData = tcpData.talonData; // Извлекаем talonData из ответа
-          } else {
-            throw new Error('Неверная структура ответа TCP');
-          }
-        } catch (error: unknown) {
-          console.error('VoditelTicketDetailAfterSetWeight|error =', error);
-          const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-          Alert.alert('Ошибка отправки данных талона', errorMessage);
-          return;
-        }
-        break;
-      }
-      default:
-        console.error(
-          'VoditelTicketDetailAfterSetWeight|неизвестный context|AuthStoreData.context=',
-          AuthStoreData.context
-        );
-        Alert.alert('Ошибка', `Неизвестный контекст: ${AuthStoreData.context}`);
-        return;
+      console.log('VoditelTicketDetailAfterSetWeight|talonData set to state:', {
+        id: talonData.id,
+        talonNumber: talonData.talonNumber,
+        voditelId: talonData.voditelId,
+      });
+    } catch (error: unknown) {
+      console.error('VoditelTicketDetailAfterSetWeight|error =', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка получения данных талона', errorMessage);
+      return;
     }
 
     // Обновляем состояние компонента: данные загружены
@@ -405,11 +400,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
     });
 
     console.log('VoditelTicketDetailAfterSetWeight|data loaded successfully');
-    console.log('VoditelTicketDetailAfterSetWeight|talonData set to state:', {
-      id: talonData?.id,
-      talonNumber: talonData?.talonNumber,
-      voditelId: talonData?.voditelId,
-    });
+
     console.log(
       'VoditelTicketDetailAfterSetWeight|route params talonId:',
       this.props.route.params?.talonId
@@ -478,7 +469,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             this.setState({ signTicketLoading: true });
             try {
               console.log('handleSignTicketClick|signTicket|START');
-              const { talonData, voditelData } = this.state;
+              const { talonData, voditelData, kombainerData, kombainerUserData } = this.state;
               console.log('handleSignTicketClick|signTicket|talonData=', talonData);
 
               if (!talonData) {
@@ -488,6 +479,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
               const talonId = await createTalon({
                 id: talonData.id,
                 kombainerId: talonData.kombainerId,
+                kombainerData: kombainerData,
+                kombainerUserData: kombainerUserData,
                 voditelId: voditelData.id,
                 status: 'voditel_signed',
                 startTime: talonData.startTime,

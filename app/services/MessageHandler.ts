@@ -55,6 +55,7 @@ import {
   getTalonsByVoditelId,
   updateTalonStatus,
   updateTalonWeight,
+  deleteAllTalons,
 } from '../db/talons_of_combainers';
 import {
   NotFoundError,
@@ -257,6 +258,7 @@ const _handleReqMessage = async (
           kombainerData: null,
           kombainerUserData: null,
           voditelData: null,
+          talonData: null,
         };
       }
       let userData: ICreateUsersParams;
@@ -272,6 +274,7 @@ const _handleReqMessage = async (
           kombainerData: null,
           kombainerUserData: null,
           voditelData: null,
+          talonData: null,
         };
       }
       const kombainerData = await getKombainerByUserId(currentUserId);
@@ -285,6 +288,7 @@ const _handleReqMessage = async (
         kombainerData,
         kombainerUserData: userData,
         voditelData,
+        talonData: null,
       };
     }
     case 'openCodeScannerPage': {
@@ -383,9 +387,10 @@ const _handleReqMessage = async (
     case 'editTalon': {
       const editData = req.data as IEditTalonParams;
       console.log('editTalon|req.data=', editData);
-      const talonId = await editTalon(editData);
-      console.log('editTalon|talonId=', talonId);
-      return { type, talonId };
+      const { talonId, ...params } = editData;
+      const resultTalonId = await editTalon(talonId, params as IEditTalonParams);
+      console.log('editTalon|talonId=', resultTalonId);
+      return { type, talonId: resultTalonId };
     }
     case 'assignDriverToTalon': {
       const { talonId, voditelId } = req.data as { talonId: string; voditelId: string };
@@ -480,6 +485,21 @@ const _handleReqMessage = async (
         };
       } catch (error: unknown) {
         console.error('updateUserProfile|error=', error);
+        throw error;
+      }
+    }
+    case 'deleteAllTalons': {
+      try {
+        console.log('deleteAllTalons|начинаем удаление всех талонов');
+        const deletedCount = await deleteAllTalons();
+        console.log('deleteAllTalons|удалено талонов:', deletedCount);
+
+        return {
+          type,
+          deletedCount,
+        };
+      } catch (error: unknown) {
+        console.error('deleteAllTalons|error=', error);
         throw error;
       }
     }

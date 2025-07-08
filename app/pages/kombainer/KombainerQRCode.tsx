@@ -38,9 +38,11 @@ import {
   SetHotspotDisabledResponse,
   SetHotspotEnabledResponse,
   IVoditelConnectedPayload,
+  CurrentUserResponse,
+  ICreateKombainerParams,
 } from '../../../global';
-import { createUser, getUserById } from '../../db/users';
-import { createVoditel, getVoditelByUserId } from '../../db/viditels';
+import { createUser, getUserById, ICreateUsersParams } from '../../db/users';
+
 import { getTalonById, editTalon } from '../../db/talons_of_combainers';
 import DeviceInfo from 'react-native-device-info';
 import QRCode from 'react-native-qrcode-svg';
@@ -66,7 +68,7 @@ interface KombainerQRCodeState {
   maxRetries: number;
   retryInProgress: boolean;
   isCancelling: boolean; // Добавляем флаг для отслеживания процесса отмены
-  voditelConnected: boolean; // Добавляем флаг для отслеживания подключения водителя
+  set_voditel_data: boolean; // Добавляем флаг для отслеживания подключения водителя
   voditelConnectProcessing: boolean; // Новый флаг для предотвращения множественной обработки
   // Новые поля для геопозиции
   isLocationEnabled: boolean;
@@ -96,7 +98,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       maxRetries: 5, // Максимальное количество попыток
       retryInProgress: false,
       isCancelling: false, // Инициализация флага отмены
-      voditelConnected: false, // Инициализация флага подключения водителя
+      set_voditel_data: false, // Инициализация флага подключения водителя
       voditelConnectProcessing: false, // Инициализация флага обработки подключения
       // Инициализация полей геопозиции
       isLocationEnabled: true,
@@ -304,7 +306,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     console.log('handleVoditelConnected|Водитель подключился:', data);
 
     // Проверяем, не обрабатывается ли уже подключение
-    if (this.state.voditelConnectProcessing || this.state.voditelConnected) {
+    if (this.state.voditelConnectProcessing || this.state.set_voditel_data) {
       console.log(
         'handleVoditelConnected|Подключение уже обрабатывается или водитель уже подключен, пропускаем'
       );
@@ -316,7 +318,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
     const { voditelData, voditelUserData } = data;
 
-    // Сохраняем данные, полученные с другого устройства (from_remote=true) с уведомлениями об ошибках
+    // Сохраняем данные пользователя, полученные с другого устройства (from_remote=true)
     // Пользователь
     try {
       await getUserById(voditelUserData.id);
@@ -344,38 +346,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
       }
     }
 
-    // Водитель
-    try {
-      const existingVoditel = await getVoditelByUserId(voditelData.userId);
-      if (existingVoditel) {
-        console.log(
-          'handleVoditelConnected|Водитель уже существует, пропускаем сохранение:',
-          existingVoditel.id
-        );
-      } else {
-        try {
-          await createVoditel({
-            id: voditelData.id,
-            userId: voditelData.userId,
-            transport: voditelData.transport,
-            from_remote: true,
-          });
-          console.log('handleVoditelConnected|Удаленный водитель сохранен:', voditelData.userId);
-        } catch (e: any) {
-          console.error('handleVoditelConnected|Ошибка сохранения водителя:', e);
-          Alert.alert('Ошибка сохранения', `Не удалось сохранить водителя: ${e.message || e}`);
-          this.setState({ voditelConnectProcessing: false }); // Сбрасываем флаг при ошибке
-          return;
-        }
-      }
-    } catch (err: any) {
-      console.error('handleVoditelConnected|Ошибка при проверке существования водителя:', err);
-      Alert.alert('Ошибка', `Не удалось проверить водителя: ${err.message || err}`);
-      this.setState({ voditelConnectProcessing: false }); // Сбрасываем флаг при ошибке
-      return;
-    }
-
-    // Обновление voditelId для талона
+    // Сохраняем данные водителя и пользователя непосредственно в талон
     try {
       const talon = await getTalonById(this.state.talonId);
       await editTalon(this.state.talonId, {
@@ -383,33 +354,61 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
         kombainerId: talon.kombainerId,
         voditelId: voditelData.id,
         voditelUserId: voditelUserData.id,
+        voditelData: voditelData, // Сохраняем данные водителя как объект
+        voditelUserData: voditelUserData, // Сохраняем данные пользователя водителя как объект
         status: talon.status,
         startTime: talon.startTime,
         endTime: talon.endTime,
         weight: talon.weight,
         comment: talon.comment,
       });
-      console.log('handleVoditelConnected|Обновлен voditelId у талона:', this.state.talonId);
+      console.log('handleVoditelConnected|Обновлен талон с данными водителя:', this.state.talonId);
       {
-        const talon = await getTalonById(this.state.talonId);
-        console.log('Обновленный талон:', talon);
+        const updatedTalon = await getTalonById(this.state.talonId);
+        console.log('Обновленный талон:', updatedTalon);
       }
     } catch (error) {
-      console.error('handleVoditelConnected|Ошибка при обновлении voditelId у талона:', error);
-      Alert.alert('Ошибка', `Не удалось обновить voditelId у талона: ${error.message || error}`);
+      console.error('handleVoditelConnected|Ошибка при обновлении талона:', error);
+      Alert.alert('Ошибка', `Не удалось обновить талон: ${error.message || error}`);
       this.setState({ voditelConnectProcessing: false }); // Сбрасываем флаг при ошибке
       return;
     }
 
     // Отправляем водителю событие о принятии подключения с talonId
     try {
+      // Получаем данные текущего комбайнера
+      const currentUserResponse = await handleMessage({
+        req: {
+          type: 'currentUser',
+          data: { context: 'kombainer' },
+        },
+        reqId: 'getCurrentUser_' + Date.now(),
+      });
+
+      if (currentUserResponse.type !== 'currentUser') {
+        throw new Error('Failed to get current user');
+      }
+
+      const currentUser = currentUserResponse as CurrentUserResponse;
+      const { userData: kombainerUserData, kombainerData } = currentUser;
+
+      if (!kombainerData || !kombainerUserData) {
+        throw new Error('Данные комбайнера не найдены');
+      }
+
       await tcpServerSendRequest({
         type: 'accept_voditel_connect',
         talonId: this.state.talonId,
+        kombainerData,
+        kombainerUserData,
       });
       console.log(
         'handleVoditelConnected|Отправлено событие accept_voditel_connect с talonId:',
-        this.state.talonId
+        this.state.talonId,
+        'kombainerData:',
+        kombainerData,
+        'kombainerUserData:',
+        kombainerUserData
       );
     } catch (error) {
       console.error('handleVoditelConnected|Ошибка при отправке accept_voditel_connect:', error);
@@ -423,7 +422,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     }
 
     // Устанавливаем флаг подключения водителя и сбрасываем флаг обработки
-    this.setState({ voditelConnected: true, voditelConnectProcessing: false });
+    this.setState({ set_voditel_data: true, voditelConnectProcessing: false });
 
     // Переходим на экран ожидания подтверждения данных водителем и передаем данные водителя
     this.props.navigation.navigate('KombainerTicketDetailAfterVoditelConfirmScreen', {
@@ -450,7 +449,7 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
 
     // Добавляем слушатель события подключения водителя
     this.voditelConnectedListener = DeviceEventEmitter.addListener(
-      'voditelConnected',
+      'set_voditel_data',
       this.handleVoditelConnected
     );
 
@@ -638,8 +637,8 @@ class KombainerQRCode extends Component<KombainerQRCodeProps, KombainerQRCodeSta
     KeepAwake.deactivate();
 
     // Определяем, нужно ли сохранить соединение
-    // Соединение сохраняется, если водитель подключился (voditelConnected = true)
-    const shouldKeepConnection = this.state.voditelConnected;
+    // Соединение сохраняется, если водитель подключился (set_voditel_data = true)
+    const shouldKeepConnection = this.state.set_voditel_data;
 
     if (!shouldKeepConnection) {
       console.log('Водитель не подключен - закрываем соединения');

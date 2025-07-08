@@ -25,6 +25,7 @@ import {
   ITcpResponseConnectEstablishedOk,
   CurrentUserResponse,
   RootStackParamList,
+  ICreateKombainerParams,
 } from '../../../global';
 import { closeAllConnections } from '../../services/ConnectionManager';
 import { handleMessage } from '../../services/MessageHandler';
@@ -32,6 +33,7 @@ import { connectToTcpServer, sendTcpRequest } from '../../wifi/TcpClient';
 import { AuthStoreData } from '../../stores/AuthStore';
 import KeepAwake from 'react-native-keep-awake';
 import type { Routes } from '../../Routes';
+import { ICreateUsersParams } from '../../db/users';
 
 const { MainWifiModule } = NativeModules;
 
@@ -140,12 +142,21 @@ class VoditelQrCodeScannerClass extends Component<
     // Закрываем все соединения
     this.closeAllConnectionsAsync();
 
-    // Слушатель события acceptVoditelConnect
+    // Слушатель события accept_voditel_connect
     this.acceptVoditelConnectListener = DeviceEventEmitter.addListener(
-      'acceptVoditelConnect',
-      ({ talonId }) => {
+      'accept_voditel_connect',
+      ({ talonId, kombainerData, kombainerUserData }) => {
+        console.log('accept_voditel_connect received:', {
+          talonId,
+          kombainerData,
+          kombainerUserData,
+        });
         this.acceptVoditelConnectListener?.remove();
-        this.props.navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', { talonId });
+        this.props.navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', {
+          talonId,
+          kombainerData,
+          kombainerUserData,
+        });
         Alert.alert('Подключение к устройству прошло успешно');
       }
     );

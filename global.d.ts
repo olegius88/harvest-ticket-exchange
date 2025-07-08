@@ -381,6 +381,11 @@ export interface ISendTcpGetKombainerData {
   talonId: string;
 }
 
+export interface ISendTcpGetTalonData {
+  type: 'get_talon_data';
+  talonId: string;
+}
+
 export interface ISendTcpConfirmKombainerTicket {
   type: 'confirm_kombainer_ticket';
   voditelData: ICreateVoditelParams;
@@ -405,6 +410,8 @@ export interface ISendTcpSendSetTalonOfKombainer {
 export interface ISendTcpAcceptVoditelConnect {
   type: 'accept_voditel_connect';
   talonId: string;
+  kombainerData: ICreateKombainerParams;
+  kombainerUserData: ICreateUsersParams;
 }
 
 export interface IIsTcpServerSendResponse {
@@ -446,6 +453,7 @@ export type ISendTcpRequestData =
   | ISendTcpSetVoditelData
   | ISendTcpSetKombainerData
   | ISendTcpGetKombainerData
+  | ISendTcpGetTalonData
   | ISendTcpConfirmKombainerTicket
   | ISendTcpConfirmKombainerTicketWithWeight
   | ISendTcpSendSetTalonOfKombainer
@@ -491,7 +499,8 @@ export type ISendPostMessage =
   | ISendPostMessageGetTalonsByKombainerId
   | ISendPostMessageGetTalonsByVoditelId
   | ISendPostMessageCheckUserRegistration
-  | ISendPostMessageUpdateUserProfile;
+  | ISendPostMessageUpdateUserProfile
+  | ISendPostMessageDeleteAllTalons;
 
 /**
  * Объединённый тип ответов.
@@ -527,7 +536,8 @@ export type ISendPostResponseRes =
   | ISendPostResponseGetTalonsByKombainerId
   | ISendPostResponseGetTalonsByVoditelId
   | ISendPostResponseCheckUserRegistration
-  | ISendPostResponseUpdateUserProfile;
+  | ISendPostResponseUpdateUserProfile
+  | ISendPostResponseDeleteAllTalons;
 
 /**
  * Интерфейс запроса с идентификатором.
@@ -661,7 +671,7 @@ export interface IRegistrationForm extends ICreateUserParams {
   confirmPassword: string;
 }
 
-export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist';
+export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist' | 'admin';
 
 export interface IOption {
   value: PositionOptionValue;
@@ -778,6 +788,8 @@ export interface IEditTalonParams {
   kombainerId: string; // ID комбайнера
   voditelId?: string; // ID водителя (может быть не назначен)
   voditelUserId?: string; // ID пользователя водителя
+  voditelData?: ICreateVoditelParams | null; // Объект с данными водителя
+  voditelUserData?: ICreateUserParams | null; // Объект с данными пользователя водителя
   status: TalonStatus; // Статус талона
   startTime: number; // Время начала
   endTime?: number; // Время окончания (может быть не заполнено)
@@ -791,8 +803,12 @@ export interface IEditTalonParams {
 export interface ICreateTalonParams {
   id?: string; // ID талона (может быть не заполнен, если генерируется новый)
   kombainerId: string; // ID комбайнера
+  kombainerData?: ICreateKombainerParams | null; // Объект с данными комбайнера
+  kombainerUserData?: ICreateUserParams | null; // Объект с данными пользователя комбайнера
   voditelId?: string; // ID водителя (может быть не назначен)
   voditelUserId?: string; // ID пользователя водителя
+  voditelData?: ICreateVoditelParams | null; // Объект с данными водителя
+  voditelUserData?: ICreateUserParams | null; // Объект с данными пользователя водителя
   status: TalonStatus; // Статус талона
   startTime: number; // Время начала
   endTime?: number; // Время окончания (может быть не заполнено)
@@ -936,11 +952,27 @@ export interface ISendPostResponseUpdateUserProfile {
   status: 'ok';
 }
 
+/**
+ * Интерфейс для запроса удаления всех талонов (администратор).
+ */
+export interface ISendPostMessageDeleteAllTalons {
+  type: 'deleteAllTalons';
+}
+
+/**
+ * Интерфейс для ответа на запрос удаления всех талонов.
+ */
+export interface ISendPostResponseDeleteAllTalons {
+  type: 'deleteAllTalons';
+  deletedCount: number;
+}
+
 // Обновленный тип для навигации
 export type RootStackParamList = {
   MainScreen: undefined;
   LoginScreen: undefined;
   RegistrationScreen: undefined;
+  AdminPanelScreen: undefined;
   KombainerRegistrationScreen: undefined;
   KombainerCreateTicketScreen: undefined;
   KombainerQRCodeScreen: { talonId: string };
@@ -953,9 +985,11 @@ export type RootStackParamList = {
   KombainerTalonsExportScreen: undefined;
   VoditelRegistrationScreen: undefined;
   VoditelCreateTripScreen: undefined;
-  VoditelTicketDetailScreen: undefined;
-  VoditelWaitKombainerDataScreen: undefined;
-  VoditelTicketDetailAfterSetWeightScreen: { talonId?: string };
+  VoditelTicketDetailAfterSetWeightScreen: {
+    talonId: string;
+    kombainerData: ICreateKombainerParams;
+    kombainerUserData: ICreateUserParams;
+  };
   VoditelTicketCreatedSuccessScreen: undefined;
   VoditelTalonsExportScreen: undefined;
   CodeScannerPageScreen: undefined;
@@ -1120,6 +1154,11 @@ export interface UpdateUserProfileResponse {
   status: 'ok';
 }
 
+export interface DeleteAllTalonsResponse {
+  type: 'deleteAllTalons';
+  deletedCount: number;
+}
+
 // Объединённый тип всех упрощённых ответов
 export type HandleReqMessageResponse =
   | LoginResponse
@@ -1151,7 +1190,8 @@ export type HandleReqMessageResponse =
   | GetTalonsByKombainerIdResponse
   | GetTalonsByVoditelIdResponse
   | CheckUserRegistrationResponse
-  | UpdateUserProfileResponse;
+  | UpdateUserProfileResponse
+  | DeleteAllTalonsResponse;
 
 export interface IVoditelConnectedPayload {
   voditelData: ICreateVoditelParams;

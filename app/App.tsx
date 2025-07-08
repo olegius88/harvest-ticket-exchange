@@ -23,6 +23,7 @@ import KombainerTicketDetailAfterVoditelConfirm from './pages/kombainer/Kombaine
 import KombainerTicketCreatedSuccess from './pages/kombainer/KombainerTicketCreatedSuccess';
 import KombainerTalonsExport from './pages/kombainer/KombainerTalonsExport';
 import VoditelTalonsExport from './pages/voditel/VoditelTalonsExport';
+import AdminPanel from './pages/admin/AdminPanel';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -71,6 +72,7 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="MainScreen" component={Main} />
           <Stack.Screen name="LoginScreen" component={Login} />
           <Stack.Screen name="RegistrationScreen" component={Registration} />
+          <Stack.Screen name="AdminPanelScreen" component={AdminPanel} />
 
           <Stack.Screen name="KombainerRegistrationScreen" component={KombainerRegistration} />
           <Stack.Screen name="KombainerTicketDetailScreen" component={KombainerTicketDetail} />

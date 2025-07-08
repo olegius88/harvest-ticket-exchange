@@ -31,6 +31,7 @@ const Main = () => {
     kombainer: 'Комбайнер',
     voditel: 'Водитель',
     bunkerist: 'Бункерист',
+    admin: 'Администратор',
   });
   const [isUserRegistered, setIsUserRegistered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,6 +124,10 @@ const Main = () => {
               // В React Native версии пока не реализован экран для бункериста
               Alert.alert('Информация', 'Экран для бункериста находится в разработке');
               return;
+            case 'admin':
+              // Переходим на панель администратора
+              navigation.navigate('AdminPanelScreen');
+              return;
           }
           return;
         }
@@ -189,6 +194,14 @@ const Main = () => {
           >
             <Text style={styles.buttonText}>{values.bunkerist}</Text>
           </TouchableOpacity>
+
+          {/* <TouchableOpacity
+            style={[styles.adminButton, loading && styles.buttonDisabled]}
+            onPress={() => handleClick('admin')}
+            disabled={loading}
+          >
+            <Text style={styles.adminButtonText}>{values.admin}</Text>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -286,6 +299,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#5a7d2b',
     fontWeight: '500',
+  },
+  adminButton: {
+    backgroundColor: '#fd7e14',
+    borderRadius: 6,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  adminButtonText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,

@@ -103,6 +103,8 @@ const KombainerTicketDetail: React.FC = () => {
               const createdAt = Date.now();
               const talonId = await createTalon({
                 kombainerId: data.kombainerData.id,
+                kombainerData: data.kombainerData,
+                kombainerUserData: data.userData,
                 status: 'created',
                 startTime: createdAt,
               });

@@ -26,6 +26,7 @@ import {
   updateTalonWeight,
   cancelTalon,
   cancelTalonByVoditel,
+  getTalonVoditelData,
 } from '../../db/talons_of_combainers';
 import { AuthStoreData } from '../../stores/AuthStore';
 import { ICreateUsersParams } from '../../db/users';
@@ -65,8 +66,8 @@ interface KombainerTicketDetailAfterVoditelConfirmState {
   weightError: string | null;
   isWaitingVoditelWeightConfirm?: boolean; // новое состояние
   canApproveTicket?: boolean; // новое состояние для кнопки "Подписать талон"
-  waitingForVoditelSign?: boolean; // Ожидание события voditelSignTicket
-  voditelSignReceived?: boolean; // Получено ли событие voditelSignTicket (kombainerSignReceived)
+  waitingForVoditelSign?: boolean; // Ожидание события voditel_sign_ticket
+  voditelSignReceived?: boolean; // Получено ли событие voditel_sign_ticket (kombainerSignReceived)
   cancelInProgress?: boolean; // Добавляем флаг для защиты от множественных нажатий кнопки "Отменить"
 
   // Состояния для отслеживания загрузки кнопок
@@ -172,25 +173,25 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
     // Добавляем слушатель события подписания талона водителем
     this.voditelSignTicketListener = DeviceEventEmitter.addListener(
-      'voditelSignTicket',
+      'voditel_sign_ticket',
       this.handleVoditelSignTicket
     );
 
     // Добавляем слушатель события отмены талона водителем
     this.voditelCancelTalonListener = DeviceEventEmitter.addListener(
-      'voditelCancelTalon',
+      'voditel_cancel_talon',
       this.handleVoditelCancelTalon
     );
 
     // Добавляем слушатель события подтверждения от водителя здесь, один раз
     this.voditelConnectedListener = DeviceEventEmitter.addListener(
-      'voditelConfirmAfterConnect',
+      'confirm_kombainer_ticket',
       this.handleVoditelConfirmAfterConnect
     );
 
     // Добавляем слушатель события подтверждения веса водителем
     this.voditelConfirmWithWeightListener = DeviceEventEmitter.addListener(
-      'voditelConfirmWithWeight',
+      'confirm_kombainer_ticket_with_weight',
       this.handleVoditelConfirmWithWeight
     );
 
@@ -258,6 +259,26 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
       this.setState({
         talonData: talonData,
       });
+
+      // Если данные водителя отсутствуют в состоянии, попробуем загрузить их из талона
+      if (!this.state.voditelData || !this.state.voditelUserData) {
+        try {
+          const voditelDataFromTalon = await getTalonVoditelData(talonId);
+
+          if (voditelDataFromTalon.voditelData || voditelDataFromTalon.voditelUserData) {
+            console.log(
+              'fetchTalonData|Загружены данные водителя из талона:',
+              voditelDataFromTalon
+            );
+            this.setState({
+              voditelData: voditelDataFromTalon.voditelData || this.state.voditelData,
+              voditelUserData: voditelDataFromTalon.voditelUserData || this.state.voditelUserData,
+            });
+          }
+        } catch (error) {
+          console.warn('fetchTalonData|Не удалось загрузить данные водителя из талона:', error);
+        }
+      }
     } catch (error) {
       console.error('Ошибка загрузки данных талона:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить данные талона');
@@ -433,79 +454,55 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
 
     this.setState({ cancelInProgress: true, cancelModalVisible: false });
 
-    // Показываем уведомление о закрытии TCP-соединения
-    Alert.alert(
-      'Закрытие TCP-соединения',
-      'TCP-соединение с устройством водителя будет закрыто. Обмен данными прекратится.',
-      [
-        {
-          text: 'Отмена',
-          style: 'cancel',
-          onPress: () => this.setState({ cancelInProgress: false }),
-        },
-        {
-          text: 'Закрыть',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Сохраняем причину отмены талона в базе данных
-              if (this.state.talonId) {
-                try {
-                  await cancelTalon(this.state.talonId, cancelComment.trim());
+    try {
+      // Сохраняем причину отмены талона в базе данных
+      if (this.state.talonId) {
+        try {
+          await cancelTalon(this.state.talonId, cancelComment.trim());
 
-                  try {
-                    const tcpResponse = await tcpServerSendRequest({
-                      type: 'kombainer_cancel_talon',
-                      talonId: this.state.talonId,
-                      reason: cancelComment.trim(),
-                    });
+          try {
+            const tcpResponse = await tcpServerSendRequest({
+              type: 'kombainer_cancel_talon',
+              talonId: this.state.talonId,
+              reason: cancelComment.trim(),
+            });
 
-                    console.log(
-                      'handleCancelConfirm|kombainer_cancel_talon|tcpResponse=',
-                      tcpResponse
-                    );
-                  } catch (error) {
-                    console.error('Ошибка при отправке TCP-запроса:', error);
-                  }
+            console.log('handleCancelConfirm|kombainer_cancel_talon|tcpResponse=', tcpResponse);
+          } catch (error) {
+            console.error('Ошибка при отправке TCP-запроса:', error);
+          }
 
-                  console.log(
-                    'handleCancelConfirm|Талон отменен с комментарием:',
-                    cancelComment.trim()
-                  );
-                } catch (error) {
-                  console.error('handleCancelConfirm|Ошибка при отмене талона:', error);
-                  // Показываем ошибку пользователю и не переходим на другой экран
-                  Alert.alert(
-                    'Ошибка отмены талона',
-                    error instanceof Error ? error.message : 'Произошла ошибка при отмене талона',
-                    [{ text: 'OK', onPress: () => this.setState({ cancelInProgress: false }) }]
-                  );
-                  return; // Останавливаем выполнение, не переходим на другой экран
-                }
-              }
+          console.log('handleCancelConfirm|Талон отменен с комментарием:', cancelComment.trim());
+        } catch (error) {
+          console.error('handleCancelConfirm|Ошибка при отмене талона:', error);
+          // Показываем ошибку пользователю и не переходим на другой экран
+          Alert.alert(
+            'Ошибка отмены талона',
+            error instanceof Error ? error.message : 'Произошла ошибка при отмене талона',
+            [{ text: 'OK', onPress: () => this.setState({ cancelInProgress: false }) }]
+          );
+          return; // Останавливаем выполнение, не переходим на другой экран
+        }
+      }
 
-              await this.cancel();
-              console.log('handleCancelConfirm|Соединения закрыты');
-            } catch (error) {
-              console.error('handleCancelConfirm|Ошибка при закрытии соединений:', error);
-              // Ошибка при закрытии соединения - показываем уведомление, но все равно переходим
-              Alert.alert(
-                'Предупреждение',
-                'Произошла ошибка при закрытии соединения, но операция отмены выполнена',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => this.props.navigation.navigate('KombainerCreateTicketScreen'),
-                  },
-                ]
-              );
-              return;
-            }
-            this.props.navigation.navigate('KombainerCreateTicketScreen');
+      await this.cancel();
+      console.log('handleCancelConfirm|Соединения закрыты');
+    } catch (error) {
+      console.error('handleCancelConfirm|Ошибка при закрытии соединений:', error);
+      // Ошибка при закрытии соединения - показываем уведомление, но все равно переходим
+      Alert.alert(
+        'Предупреждение',
+        'Произошла ошибка при закрытии соединения, но операция отмены выполнена',
+        [
+          {
+            text: 'OK',
+            onPress: () => this.props.navigation.navigate('KombainerCreateTicketScreen'),
           },
-        },
-      ]
-    );
+        ]
+      );
+      return;
+    }
+    this.props.navigation.navigate('KombainerCreateTicketScreen');
   };
 
   cancel = async () => {

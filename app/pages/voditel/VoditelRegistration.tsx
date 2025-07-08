@@ -157,7 +157,7 @@ const VoditelRegistration: React.FC = () => {
         const createResponse = await handleMessage({
           req: {
             type: 'createVoditel',
-            data: { transport, userId: userData.id },
+            data: { transport, userId: userData.id, from_remote: false },
           },
           reqId: 'createVoditel_' + Date.now(),
         });

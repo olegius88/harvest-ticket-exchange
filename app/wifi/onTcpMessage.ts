@@ -16,7 +16,11 @@ import { getConfig } from '../db/configs';
 import { getUserById, ICreateUsersParams } from '../db/users';
 import { NotFoundError } from '../exceptions/exceptionsClasses';
 import { getKombainerByUserId } from '../db/kombainers';
-import { getTalonsByKombainerId, ICreateTalonsParams } from '../db/talons_of_combainers';
+import {
+  getTalonsByKombainerId,
+  getTalonById,
+  ICreateTalonsParams,
+} from '../db/talons_of_combainers';
 
 /**
  * Основная функция обработки сообщений
@@ -35,7 +39,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подключении водителя
-        DeviceEventEmitter.emit('kombainerCancelTalon', { talonId, reason });
+        DeviceEventEmitter.emit('kombainer_cancel_talon', { talonId, reason });
       });
 
       return { status: 'ok' };
@@ -46,7 +50,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подключении водителя
-        DeviceEventEmitter.emit('voditelCancelTalon', { talonId, reason });
+        DeviceEventEmitter.emit('voditel_cancel_talon', { talonId, reason });
       });
 
       return { status: 'ok' };
@@ -57,7 +61,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подключении водителя
-        DeviceEventEmitter.emit('kombainerSignTicket', {});
+        DeviceEventEmitter.emit('kombainer_sign_ticket', {});
       });
 
       return { status: 'ok' };
@@ -68,7 +72,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подключении водителя
-        DeviceEventEmitter.emit('voditelSignTicket', {});
+        DeviceEventEmitter.emit('voditel_sign_ticket', {});
       });
 
       return { status: 'ok' };
@@ -79,7 +83,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подключении водителя
-        DeviceEventEmitter.emit('voditelConnected', {
+        DeviceEventEmitter.emit('set_voditel_data', {
           voditelData,
           voditelUserData,
         } as IVoditelConnectedPayload);
@@ -89,12 +93,14 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
     }
 
     case 'accept_voditel_connect': {
-      const { talonId } = message;
+      const { talonId, kombainerData, kombainerUserData } = message;
 
       setTimeout(() => {
-        // Отправляем событие о принятии подключения водителя
-        DeviceEventEmitter.emit('acceptVoditelConnect', {
+        // Отправляем событие о принятии подключения водителя с данными комбайнера
+        DeviceEventEmitter.emit('accept_voditel_connect', {
           talonId,
+          kombainerData,
+          kombainerUserData,
         });
       });
 
@@ -121,7 +127,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       console.log('confirm_kombainer_ticket|message=', message);
 
       setTimeout(() => {
-        DeviceEventEmitter.emit('voditelConfirmAfterConnect', {
+        DeviceEventEmitter.emit('confirm_kombainer_ticket', {
           voditelData,
           userData,
         } as IPayloadConfirmKombainerTicket);
@@ -136,7 +142,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       setTimeout(() => {
         // Отправляем событие о подтверждении веса водителем
-        DeviceEventEmitter.emit('voditelConfirmWithWeight', message);
+        DeviceEventEmitter.emit('confirm_kombainer_ticket_with_weight', message);
       });
 
       return { status: 'ok' };
@@ -201,6 +207,43 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       return { status: 'ok', kombainerData, kombainerUserData: userData, talonNumber, talonData };
     }
 
+    case 'get_talon_data': {
+      const { talonId } = message;
+      console.log('get_talon_data|talonId=', talonId);
+
+      if (!talonId) {
+        console.error('get_talon_data|Не передан ID талона');
+        return { status: 'error', message: 'Не передан ID талона' };
+      }
+
+      try {
+        // Получаем данные талона напрямую по ID
+        const talonData = await getTalonById(talonId as string);
+        console.log('get_talon_data|talonData=', talonData);
+
+        // Данные комбайнера и пользователя комбайнера уже есть в талоне
+        const kombainerData = talonData.kombainerData;
+        const kombainerUserData = talonData.kombainerUserData;
+
+        console.log('get_talon_data|kombainerData=', kombainerData);
+        console.log('get_talon_data|kombainerUserData=', kombainerUserData);
+
+        return {
+          status: 'ok',
+          talonData,
+          kombainerData,
+          kombainerUserData,
+        };
+      } catch (error) {
+        console.error('get_talon_data|error=', error);
+        return {
+          status: 'error',
+          message:
+            error instanceof Error ? error.message : 'Произошла ошибка при получении данных талона',
+        };
+      }
+    }
+
     case 'set_talon_of_kombainer': {
       console.log('onTcpMessage|set_talon_of_kombainer|message=', message);
       const { kombainerData, userData, talonData, weight } = message;
@@ -214,7 +257,7 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
 
       console.log('confirm_kombainer_ticket|payload=', payload);
 
-      DeviceEventEmitter.emit('setTalonOfKombainer', payload);
+      DeviceEventEmitter.emit('set_talon_of_kombainer', payload);
 
       return { status: 'ok' };
     }
