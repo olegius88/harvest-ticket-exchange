@@ -750,8 +750,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             ['Культура', kombainerData?.culture],
             ['Поле', kombainerData?.field],
             ['Бригада', kombainerData?.brigade],
-          ].map(([label, value]) => (
-            <View key={label as string} style={styles.formRow}>
+          ].map(([label, value], index) => (
+            <View key={index} style={styles.formRow}>
               <Text style={styles.label}>{label}:</Text>
               <Text style={styles.value}>{value || '-'}</Text>
             </View>
@@ -770,8 +770,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           {[
             ['Транспорт', voditelData?.transport],
             ['Водитель', userData?.fio],
-          ].map(([label, value]) => (
-            <View key={label as string} style={styles.formRow}>
+          ].map(([label, value], index) => (
+            <View key={index} style={styles.formRow}>
               <Text style={styles.label}>{label}:</Text>
               <Text style={styles.value}>{value}</Text>
             </View>

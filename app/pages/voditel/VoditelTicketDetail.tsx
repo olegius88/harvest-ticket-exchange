@@ -212,8 +212,8 @@ const VoditelTicketDetail: React.FC = () => {
           ['Культура', data?.kombainerData?.culture],
           ['Поле', data?.kombainerData?.field],
           ['Бригада', data?.kombainerData?.brigade],
-        ].map(([label, value]) => (
-          <View key={label} style={styles.formRow}>
+        ].map(([label, value], index) => (
+          <View key={index} style={styles.formRow}>
             <Text style={styles.formLabel}>{label}:</Text>
             <Text style={styles.formValue}>{value || '-'}</Text>
           </View>
@@ -234,8 +234,8 @@ const VoditelTicketDetail: React.FC = () => {
         {[
           ['Транспорт', data?.voditelData?.transport],
           ['Водитель', data?.userData?.fio],
-        ].map(([label, value]) => (
-          <View key={label} style={styles.formRow}>
+        ].map(([label, value], index) => (
+          <View key={index} style={styles.formRow}>
             <Text style={styles.formLabel}>{label}:</Text>
             <Text style={styles.formValue}>{value || '-'}</Text>
           </View>

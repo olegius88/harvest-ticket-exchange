@@ -875,7 +875,7 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
             {/* Данные талона */}
             <View style={styles.formContainer}>
               {ticketData.map(([label, value], index) => (
-                <View key={label as string} style={styles.formRow}>
+                <View key={index} style={styles.formRow}>
                   <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>{label}:</Text>
                   </View>
@@ -924,8 +924,8 @@ class KombainerTicketDetailAfterVoditelConfirm extends Component<
               </View>
 
               {/* Данные водителя */}
-              {voditelTicketData.map(([label, value]) => (
-                <View key={label as string} style={styles.formRow}>
+              {voditelTicketData.map(([label, value], index) => (
+                <View key={index} style={styles.formRow}>
                   <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>{label}:</Text>
                   </View>
