@@ -1,4 +1,10 @@
 // Файл: app/wifi/TcpServer.ts
+//
+// ПРОТОКОЛ СООБЩЕНИЙ:
+// Все JSON сообщения должны заканчиваться символом новой строки '\n'
+// Это позволяет корректно обрабатывать большие сообщения, которые могут
+// приходить по частям через несколько вызовов события 'data'
+//
 import TcpSocket from 'react-native-tcp-socket';
 import Server from 'react-native-tcp-socket/lib/types/Server';
 import { ToastAndroid } from 'react-native';
@@ -45,44 +51,68 @@ export const startTcpServer = (port?: number): Promise<{ message: string; port: 
       // Добавляем сокет в массив активных соединений
       activeSockets.push(socket);
 
+      // Буфер для накопления неполных сообщений
+      let messageBuffer = '';
+
       // Обработка полученных данных от клиента
       socket.on('data', async (data: Buffer) => {
         const dataString = data.toString();
-        console.log('startTcpServer|socket|on|data=', dataString);
-        // ToastAndroid.show(`startTcpServer|socket|on|data`, ToastAndroid.SHORT);
-        let message: ISendTcpRequestData;
-        try {
-          message = JSON.parse(dataString);
-          if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
-            console.log('startTcpServer|isTcpServerSendResponse|message=', message);
-            return;
+        console.log('startTcpServer|socket|on|data|received chunk=', dataString);
+
+        // Добавляем новые данные к буферу
+        messageBuffer += dataString;
+
+        // Обрабатываем все полные сообщения в буфере
+        let newlineIndex;
+        while ((newlineIndex = messageBuffer.indexOf('\n')) !== -1) {
+          // Извлекаем полное сообщение (без символа новой строки)
+          const completeMessage = messageBuffer.substring(0, newlineIndex);
+          // Удаляем обработанное сообщение из буфера
+          messageBuffer = messageBuffer.substring(newlineIndex + 1);
+
+          if (!completeMessage.trim()) {
+            continue; // Пропускаем пустые сообщения
           }
-        } catch (error) {
-          console.error('startTcpServer|Ошибка парсинга JSON:', error);
-          ToastAndroid.show(
-            `startTcpServer|Ошибка парсинга JSON|${JSON.stringify(error)}`,
-            ToastAndroid.SHORT
-          );
-          return;
-        }
 
-        let res;
-        try {
-          res = await onTcpMessage(message);
-        } catch (error) {
-          console.error('startTcpServer|onTcpMessage|error=', error);
-          ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
-          return;
-        }
+          console.log('startTcpServer|socket|processing complete message=', completeMessage);
 
-        console.log('startTcpServer|onTcpMessage|res=', res);
-        try {
-          socket.write(
-            JSON.stringify({ ...res, ...{ from: 'TcpServer.ts-TcpSocket.createServer-on-data' } })
-          );
-        } catch (error) {
-          console.error('startTcpServer|socket|write|error=', error);
-          ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
+          let message: ISendTcpRequestData;
+          try {
+            message = JSON.parse(completeMessage);
+            if ((message as unknown as IIsTcpServerSendResponse).isTcpServerSendResponse) {
+              console.log('startTcpServer|isTcpServerSendResponse|message=', message);
+              continue;
+            }
+          } catch (error) {
+            console.error('startTcpServer|Ошибка парсинга JSON:', error);
+            ToastAndroid.show(
+              `startTcpServer|Ошибка парсинга JSON|${JSON.stringify(error)}`,
+              ToastAndroid.SHORT
+            );
+            continue;
+          }
+
+          let res;
+          try {
+            res = await onTcpMessage(message);
+          } catch (error) {
+            console.error('startTcpServer|onTcpMessage|error=', error);
+            ToastAndroid.show(`startTcpServer|onTcpMessage|error`, ToastAndroid.SHORT);
+            continue;
+          }
+
+          console.log('startTcpServer|onTcpMessage|res=', res);
+          try {
+            const responseMessage =
+              JSON.stringify({
+                ...res,
+                ...{ from: 'TcpServer.ts-TcpSocket.createServer-on-data' },
+              }) + '\n';
+            socket.write(responseMessage);
+          } catch (error) {
+            console.error('startTcpServer|socket|write|error=', error);
+            ToastAndroid.show(`startTcpServer|socket|write|error`, ToastAndroid.SHORT);
+          }
         }
       });
 
@@ -223,27 +253,47 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
       return reject(new Error(errMsg));
     }
     const socket = activeSockets[0];
-    const messageString = JSON.stringify({
-      ...message,
-      ...{ fromTcpServerSendRequest: true, from: 'tcpServerSendRequest-once-data' },
-    });
+    const messageString =
+      JSON.stringify({
+        ...message,
+        ...{ fromTcpServerSendRequest: true, from: 'tcpServerSendRequest-once-data' },
+      }) + '\n'; // Добавляем разделитель
+
+    // Буфер для накопления ответа
+    let responseBuffer = '';
 
     // Устанавливаем одноразовый обработчик для получения ответа от клиента
-    socket.once('data', (data: Buffer) => {
+    const onData = (data: Buffer) => {
       const dataString = data.toString();
-      console.log('tcpServerSendRequest|sendMessage|Получен ответ от клиента:', dataString);
-      try {
-        const response = JSON.parse(dataString);
-        resolve(response);
-      } catch (error) {
-        console.error('tcpServerSendRequest|sendMessage|Ошибка парсинга ответа:', error);
-        ToastAndroid.show(
-          `tcpServerSendRequest|sendMessage|Ошибка парсинга ответа`,
-          ToastAndroid.SHORT
-        );
-        reject(error);
+      console.log('tcpServerSendRequest|received chunk:', dataString);
+
+      // Добавляем новые данные к буферу
+      responseBuffer += dataString;
+
+      // Проверяем, есть ли полное сообщение
+      const newlineIndex = responseBuffer.indexOf('\n');
+      if (newlineIndex !== -1) {
+        const completeResponse = responseBuffer.substring(0, newlineIndex);
+
+        // Удаляем обработчик
+        socket.removeListener('data', onData);
+
+        console.log('tcpServerSendRequest|complete response:', completeResponse);
+        try {
+          const response = JSON.parse(completeResponse);
+          resolve(response);
+        } catch (error) {
+          console.error('tcpServerSendRequest|sendMessage|Ошибка парсинга ответа:', error);
+          ToastAndroid.show(
+            `tcpServerSendRequest|sendMessage|Ошибка парсинга ответа`,
+            ToastAndroid.SHORT
+          );
+          reject(error);
+        }
       }
-    });
+    };
+
+    socket.on('data', onData);
 
     try {
       socket.write(messageString);
@@ -254,6 +304,7 @@ export const tcpServerSendRequest = (message: object): Promise<ISendTcpResponseD
         `tcpServerSendRequest|sendMessage|Ошибка при отправке сообщения`,
         ToastAndroid.SHORT
       );
+      socket.removeListener('data', onData);
       reject(error);
     }
   });

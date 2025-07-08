@@ -1,4 +1,10 @@
 // Файл: app/wifi/TcpClient.ts
+//
+// ПРОТОКОЛ СООБЩЕНИЙ:
+// Все JSON сообщения должны заканчиваться символом новой строки '\n'
+// Это позволяет корректно обрабатывать большие сообщения, которые могут
+// приходить по частям через несколько вызовов события 'data'
+//
 import TcpSocket from 'react-native-tcp-socket';
 import { ToastAndroid } from 'react-native';
 import { ISendTcpResponseData, ISendTcpRequestData } from '../../global';
@@ -31,39 +37,62 @@ export const connectToTcpServer = ({
       resolve(`TCP клиент успешно подключился к ${host}:${port}`);
     });
 
+    // Буфер для накопления неполных сообщений
+    let messageBuffer = '';
+
     // Глобальный обработчик входящих сообщений от сервера,
     // если сообщение не получено как ответ на sendTcpRequest.
     client.on('data', async (data: Buffer) => {
       const dataString = data.toString();
-      console.log('TCP клиент|Получены данные:', dataString);
-      // ToastAndroid.show(`TCP клиент|Получены данные`, ToastAndroid.SHORT);
-      let message: any;
-      try {
-        message = JSON.parse(dataString);
-      } catch (error) {
-        console.error('TCP клиент|Ошибка парсинга JSON:', error);
-        return;
-      }
-      // Если данные получили как результат одноразового обработчика (sendTcpRequest),
-      // то данный глобальный обработчик может быть не вызван.
-      try {
-        // Передаём полученное сообщение в onTcpMessage для обработки
-        const response = await onTcpMessage(message as unknown as ISendTcpRequestData);
-        // Отправляем ответ обратно на сервер
-        if (client) {
-          const responseWithId = {
-            ...response,
-            messageId: message.messageId, // Возвращаем ID сообщения если он был
-            isTcpServerSendResponse: true,
-            from: 'TcpClient.ts-connectToTcpServer-on-data',
-          };
-          client.write(JSON.stringify(responseWithId));
-          console.log('TCP клиент|Ответ отправлен на сервер:', JSON.stringify(responseWithId));
+      console.log('TCP клиент|Получен chunk данных:', dataString);
+
+      // Добавляем новые данные к буферу
+      messageBuffer += dataString;
+
+      // Обрабатываем все полные сообщения в буфере
+      let newlineIndex;
+      while ((newlineIndex = messageBuffer.indexOf('\n')) !== -1) {
+        // Извлекаем полное сообщение (без символа новой строки)
+        const completeMessage = messageBuffer.substring(0, newlineIndex);
+        // Удаляем обработанное сообщение из буфера
+        messageBuffer = messageBuffer.substring(newlineIndex + 1);
+
+        if (!completeMessage.trim()) {
+          continue; // Пропускаем пустые сообщения
         }
-      } catch (error) {
-        console.error('TCP клиент|Ошибка в onTcpMessage:', error);
-        // DEV LOGS
-        // ToastAndroid.show(`TCP клиент|Ошибка в onTcpMessage`, ToastAndroid.SHORT);
+
+        console.log('TCP клиент|Обрабатываем полное сообщение:', completeMessage);
+
+        let message: any;
+        try {
+          message = JSON.parse(completeMessage);
+        } catch (error) {
+          console.error('TCP клиент|Ошибка парсинга JSON:', error);
+          continue;
+        }
+
+        // Если данные получили как результат одноразового обработчика (sendTcpRequest),
+        // то данный глобальный обработчик может быть не вызван.
+        try {
+          // Передаём полученное сообщение в onTcpMessage для обработки
+          const response = await onTcpMessage(message as unknown as ISendTcpRequestData);
+          // Отправляем ответ обратно на сервер
+          if (client) {
+            const responseWithId = {
+              ...response,
+              messageId: message.messageId, // Возвращаем ID сообщения если он был
+              isTcpServerSendResponse: true,
+              from: 'TcpClient.ts-connectToTcpServer-on-data',
+            };
+            const responseMessage = JSON.stringify(responseWithId) + '\n';
+            client.write(responseMessage);
+            console.log('TCP клиент|Ответ отправлен на сервер:', responseMessage);
+          }
+        } catch (error) {
+          console.error('TCP клиент|Ошибка в onTcpMessage:', error);
+          // DEV LOGS
+          // ToastAndroid.show(`TCP клиент|Ошибка в onTcpMessage`, ToastAndroid.SHORT);
+        }
       }
     });
 
@@ -149,7 +178,8 @@ export const disconnectTcpClientGracefully = async (
 
     try {
       // Пытаемся отправить финальное сообщение, но не ждем ответа
-      client.write(JSON.stringify(finalMessage));
+      const finalMessageString = JSON.stringify(finalMessage) + '\n';
+      client.write(finalMessageString);
       // Даем время на отправку сообщения
       await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (error) {
@@ -197,7 +227,7 @@ export const sendTcpRequest = (
 
     let jsonMessage: string;
     try {
-      jsonMessage = JSON.stringify(messageWithId);
+      jsonMessage = JSON.stringify(messageWithId) + '\n'; // Добавляем разделитель
     } catch (error) {
       console.error('TCP клиент|Ошибка при сериализации объекта:', error);
       // DEV LOGS
@@ -208,6 +238,8 @@ export const sendTcpRequest = (
 
     // Флаг для отслеживания завершения запроса
     let isRequestCompleted = false;
+    // Буфер для накопления ответа
+    let responseBuffer = '';
 
     // Таймер для ограничения времени ожидания ответа
     const timeoutId = setTimeout(() => {
@@ -233,21 +265,31 @@ export const sendTcpRequest = (
       if (isRequestCompleted) return;
 
       const dataString = data.toString();
-      console.log('TCP клиент|Получен ответ:', dataString);
-      // ToastAndroid.show(`TCP клиент|Получен ответ`, ToastAndroid.SHORT);
+      console.log('TCP клиент|Получен chunk ответа:', dataString);
 
-      try {
-        const response = JSON.parse(dataString);
-        isRequestCompleted = true;
-        cleanupHandlers();
-        resolve(response);
-      } catch (error) {
-        console.error('TCP клиент|Ошибка при парсинге ответа:', error);
-        // DEV LOGS
-        // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
-        isRequestCompleted = true;
-        cleanupHandlers();
-        reject(error);
+      // Добавляем новые данные к буферу
+      responseBuffer += dataString;
+
+      // Проверяем, есть ли полное сообщение
+      const newlineIndex = responseBuffer.indexOf('\n');
+      if (newlineIndex !== -1) {
+        const completeResponse = responseBuffer.substring(0, newlineIndex);
+
+        console.log('TCP клиент|Получен полный ответ:', completeResponse);
+
+        try {
+          const response = JSON.parse(completeResponse);
+          isRequestCompleted = true;
+          cleanupHandlers();
+          resolve(response);
+        } catch (error) {
+          console.error('TCP клиент|Ошибка при парсинге ответа:', error);
+          // DEV LOGS
+          // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
+          isRequestCompleted = true;
+          cleanupHandlers();
+          reject(error);
+        }
       }
     };
 
@@ -278,7 +320,7 @@ export const sendTcpRequest = (
 
     try {
       client.write(jsonMessage, 'utf8', () => {
-        console.log('TCP клиент|Запрос отправлен:', JSON.parse(jsonMessage));
+        console.log('TCP клиент|Запрос отправлен:', JSON.parse(jsonMessage.slice(0, -1))); // Убираем \n для логирования
         // ToastAndroid.show(`TCP клиент|Запрос отправлен`, ToastAndroid.SHORT);
       });
     } catch (error) {
