@@ -953,17 +953,36 @@ export async function getTalonsForVoditelExport(
       const talon = talons[i];
       let kombainerFio = 'Не найден';
 
-      // Получаем ФИО комбайнера
+      // Получаем ФИО комбайнера из сохраненных в талоне данных
       try {
-        const kombainer = await kombainerCollection.find(talon.kombainerId);
-        if (kombainer) {
-          const user = await userCollection.find(kombainer.userId);
-          if (user) {
-            kombainerFio = user.fio;
+        if (talon.kombainerUserData) {
+          const kombainerUserData = parseJsonSafely<ICreateUserParams>(talon.kombainerUserData);
+          console.log('getTalonsForVoditelExport|kombainerUserData parsed:', kombainerUserData);
+          if (kombainerUserData && kombainerUserData.fio) {
+            kombainerFio = kombainerUserData.fio;
           }
         }
+
+        // Если не удалось получить из сохраненных данных, пробуем старый способ
+        if (kombainerFio === 'Не найден') {
+          console.log('getTalonsForVoditelExport|Trying old method for talon:', talon.id);
+          const kombainer = await kombainerCollection.find(talon.kombainerId);
+          if (kombainer) {
+            const user = await userCollection.find(kombainer.userId);
+            if (user) {
+              kombainerFio = user.fio;
+            }
+          }
+        }
+
+        console.log(
+          'getTalonsForVoditelExport|Final kombainerFio:',
+          kombainerFio,
+          'for talon:',
+          talon.id
+        );
       } catch (error) {
-        console.log('Комбайнер не найден для талона:', talon.id);
+        console.log('Комбайнер не найден для талона:', talon.id, error);
       }
 
       exportData.push({
