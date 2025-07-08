@@ -5,8 +5,16 @@ import uuid from 'react-native-uuid';
 import { database } from './database';
 import { Model, Q, tableSchema } from '@nozbe/watermelondb';
 import { field } from '@nozbe/watermelondb/decorators';
-import { ICreateTalonParams, IEditTalonParams, TalonStatus, IVoditelData } from '../../global';
-import { Users } from './users';
+import {
+  ICreateTalonParams,
+  IEditTalonParams,
+  TalonStatus,
+  IVoditelData,
+  ICreateKombainerParams,
+  ICreateVoditelParams,
+  ICreateUserParams,
+} from '../../global';
+import { Users, ICreateUsersParams } from './users';
 import { Kombainers } from './kombainers';
 import { Voditeli } from './viditels';
 
@@ -17,7 +25,11 @@ export interface ICreateTalonsParams extends Model, ICreateTalonParams {
   readonly id: string;
   readonly talonNumber: string;
   readonly cancellationReason?: string | null;
+  kombainerData?: ICreateKombainerParams | null; // Объект с данными комбайнера
+  kombainerUserData?: ICreateUserParams | null; // Объект с данными пользователя комбайнера
   voditelUserId?: string | null; // Новый параметр для хранения ID пользователя водителя
+  voditelData?: ICreateVoditelParams | null; // Объект с данными водителя
+  voditelUserData?: ICreateUserParams | null; // Объект с данными пользователя водителя
   created_at: number;
   updated_at: number;
 }
@@ -36,6 +48,16 @@ export interface ITalonExportData {
   status: string;
   voditelId?: string | null; // ID водителя, если назначен
   voditelData?: IVoditelData | null; // данные водителя
+  // Дополнительные поля для тестирования
+  kombainerId: string;
+  voditelUserId?: string | null;
+  startTime: number;
+  endTime?: number | null;
+  weight?: number | null;
+  comment?: string | null;
+  cancellationReason?: string | null;
+  updated_at: number;
+  rawData?: any; // сырые данные из базы для отладки
 }
 
 export const validStatuses: TalonStatus[] = [
@@ -56,8 +78,12 @@ export class TalonsOfCombainers extends Model {
   static table = 'talons_of_combainers';
 
   @field('kombainerId') kombainerId!: string;
+  @field('kombainerData') kombainerData?: string | null;
+  @field('kombainerUserData') kombainerUserData?: string | null;
   @field('voditelId') voditelId?: string | null;
   @field('voditelUserId') voditelUserId?: string | null;
+  @field('voditelData') voditelData?: string | null;
+  @field('voditelUserData') voditelUserData?: string | null;
   @field('status') status!: string;
   @field('startTime') startTime!: number;
   @field('endTime') endTime?: number | null;
@@ -73,8 +99,12 @@ export class TalonsOfCombainers extends Model {
       name: this.table,
       columns: [
         { name: 'kombainerId', type: 'string' },
+        { name: 'kombainerData', type: 'string', isOptional: true },
+        { name: 'kombainerUserData', type: 'string', isOptional: true },
         { name: 'voditelId', type: 'string' },
         { name: 'voditelUserId', type: 'string', isOptional: true },
+        { name: 'voditelData', type: 'string', isOptional: true },
+        { name: 'voditelUserData', type: 'string', isOptional: true },
         { name: 'status', type: 'string' },
         { name: 'startTime', type: 'number' },
         { name: 'endTime', type: 'number' },
@@ -115,8 +145,12 @@ export class TalonsOfCombainers extends Model {
 export async function createTalon({
   id,
   kombainerId,
+  kombainerData, // Новый параметр для данных комбайнера
+  kombainerUserData, // Новый параметр для данных пользователя комбайнера
   voditelId,
   voditelUserId, // Новый параметр для хранения ID пользователя водителя
+  voditelData, // Новый параметр для данных водителя
+  voditelUserData, // Новый параметр для данных пользователя водителя
   status,
   startTime,
   endTime,
@@ -130,39 +164,54 @@ export async function createTalon({
     const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
 
     // Если номер талона передан, используем его, иначе генерируем новый
-    // Получаем все не отмененные талоны данного комбайнера
-    const existingTalons = await collection
-      .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))))
-      .fetch();
-
-    // Проверяем, есть ли отмененные талоны, чтобы переиспользовать их номера
-    const cancelledTalons = await collection
-      .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', 'cancelled')))
-      .fetch();
-
-    // Сортируем отмененные талоны по номеру (без префикса 'A')
-    const sortedCancelledTalons = cancelledTalons.sort((a, b) => {
-      const aNum = parseInt(a.talonNumber.replace('A', ''));
-      const bNum = parseInt(b.talonNumber.replace('A', ''));
-      return aNum - bNum;
-    });
-
     let newTalonNumber: string;
     if (initialTalonNumber) {
       newTalonNumber = initialTalonNumber.trim();
-    } else if (sortedCancelledTalons.length > 0) {
-      newTalonNumber = sortedCancelledTalons[0].talonNumber.replace('A', '');
     } else {
-      const sequentialNumber = existingTalons.length + 1;
-      newTalonNumber = `${sequentialNumber}`;
+      // Получаем последний неотмененный талон
+      const lastNonCancelledTalons = await collection
+        .query(
+          Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))),
+          Q.sortBy('created_at', Q.desc),
+          Q.take(1)
+        )
+        .fetch();
+
+      // Получаем последний отмененный талон
+      const lastCancelledTalons = await collection
+        .query(
+          Q.and(Q.where('kombainerId', kombainerId), Q.where('status', 'cancelled')),
+          Q.sortBy('created_at', Q.asc),
+          Q.take(1)
+        )
+        .fetch();
+
+      if (lastCancelledTalons.length > 0) {
+        // Если есть отмененный талон, используем его номер
+        newTalonNumber = lastCancelledTalons[0].talonNumber.replace('A', '');
+      } else {
+        // Иначе берем номер последнего неотмененного талона и увеличиваем на 1
+        let sequentialNumber = 1;
+        if (lastNonCancelledTalons.length > 0) {
+          const lastNumber = parseInt(lastNonCancelledTalons[0].talonNumber.replace('A', ''));
+          sequentialNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
+        }
+        newTalonNumber = `${sequentialNumber}`;
+      }
     }
 
     const now = Date.now();
     const newTalon = await collection.create((record: any) => {
       record._raw.id = id || uuid.v4();
       record.kombainerId = kombainerId.trim();
+      // Правильно сохраняем данные комбайнера как JSON строки
+      record.kombainerData = stringifyToJson(kombainerData);
+      record.kombainerUserData = stringifyToJson(kombainerUserData);
       record.voditelId = voditelId ? voditelId.trim() : undefined;
       record.voditelUserId = voditelUserId ? voditelUserId.trim() : undefined; // Сохраняем ID пользователя водителя
+      // Правильно сохраняем данные водителя как JSON строки
+      record.voditelData = stringifyToJson(voditelData);
+      record.voditelUserData = stringifyToJson(voditelUserData);
       record.status = status;
       record.startTime = startTime;
       record.endTime = endTime || undefined;
@@ -268,6 +317,29 @@ export async function cancelTalonByKombainer(talonId: string, reason: string): P
 }
 
 /**
+ * Вспомогательные функции для преобразования данных
+ */
+function parseJsonSafely<T>(jsonString: string | null | undefined): T | null {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString) as T;
+  } catch (error) {
+    console.error('Ошибка парсинга JSON:', error);
+    return null;
+  }
+}
+
+function stringifyToJson(obj: any): string | undefined {
+  if (!obj) return undefined;
+  try {
+    return JSON.stringify(obj);
+  } catch (error) {
+    console.error('Ошибка преобразования в JSON:', error);
+    return undefined;
+  }
+}
+
+/**
  * Получить все отмененные талоны
  */
 export async function getCancelledTalons(): Promise<ICreateTalonsParams[]> {
@@ -279,8 +351,12 @@ export async function getCancelledTalons(): Promise<ICreateTalonsParams[]> {
         ({
           id: record.id,
           kombainerId: record.kombainerId,
+          kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+          kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
           voditelId: record.voditelId,
           voditelUserId: record.voditelUserId || null,
+          voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+          voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -307,8 +383,12 @@ export async function getAllTalons(): Promise<ICreateTalonsParams[]> {
         ({
           id: record.id,
           kombainerId: record.kombainerId,
+          kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+          kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
           voditelId: record.voditelId,
           voditelUserId: record.voditelUserId || null,
+          voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+          voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -338,8 +418,12 @@ export async function getTalonById(talonId: string): Promise<ICreateTalonsParams
     return {
       id: record.id,
       kombainerId: record.kombainerId,
+      kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+      kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
       voditelId: record.voditelId,
       voditelUserId: record.voditelUserId || null,
+      voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+      voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
       status: record.status as TalonStatus,
       startTime: record.startTime,
       endTime: record.endTime,
@@ -365,8 +449,12 @@ export async function getTalonsByKombainerId(kombainerId: string): Promise<ICrea
         ({
           id: record.id,
           kombainerId: record.kombainerId,
+          kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+          kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
           voditelId: record.voditelId,
           voditelUserId: record.voditelUserId || null,
+          voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+          voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -393,8 +481,12 @@ export async function getTalonsByVoditelId(voditelId: string): Promise<ICreateTa
         ({
           id: record.id,
           kombainerId: record.kombainerId,
+          kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+          kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
           voditelId: record.voditelId,
           voditelUserId: record.voditelUserId || null,
+          voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+          voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
           status: record.status as TalonStatus,
           startTime: record.startTime,
           endTime: record.endTime,
@@ -426,8 +518,12 @@ export async function getLastTalonByKombainerId(
       return {
         id: record.id,
         kombainerId: record.kombainerId,
+        kombainerData: parseJsonSafely<ICreateKombainerParams>(record.kombainerData),
+        kombainerUserData: parseJsonSafely<ICreateUserParams>(record.kombainerUserData),
         voditelId: record.voditelId,
         voditelUserId: record.voditelUserId,
+        voditelData: parseJsonSafely<ICreateVoditelParams>(record.voditelData),
+        voditelUserData: parseJsonSafely<ICreateUserParams>(record.voditelUserData),
         status: record.status as TalonStatus,
         startTime: record.startTime,
         endTime: record.endTime,
@@ -467,6 +563,11 @@ export async function editTalon(talonId: string, params: IEditTalonParams): Prom
       r.voditelId = params.voditelId ? params.voditelId.trim() : undefined;
       // Добавляем обновление поля voditelUserId
       r.voditelUserId = params.voditelUserId ? params.voditelUserId.trim() : undefined;
+      // Правильно сохраняем данные водителя как JSON строки
+      r.voditelData = params.voditelData ? JSON.stringify(params.voditelData) : undefined;
+      r.voditelUserData = params.voditelUserData
+        ? JSON.stringify(params.voditelUserData)
+        : undefined;
       r.status = params.status;
       r.startTime = params.startTime;
       r.endTime = params.endTime || undefined;
@@ -478,6 +579,73 @@ export async function editTalon(talonId: string, params: IEditTalonParams): Prom
   });
 }
 
+/**
+ * Сохранить данные водителя в талон.
+ */
+export async function saveTalonVoditelData(
+  talonId: string,
+  voditelData: any,
+  voditelUserData: any
+): Promise<string> {
+  return database.write(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const record = await collection.find(talonId);
+
+    if (!record) {
+      throw new Error(`Талон с ID ${talonId} не найден.`);
+    }
+
+    const now = Date.now();
+    await record.update((r) => {
+      // Правильно сохраняем данные водителя как JSON строки
+      r.voditelData = voditelData ? JSON.stringify(voditelData) : undefined;
+      r.voditelUserData = voditelUserData ? JSON.stringify(voditelUserData) : undefined;
+      r.updated_at = now;
+    });
+    return record.id;
+  });
+}
+
+/**
+ * Получить данные водителя из талона.
+ */
+export async function getTalonVoditelData(talonId: string): Promise<{
+  voditelData: any | null;
+  voditelUserData: any | null;
+}> {
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const record = await collection.find(talonId);
+
+    if (!record) {
+      throw new Error(`Талон с ID ${talonId} не найден.`);
+    }
+
+    let voditelData = null;
+    let voditelUserData = null;
+
+    try {
+      if (record.voditelData) {
+        voditelData = JSON.parse(record.voditelData);
+      }
+    } catch (error) {
+      console.error('Ошибка парсинга voditelData:', error);
+    }
+
+    try {
+      if (record.voditelUserData) {
+        voditelUserData = JSON.parse(record.voditelUserData);
+      }
+    } catch (error) {
+      console.error('Ошибка парсинга voditelUserData:', error);
+    }
+
+    return {
+      voditelData,
+      voditelUserData,
+    };
+  });
+}
 /**
  * Назначить водителя на талон.
  */
@@ -676,11 +844,25 @@ export async function getTalonsForKombainerExport(
       let voditelData: IVoditelData | null = null;
       const voditelIdForExport = talon.voditelId || null;
 
-      // console.log(`getTalonsForKombainerExport|talon=`, i, talon);
       console.log(`getTalonsForKombainerExport|talon.voditelId=`, i, talon.voditelId);
 
-      // Если у талона есть водитель, получаем его ФИО
-      if (talon.voditelId) {
+      // Сначала пытаемся получить данные водителя из самого талона
+      try {
+        if (talon.voditelData) {
+          const parsedVoditelData = JSON.parse(talon.voditelData);
+          voditelData = parsedVoditelData;
+        }
+
+        if (talon.voditelUserData) {
+          const parsedVoditelUserData = JSON.parse(talon.voditelUserData);
+          voditelFio = parsedVoditelUserData.fio || 'Не указано';
+        }
+      } catch (error) {
+        console.log('Ошибка парсинга данных водителя из талона:', error);
+      }
+
+      // Если данные не найдены в талоне, пытаемся получить их из старых таблиц
+      if (!voditelData && talon.voditelId) {
         try {
           const voditel = await voditelCollection.find(talon.voditelId);
           console.log('voditel raw:', voditel._raw);
@@ -715,6 +897,16 @@ export async function getTalonsForKombainerExport(
         voditelId: voditelIdForExport,
         voditelData,
         status: talon.status,
+        // Дополнительные поля для тестирования
+        kombainerId: talon.kombainerId,
+        voditelUserId: talon.voditelUserId,
+        startTime: talon.startTime,
+        endTime: talon.endTime,
+        weight: talon.weight,
+        comment: talon.comment,
+        cancellationReason: talon.cancellationReason,
+        updated_at: talon.updated_at,
+        rawData: talon._raw, // сырые данные из базы для отладки
       });
     }
 
@@ -783,6 +975,17 @@ export async function getTalonsForVoditelExport(
         fio: kombainerFio,
         talonId: talon.id,
         status: talon.status,
+        // Дополнительные поля для тестирования
+        kombainerId: talon.kombainerId,
+        voditelId: talon.voditelId,
+        voditelUserId: talon.voditelUserId,
+        startTime: talon.startTime,
+        endTime: talon.endTime,
+        weight: talon.weight,
+        comment: talon.comment,
+        cancellationReason: talon.cancellationReason,
+        updated_at: talon.updated_at,
+        rawData: talon._raw, // сырые данные из базы для отладки
       });
     }
 
@@ -862,5 +1065,72 @@ export async function getAllTalonsForDebug(): Promise<
       JSON.stringify(talonsInfo, null, 2)
     );
     return talonsInfo;
+  });
+}
+
+/**
+ * Получить следующий номер талона для комбайнера (оптимизированная версия).
+ */
+export async function getNextTalonNumber(kombainerId: string): Promise<string> {
+  return database.read(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+
+    // Получаем последний неотмененный талон
+    const lastNonCancelledTalons = await collection
+      .query(
+        Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))),
+        Q.sortBy('created_at', Q.desc),
+        Q.take(1)
+      )
+      .fetch();
+
+    console.log('getNextTalonNumber|lastNonCancelledTalons:', lastNonCancelledTalons);
+
+    // Получаем первый (самый старый) отмененный талон
+    const firstCancelledTalons = await collection
+      .query(
+        Q.and(Q.where('kombainerId', kombainerId), Q.where('status', 'cancelled')),
+        Q.sortBy('created_at', Q.asc),
+        Q.take(1)
+      )
+      .fetch();
+
+    console.log('getNextTalonNumber|firstCancelledTalons:', firstCancelledTalons);
+
+    let talonNumber: string;
+
+    if (firstCancelledTalons.length > 0) {
+      // Если есть отмененный талон, используем его номер
+      talonNumber = firstCancelledTalons[0].talonNumber.replace('A', '');
+    } else {
+      // Иначе берем номер последнего неотмененного талона и увеличиваем на 1
+      let sequentialNumber = 1;
+      if (lastNonCancelledTalons.length > 0) {
+        const lastNumber = parseInt(lastNonCancelledTalons[0].talonNumber.replace('A', ''));
+        sequentialNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
+      }
+      talonNumber = `${sequentialNumber}`;
+    }
+
+    return talonNumber;
+  });
+}
+
+/**
+ * Удалить все талоны из таблицы "talons_of_combainers".
+ * ВНИМАНИЕ: Это действие нельзя отменить!
+ */
+export async function deleteAllTalons(): Promise<number> {
+  return database.write(async () => {
+    const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
+    const allTalons = await collection.query().fetch();
+
+    const count = allTalons.length;
+
+    // Удаляем все талоны
+    await Promise.all(allTalons.map((talon) => talon.destroyPermanently()));
+
+    console.log(`deleteAllTalons: Удалено ${count} талонов`);
+    return count;
   });
 }

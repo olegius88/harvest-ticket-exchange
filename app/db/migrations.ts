@@ -133,7 +133,35 @@ const migrationTo16 = {
   ],
 };
 
-export const schemaVersion = 16;
+// Миграция для версии 17: добавляем поля voditelData и voditelUserData в таблицу talons_of_combainers.
+const migrationTo17 = {
+  toVersion: 17,
+  steps: [
+    addColumns({
+      table: 'talons_of_combainers',
+      columns: [
+        { name: 'voditelData', type: 'string' }, // JSON строка с данными водителя
+        { name: 'voditelUserData', type: 'string' }, // JSON строка с данными пользователя водителя
+      ],
+    }),
+  ],
+};
+
+// Миграция для версии 18: добавляем поля kombainerData и kombainerUserData в таблицу talons_of_combainers.
+const migrationTo18 = {
+  toVersion: 18,
+  steps: [
+    addColumns({
+      table: 'talons_of_combainers',
+      columns: [
+        { name: 'kombainerData', type: 'string' }, // JSON строка с данными комбайнера
+        { name: 'kombainerUserData', type: 'string' }, // JSON строка с данными пользователя комбайнера
+      ],
+    }),
+  ],
+};
+
+export const schemaVersion = 18;
 export const migrations = schemaMigrations({
   migrations: [
     migrationTo8,
@@ -145,5 +173,7 @@ export const migrations = schemaMigrations({
     migrationTo14,
     migrationTo15,
     migrationTo16,
+    migrationTo17,
+    migrationTo18,
   ],
 });
