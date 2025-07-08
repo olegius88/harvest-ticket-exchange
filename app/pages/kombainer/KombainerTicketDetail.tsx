@@ -13,47 +13,8 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
 import { CurrentUserResponse, PositionOptionValue, RootStackParamList } from '../../../global';
-import { createTalon, TalonsOfCombainers } from '../../db/talons_of_combainers';
+import { createTalon, TalonsOfCombainers, getNextTalonNumber } from '../../db/talons_of_combainers';
 import { database } from '../../db/database';
-import { Q } from '@nozbe/watermelondb';
-
-/**
- * Функция для вычисления будущего номера талона
- */
-const getNextTalonNumber = async (kombainerId: string): Promise<string> => {
-  const collection = database.collections.get<TalonsOfCombainers>(TalonsOfCombainers.table);
-
-  // Получаем все не отмененные талоны данного комбайнера
-  const existingTalons = await collection
-    .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', Q.notEq('cancelled'))))
-    .fetch();
-
-  // Проверяем, есть ли отмененные талоны, чтобы переиспользовать их номера
-  const cancelledTalons = await collection
-    .query(Q.and(Q.where('kombainerId', kombainerId), Q.where('status', 'cancelled')))
-    .fetch();
-
-  // Сортируем отмененные талоны по номеру (без префикса 'A')
-  const sortedCancelledTalons = cancelledTalons.sort((a, b) => {
-    const aNum = parseInt(a.talonNumber.replace('A', ''));
-    const bNum = parseInt(b.talonNumber.replace('A', ''));
-    return aNum - bNum;
-  });
-
-  let talonNumber: string;
-
-  // Если есть отмененные талоны, используем номер первого отмененного
-  if (sortedCancelledTalons.length > 0) {
-    // Берем номер из первого отмененного талона, убирая префикс 'A'
-    talonNumber = sortedCancelledTalons[0].talonNumber.replace('A', '');
-  } else {
-    // Иначе создаем новый порядковый номер
-    const sequentialNumber = existingTalons.length + 1;
-    talonNumber = `${sequentialNumber}`;
-  }
-
-  return talonNumber;
-};
 
 /**
  * Страница "Талон комбайнера N"
