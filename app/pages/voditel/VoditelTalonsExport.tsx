@@ -17,6 +17,8 @@ import { handleMessage } from '../../services/MessageHandler';
 import { VectorLogo } from '../../components/VectorLogo';
 import { CurrentUserResponse, PositionOptionValue, RootStackParamList } from '../../../global';
 import { getTalonsForVoditelExport, ITalonExportData } from '../../db/talons_of_combainers';
+import { getReadableStatus, getStatusColor } from '../../utils/statusUtils';
+import { StatusBadge } from '../../components/StatusBadge';
 
 /**
  * Экран выгрузки талонов водителя
@@ -133,7 +135,7 @@ const VoditelTalonsExport: React.FC = () => {
     const csvContent = talons
       .map(
         (talon) =>
-          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${talon.status}"`
+          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${getReadableStatus(talon.status)}"`
       )
       .join('\n');
 
@@ -176,7 +178,10 @@ const VoditelTalonsExport: React.FC = () => {
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Статус:</Text>
-        <Text style={[styles.talonValue, styles.statusText]}>{item.status}</Text>
+        <StatusBadge
+          status={item.status}
+          textStyle={StyleSheet.flatten([styles.talonValue, styles.statusText])}
+        />
       </View>
     </View>
   );

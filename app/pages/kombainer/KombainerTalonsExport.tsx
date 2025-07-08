@@ -19,6 +19,8 @@ import { CurrentUserResponse, PositionOptionValue, RootStackParamList } from '..
 import { getTalonsForKombainerExport, ITalonExportData } from '../../db/talons_of_combainers';
 import { getAllUsers } from '../../db/users';
 import { getAllVoditeli } from '../../db/viditels';
+import { getReadableStatus, getStatusColor } from '../../utils/statusUtils';
+import { StatusBadge } from '../../components/StatusBadge';
 
 /**
  * Экран выгрузки талонов комбайнера
@@ -148,7 +150,7 @@ const KombainerTalonsExport: React.FC = () => {
     const csvContent = talons
       .map(
         (talon) =>
-          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${talon.voditelData?.transport || ''}","${talon.status}"`
+          `${talon.serialNumber},${talon.talonNumber},${talon.unloadWeight || 'Не указан'},${talon.nominalWeight || 'Не указан'},"${new Date(talon.createdTime).toLocaleString('ru-RU')}","${talon.fio}","${talon.voditelData?.transport || ''}","${getReadableStatus(talon.status)}"`
       )
       .join('\n');
 
@@ -191,7 +193,10 @@ const KombainerTalonsExport: React.FC = () => {
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Статус:</Text>
-        <Text style={[styles.talonValue, styles.statusText]}>{item.status}</Text>
+        <StatusBadge
+          status={item.status}
+          textStyle={StyleSheet.flatten([styles.talonValue, styles.statusText])}
+        />
       </View>
       {item.voditelData?.transport && (
         <View style={styles.talonRow}>
