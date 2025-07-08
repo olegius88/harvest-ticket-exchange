@@ -109,6 +109,7 @@ const Login = () => {
               <TextInput
                 style={[styles.input, errors.phone && styles.inputError]}
                 placeholder="+7XXXXXXXXXX"
+                placeholderTextColor="#999999"
                 value={form.phone}
                 onChangeText={(value) => handleInputChange('phone', value)}
                 keyboardType="phone-pad"
@@ -122,10 +123,13 @@ const Login = () => {
               <TextInput
                 style={[styles.input, errors.password && styles.inputError]}
                 placeholder="Введите пароль"
+                placeholderTextColor="#999999"
                 value={form.password}
                 onChangeText={(value) => handleInputChange('password', value)}
-                secureTextEntry
+                secureTextEntry={true}
                 autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
               />
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
@@ -202,6 +206,8 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#ffffff',
+    color: '#000000',
+    textAlign: 'left',
   },
   inputError: {
     borderColor: '#ff4d4f',

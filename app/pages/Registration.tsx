@@ -30,6 +30,7 @@ const Registration = () => {
     position: '',
     password: '',
     confirmPassword: '',
+    from_remote: false,
   });
   const [loading, setLoading] = useState(false);
   const [showPositionModal, setShowPositionModal] = useState(false);
