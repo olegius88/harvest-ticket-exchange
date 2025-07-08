@@ -151,103 +151,32 @@ const VoditelTalonsExport: React.FC = () => {
   const renderTalonItem = ({ item }: { item: ITalonExportData }) => (
     <View style={styles.talonItem}>
       <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>№ {item.serialNumber || '(не указан)'}</Text>
-        <Text style={styles.talonNumber}>Талон {item.talonNumber || '(не указан)'}</Text>
+        <Text style={styles.talonLabel}>№ {item.serialNumber}</Text>
+        <Text style={styles.talonNumber}>Талон {item.talonNumber}</Text>
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Выгрузка:</Text>
         <Text style={styles.talonValue}>
-          {item.unloadWeight ? `${item.unloadWeight} кг` : '(не указан)'}
-        </Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Номинальный вес:</Text>
-        <Text style={styles.talonValue}>
-          {item.nominalWeight ? `${item.nominalWeight} кг` : '(не указан)'}
+          {item.unloadWeight ? `${item.unloadWeight} кг` : 'Не указан'}
         </Text>
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Вес:</Text>
-        <Text style={styles.talonValue}>{item.weight ? `${item.weight} кг` : '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Время создания:</Text>
         <Text style={styles.talonValue}>
-          {item.createdTime ? new Date(item.createdTime).toLocaleString('ru-RU') : '(не указано)'}
+          {item.nominalWeight ? `${item.nominalWeight} кг` : 'Не указан'}
         </Text>
       </View>
       <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Время начала:</Text>
-        <Text style={styles.talonValue}>
-          {item.startTime ? new Date(item.startTime).toLocaleString('ru-RU') : '(не указано)'}
-        </Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Время завершения:</Text>
-        <Text style={styles.talonValue}>
-          {item.endTime ? new Date(item.endTime).toLocaleString('ru-RU') : '(не указано)'}
-        </Text>
+        <Text style={styles.talonLabel}>Время:</Text>
+        <Text style={styles.talonValue}>{new Date(item.createdTime).toLocaleString('ru-RU')}</Text>
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Комбайнер:</Text>
-        <Text style={styles.talonValue}>{item.fio || '(не указан)'}</Text>
+        <Text style={styles.talonValue}>{item.fio}</Text>
       </View>
       <View style={styles.talonRow}>
         <Text style={styles.talonLabel}>Статус:</Text>
-        <Text style={[styles.talonValue, styles.statusText]}>{item.status || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>ID талона:</Text>
-        <Text style={styles.talonValue}>{item.talonId || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Водитель ID:</Text>
-        <Text style={styles.talonValue}>{item.voditelId || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Комбайнер ID:</Text>
-        <Text style={styles.talonValue}>{item.kombainerId || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Водитель User ID:</Text>
-        <Text style={styles.talonValue}>{item.voditelUserId || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Комментарий:</Text>
-        <Text style={styles.talonValue}>{item.comment || '(не указан)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Причина отмены:</Text>
-        <Text style={styles.talonValue}>{item.cancellationReason || '(не указана)'}</Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Обновлен:</Text>
-        <Text style={styles.talonValue}>
-          {item.updated_at ? new Date(item.updated_at).toLocaleString('ru-RU') : '(не указано)'}
-        </Text>
-      </View>
-      <View style={styles.talonRow}>
-        <Text style={styles.talonLabel}>Данные водителя:</Text>
-        <Text style={styles.talonValue}>
-          {item.voditelData ? JSON.stringify(item.voditelData, null, 2) : '(не указаны)'}
-        </Text>
-      </View>
-
-      {/* Отладочная информация */}
-      <View style={styles.debugHeader}>
-        <Text style={styles.debugHeaderText}>Отладочная информация</Text>
-      </View>
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugLabel}>Сырые данные:</Text>
-        <Text style={styles.debugValue}>
-          {item.rawData ? JSON.stringify(item.rawData, null, 2) : '(отсутствуют)'}
-        </Text>
-      </View>
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugLabel}>Полный JSON объект:</Text>
-        <Text style={styles.debugValue}>
-          {JSON.stringify(item, null, 2) || '(ошибка сериализации)'}
-        </Text>
+        <Text style={[styles.talonValue, styles.statusText]}>{item.status}</Text>
       </View>
     </View>
   );
@@ -274,12 +203,6 @@ const VoditelTalonsExport: React.FC = () => {
 
         <Text style={styles.title}>Выгрузка талонов</Text>
         <Text style={styles.subtitle}>Водитель: {data?.userData?.fio}</Text>
-
-        {/* Тестовая информация о текущем пользователе */}
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugLabel}>🔍 Данные текущего пользователя:</Text>
-          <Text style={styles.debugValue}>{JSON.stringify(data || {}, null, 2)}</Text>
-        </View>
 
         {/* Фильтр по дате */}
         <View style={styles.filterContainer}>
@@ -655,35 +578,6 @@ const styles = StyleSheet.create({
   modalButtonTextPrimary: {
     color: '#fff',
     fontWeight: 'bold',
-  },
-  debugHeader: {
-    marginTop: 16,
-    marginBottom: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 8,
-  },
-  debugHeaderText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2196F3',
-  },
-  debugContainer: {
-    backgroundColor: '#f9f9f9',
-    padding: 8,
-    borderRadius: 4,
-    marginTop: 8,
-  },
-  debugLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 4,
-  },
-  debugValue: {
-    fontSize: 10,
-    color: '#333',
-    fontFamily: 'monospace',
   },
 });
 
