@@ -469,7 +469,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             this.setState({ signTicketLoading: true });
             try {
               console.log('handleSignTicketClick|signTicket|START');
-              const { talonData, voditelData, kombainerData, kombainerUserData } = this.state;
+              const { talonData, voditelData, kombainerData, kombainerUserData, userData } =
+                this.state;
               console.log('handleSignTicketClick|signTicket|talonData=', talonData);
 
               if (!talonData) {
@@ -482,6 +483,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
                 kombainerData: kombainerData,
                 kombainerUserData: kombainerUserData,
                 voditelId: voditelData.id,
+                voditelData: voditelData,
+                voditelUserData: userData,
                 status: 'voditel_signed',
                 startTime: talonData.startTime,
                 endTime: talonData.endTime,
