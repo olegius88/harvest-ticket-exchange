@@ -8,7 +8,12 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "desktop:dev": "cd desktop && cargo run",
+    "desktop:build": "cd desktop && cargo build --release",
+    "desktop:tauri:dev": "cd \"desktop/Flying Carpet\" && cargo tauri dev",
+    "desktop:tauri:build": "cd \"desktop/Flying Carpet\" && cargo tauri build",
+    "desktop:clean": "cd desktop && cargo clean"
   },
   "type": "module",
   "dependencies": {
