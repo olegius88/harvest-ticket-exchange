@@ -11,6 +11,7 @@ export const getReadableStatus = (status: string): string => {
     assigned: 'Назначен',
     in_progress: 'В процессе',
     voditel_signed: 'Подписан водителем',
+    weighed: 'Взвешен',
     completed: 'Завершен',
     cancelled: 'Отменен',
     cancelled_by_kombainer: 'Отменен комбайнером',
@@ -29,6 +30,7 @@ export const getStatusColor = (status: string): string => {
     assigned: '#FF9800', // оранжевый
     in_progress: '#9C27B0', // фиолетовый
     voditel_signed: '#4CAF50', // зеленый
+    weighed: '#2E7D32', // темно-зеленый
     completed: '#4CAF50', // зеленый
     cancelled: '#F44336', // красный
     cancelled_by_kombainer: '#F44336', // красный
@@ -49,7 +51,7 @@ export const isCancelledStatus = (status: string): boolean => {
  * Функция для проверки является ли статус завершенным
  */
 export const isCompletedStatus = (status: string): boolean => {
-  return ['completed', 'voditel_signed'].includes(status);
+  return ['completed', 'voditel_signed', 'weighed'].includes(status);
 };
 
 /**

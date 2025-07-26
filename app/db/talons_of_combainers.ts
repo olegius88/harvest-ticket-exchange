@@ -65,6 +65,7 @@ export const validStatuses: TalonStatus[] = [
   'assigned',
   'in_progress',
   'voditel_signed',
+  'weighed',
   'completed',
   'cancelled',
   'cancelled_by_kombainer',

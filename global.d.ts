@@ -671,7 +671,7 @@ export interface IRegistrationForm extends ICreateUserParams {
   confirmPassword: string;
 }
 
-export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist' | 'admin';
+export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist' | 'vesovschik' | 'admin';
 
 export interface IOption {
   value: PositionOptionValue;
@@ -775,6 +775,7 @@ export type TalonStatus =
   | 'assigned'
   | 'in_progress'
   | 'voditel_signed'
+  | 'weighed'
   | 'completed'
   | 'cancelled'
   | 'cancelled_by_kombainer'

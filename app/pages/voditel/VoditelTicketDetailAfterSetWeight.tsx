@@ -91,6 +91,8 @@ class VoditelTicketDetailAfterSetWeight extends Component<
   kombainerSignTicketListener: any = null;
   // Слушатель для события отмены талона комбайнером
   kombainerCancelTalonListener: any = null;
+  // Слушатель для события взвешивания талона весовщиком
+  talonWeighedListener: any = null;
   // Слушатель для блокировки кнопки "Назад"
   backHandlerListener: any = null;
   // Контроллер для периодического опроса данных
@@ -163,6 +165,12 @@ class VoditelTicketDetailAfterSetWeight extends Component<
       this.handleKombainerCancelTalon
     );
 
+    // Добавляем слушатель события взвешивания талона весовщиком
+    this.talonWeighedListener = DeviceEventEmitter.addListener(
+      'talon_weighed',
+      this.handleTalonWeighed
+    );
+
     // Блокируем кнопку "Назад"
     this.backHandlerListener = BackHandler.addEventListener(
       'hardwareBackPress',
@@ -224,6 +232,7 @@ class VoditelTicketDetailAfterSetWeight extends Component<
 
     this.kombainerSignTicketListener?.remove();
     this.kombainerCancelTalonListener?.remove();
+    this.talonWeighedListener?.remove();
     this.backHandlerListener?.remove();
   };
 
@@ -285,6 +294,49 @@ class VoditelTicketDetailAfterSetWeight extends Component<
           onPress: () => this.props.navigation.navigate('VoditelCreateTripScreen'),
         },
       ]);
+    }
+  };
+
+  // Обработчик события взвешивания талона весовщиком
+  handleTalonWeighed = async (data: { talonId: string; weight: number }) => {
+    this.talonWeighedListener?.remove();
+
+    console.log('handleTalonWeighed|data=', data);
+
+    const { talonId, weight } = data;
+
+    // Проверяем, что это тот же талон
+    if (this.state.talonData?.id === talonId) {
+      try {
+        // Обновляем вес в состоянии
+        this.setState({
+          weight,
+          talonData: {
+            ...this.state.talonData,
+            weight,
+          } as ICreateTalonsParams,
+        });
+
+        // Показываем уведомление пользователю
+        Alert.alert(
+          'Взвешивание завершено',
+          `Фактический вес: ${weight} кг.\nВы можете просмотреть детали талона.`,
+          [
+            {
+              text: 'Просмотреть',
+              onPress: () => {
+                // Переходим на экран с результатами взвешивания
+                this.props.navigation.navigate('VoditelTicketDetailAfterWeighingScreen', {
+                  talonId: talonId,
+                });
+              },
+            },
+          ]
+        );
+      } catch (error) {
+        console.error('handleTalonWeighed: Ошибка при обработке взвешивания:', error);
+        Alert.alert('Ошибка', 'Произошла ошибка при обработке результатов взвешивания');
+      }
     }
   };
 
