@@ -26,25 +26,21 @@
           <img src="assets/icon1024.png" style="width: 150px; height: 150px;">
         </div>
       </div>
-      <div class="form-check form-switch" style="margin: 10px;">
-        <input class="form-check-input"  style="width: 40px; height: 20px; margin-right: 5px;" type="checkbox" role="switch" id="bluetoothSwitch" onchange="bluetoothChange()">
-        <label class="form-check-label" for="bluetoothSwitch">Use Bluetooth</label>
-      </div>
 
       <!-- mode box -->
-      <label style="margin-left: 10px">Select Mode</label>
-      <div class="btn-group" role="group" aria-label="Mode selector" id="modeBox" style="margin: 10px; margin-top: 0px;">
+      <label style="margin-left: 10px; display: none;">Select Mode</label>
+      <div class="btn-group" role="group" aria-label="Mode selector" id="modeBox" style="margin: 10px; margin-top: 0px; display: none;">
         <input type="radio" class="btn-check" name="moderadio" id="sendButton" autocomplete="off" onchange="modeChange('send')">
         <label class="btn btn-outline-primary" for="sendButton">Send</label>
 
-        <input type="radio" class="btn-check" name="moderadio" id="receiveButton" autocomplete="off" onchange="modeChange('receive')">
+        <input type="radio" class="btn-check" name="moderadio" id="receiveButton" autocomplete="off" onchange="modeChange('receive')" checked>
         <label class="btn btn-outline-primary" for="receiveButton">Receive</label>
       </div>
 
       <!-- peer box -->
-      <label id="peerLabel" style="margin-left: 10px">Select Peer OS</label>
-      <div class="btn-group" role="group" aria-label="Peer selector" id="peerBox" style="margin: 10px; margin-top: 0px;">
-        <input type="radio" class="btn-check" name="peerradio" id="androidButton" autocomplete="off" onchange="peerChange('android')">
+      <label id="peerLabel" style="margin-left: 10px; display: none;">Select Peer OS</label>
+      <div class="btn-group" role="group" aria-label="Peer selector" id="peerBox" style="margin: 10px; margin-top: 0px; display: none;">
+        <input type="radio" class="btn-check" name="peerradio" id="androidButton" autocomplete="off" onchange="peerChange('android')" checked>
         <label class="btn btn-outline-primary" for="androidButton">Android</label>
 
         <input type="radio" class="btn-check" name="peerradio" id="iosButton" autocomplete="off" onchange="peerChange('ios')">
@@ -64,12 +60,12 @@
       <input type="password" placeholder="Password (start transfer on other end):" id="passwordBox" style="display: none; padding: 5px; margin: 10px;" autocapitalize="off" autocorrect="off" spellcheck="false">
 
       <!-- start/cancel buttons -->
-      <button type="button" id="startButton" class="btn btn-success" onclick="startTransfer(false)" style="margin: 10px; min-height: 25px;" disabled>Select Files</button>
+      <button type="button" id="startButton" class="btn btn-success" onclick="startTransfer(false)" style="margin: 10px; min-height: 25px;">Select Folder</button>
       <button type="button" id="cancelButton" class="btn btn-danger" onclick="cancelTransfer()" style="display: none; margin: 10px; min-height: 25px;">Cancel Transfer</button>
 
       <!-- output box -->
       <div id="outputBox" class="horizontalContainer" style="flex-grow: 9; flex-shrink: 9; overflow-y: auto; padding: 5px; margin-top: 5px;">
-        Welcome to Flying Carpet!<br>Once other options are selected, drag and drop can be used to send a folder.
+        Welcome to Flying Carpet! Ready to receive files from Android device via WiFi.
       </div>
 
       <!-- progress bar -->

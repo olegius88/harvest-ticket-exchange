@@ -4,7 +4,7 @@
 )]
 
 use flying_carpet_core::{
-    bluetooth, clean_up_transfer, network, start_transfer, utils, Transfer, WiFiInterface, UI,
+    clean_up_transfer, network, start_transfer, utils, Transfer, WiFiInterface, UI,
 };
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -123,7 +123,7 @@ fn start_async(
     interface: WiFiInterface,
     file_list: Option<Vec<String>>,
     receive_dir: Option<String>,
-    using_bluetooth: bool,
+    _using_bluetooth: bool, // Prefix with underscore to avoid warning
     window: Window,
 ) {
     let thread_window = window.clone();
@@ -134,14 +134,13 @@ fn start_async(
     let transfer_hotspot = state.hotspot.clone();
     let transfer_ssid = state.ssid.clone();
 
-    // used by windows because we have to implement our own UI for PIN confirmation in non-UWP apps.
-    // sends the user's choice of whether the bluetooth PINs match to know whether to pair.
-    let (ble_ui_tx, ble_ui_rx) = mpsc::channel(1);
+    // Bluetooth is disabled, no need for UI channel
+    let (_ble_ui_tx, ble_ui_rx) = mpsc::channel(1);
 
     let cancel_handle = tokio::spawn(async move {
         let stream: std::option::Option<tokio::net::TcpStream> = start_transfer(
             mode,
-            using_bluetooth,
+            false, // Always disable bluetooth
             peer,
             password,
             interface,
@@ -157,8 +156,7 @@ fn start_async(
     });
     let mut state_cancel_handle = state.cancel_handle.lock().unwrap();
     *state_cancel_handle = Some(cancel_handle);
-    let mut state_ble_ui_tx = state.ble_ui_tx.lock().unwrap();
-    *state_ble_ui_tx = Some(ble_ui_tx);
+    // No need to store bluetooth UI channel
 }
 
 #[tokio::main]
@@ -175,21 +173,21 @@ async fn main() {
             expand_files,
             generate_password,
             get_wifi_interfaces,
-            check_support,
-            user_bluetooth_pair,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
+// Bluetooth functions removed - bluetooth is disabled
+
 // for javascript, None/null means no error and Some(String) means error message
-#[tauri::command]
-async fn check_support() -> Option<String> {
-    bluetooth::check_support()
-        .await
-        .map_err(|e| e.to_string())
-        .err()
-}
+// #[tauri::command]
+// async fn check_support() -> Option<String> {
+//     bluetooth::check_support()
+//         .await
+//         .map_err(|e| e.to_string())
+//         .err()
+// }
 
 #[tauri::command]
 fn is_dir(path: &str) -> bool {
@@ -242,21 +240,22 @@ fn get_wifi_interfaces() -> Vec<WiFiInterface> {
     }
 }
 
-#[tauri::command]
-fn user_bluetooth_pair(choice: bool, state: State<Transfer>) {
-    println!("in user_bluetooth_pair");
-    let ble_ui_tx = state
-        .ble_ui_tx
-        .lock()
-        .expect("Could not lock ble_ui_tx mutex");
-    let ble_ui_tx = ble_ui_tx.as_ref().expect("State ble_ui_tx was None");
-    let ble_ui_tx = ble_ui_tx.clone();
-
-    tokio::spawn(async move {
-        ble_ui_tx
-            .send(choice)
-            .await
-            .expect("Could not send on ble_ui_tx");
-        println!("sent in user_bluetooth_pair");
-    });
-}
+// Bluetooth pair function removed - bluetooth is disabled
+// #[tauri::command]
+// fn user_bluetooth_pair(choice: bool, state: State<Transfer>) {
+//     println!("in user_bluetooth_pair");
+//     let ble_ui_tx = state
+//         .ble_ui_tx
+//         .lock()
+//         .expect("Could not lock ble_ui_tx mutex");
+//     let ble_ui_tx = ble_ui_tx.as_ref().expect("State ble_ui_tx was None");
+//     let ble_ui_tx = ble_ui_tx.clone();
+//
+//     tokio::spawn(async move {
+//         ble_ui_tx
+//             .send(choice)
+//             .await
+//             .expect("Could not send on ble_ui_tx");
+//         println!("sent in user_bluetooth_pair");
+//     });
+// }
