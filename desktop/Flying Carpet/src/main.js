@@ -409,6 +409,7 @@ Licensed under the GPL3: https://www.gnu.org/licenses/gpl-3.0.html#license-text`
 function setupMainMenu() {
   document.getElementById('vesovschikButton').onclick = showVesovschikModule;
   document.getElementById('fileTransferButton').onclick = showFileTransferModule;
+  document.getElementById('migrationsButton').onclick = showMigrationsModule;
 
   output('Система готова к работе. Выберите режим работы для продолжения.');
 
@@ -441,6 +442,11 @@ function showVesovschikModule() {
   window.location.href = 'vesovschik.html';
 }
 
+function showMigrationsModule() {
+  output('Переход к управлению миграциями...');
+  window.location.href = 'migrations.html';
+}
+
 function showFileTransferModule() {
   document.getElementById('mainMenuContainer').style.display = 'none';
   document.getElementById('fileTransferContainer').style.display = 'block';
@@ -461,4 +467,5 @@ function showFileTransferModule() {
 // Make functions globally available
 window.showMainMenu = showMainMenu;
 window.showVesovschikModule = showVesovschikModule;
+window.showMigrationsModule = showMigrationsModule;
 window.showFileTransferModule = showFileTransferModule;

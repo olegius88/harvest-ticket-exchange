@@ -1,5 +1,5 @@
-const { core, dialog, os } = window.__TAURI__;
-import { QRCode } from './deps/qrcode.js';
+// Tauri API initialization
+let tauri;
 
 // UI Elements
 let mainMenu;
@@ -84,6 +84,17 @@ function setupEventListeners() {
 
 async function initializeApp() {
   output('Инициализация системы весовщика...');
+
+  // Initialize Tauri API
+  try {
+    tauri = window.__TAURI__;
+    if (!tauri || !tauri.core) {
+      throw new Error('Tauri API не доступен');
+    }
+  } catch (error) {
+    output('Ошибка инициализации: ' + error.message);
+    return;
+  }
 
   // Check if user is already authenticated
   try {
@@ -247,7 +258,7 @@ async function handleLogin() {
       password: loginPassword.value.trim(),
     };
 
-    const user = await core.invoke('login_vesovschik', userData);
+    const user = await tauri.core.invoke('login_vesovschik', { request: userData });
 
     if (user) {
       currentUser = user;
@@ -260,8 +271,9 @@ async function handleLogin() {
       throw new Error('Неверные данные для входа');
     }
   } catch (error) {
-    output('Ошибка входа: ' + error.message);
-    showError('loginPassword', error.message);
+    console.error('Login error:', error);
+    output('Ошибка входа: ' + (error.message || error));
+    showError('loginPassword', error.message || error);
   } finally {
     hideLoading();
   }
@@ -280,15 +292,17 @@ async function handleRegistration() {
       position: 'vesovschik',
     };
 
-    const userId = await core.invoke('register_vesovschik', userData);
+    const userId = await tauri.core.invoke('register_vesovschik', { request: userData });
 
     if (userId) {
       output('Регистрация выполнена успешно');
 
       // Автоматически входим после регистрации
-      const user = await core.invoke('login_vesovschik', {
-        phone: userData.phone,
-        password: userData.password,
+      const user = await tauri.core.invoke('login_vesovschik', {
+        request: {
+          phone: userData.phone,
+          password: userData.password,
+        },
       });
 
       if (user) {
@@ -303,9 +317,10 @@ async function handleRegistration() {
       throw new Error('Ошибка при регистрации');
     }
   } catch (error) {
-    output('Ошибка регистрации: ' + error.message);
-    if (error.message.includes('телефон')) {
-      showError('regPhone', error.message);
+    console.error('Registration error:', error);
+    output('Ошибка регистрации: ' + (error.message || error));
+    if ((error.message || error).includes('телефон')) {
+      showError('regPhone', error.message || error);
     }
   } finally {
     hideLoading();
@@ -314,7 +329,7 @@ async function handleRegistration() {
 
 async function validateUser(user) {
   try {
-    const result = await core.invoke('validate_vesovschik_session', { userId: user.id });
+    const result = await tauri.core.invoke('validate_vesovschik_session', user.id);
     return result;
   } catch (error) {
     console.error('User validation failed:', error);
@@ -346,9 +361,7 @@ async function startHotspot() {
   try {
     output('Создание точки доступа...');
 
-    const result = await core.invoke('start_vesovschik_hotspot', {
-      userId: currentUser.id,
-    });
+    const result = await tauri.core.invoke('start_vesovschik_hotspot', currentUser.id);
 
     if (result && result.ssid && result.password) {
       hotspotActive = true;
@@ -387,7 +400,7 @@ async function stopHotspot() {
   try {
     output('Остановка точки доступа...');
 
-    await core.invoke('stop_vesovschik_hotspot');
+    await tauri.core.invoke('stop_vesovschik_hotspot');
 
     hotspotActive = false;
 
@@ -408,12 +421,11 @@ async function stopHotspot() {
 
 function makeQRCode(str) {
   const elem = document.getElementById('qrcode');
-  elem.innerHTML = '';
-  new QRCode(elem, {
-    text: str,
-    width: 200,
-    height: 200,
-  });
+  elem.innerHTML = `<div style="border: 2px solid #333; padding: 20px; text-align: center; background: white; word-break: break-all; font-family: monospace;">
+    <h4>Данные для подключения:</h4>
+    <p>${str}</p>
+    <small style="color: #666;">QR-код будет добавлен в следующей версии</small>
+  </div>`;
 }
 
 function showLoading() {

@@ -21,6 +21,9 @@ pub enum DatabaseError {
 
     #[error("Validation error: {0}")]
     ValidationError(String),
+
+    #[error("Migration error: {0}")]
+    MigrationError(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,46 +52,136 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+// Migration system
+#[derive(Debug)]
+pub struct Migration {
+    pub version: i32,
+    pub description: &'static str,
+    pub up_sql: &'static str,
+    pub down_sql: Option<&'static str>,
+}
+
+impl Migration {
+    pub fn new(version: i32, description: &'static str, up_sql: &'static str) -> Self {
+        Self {
+            version,
+            description,
+            up_sql,
+            down_sql: None,
+        }
+    }
+
+    pub fn with_rollback(mut self, down_sql: &'static str) -> Self {
+        self.down_sql = Some(down_sql);
+        self
+    }
+}
+
 pub struct TalonDatabase {
     conn: Connection,
 }
+
+// Database migrations
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        description: "Create users table",
+        up_sql: "CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            fio TEXT NOT NULL,
+            phone TEXT NOT NULL UNIQUE,
+            position TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            from_remote INTEGER NOT NULL DEFAULT 0
+        )",
+        down_sql: Some("DROP TABLE IF EXISTS users"),
+    },
+    Migration {
+        version: 2,
+        description: "Create indexes for users table",
+        up_sql: "CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+                 CREATE INDEX IF NOT EXISTS idx_users_position ON users(position)",
+        down_sql: Some(
+            "DROP INDEX IF EXISTS idx_users_phone;
+                       DROP INDEX IF EXISTS idx_users_position",
+        ),
+    },
+];
 
 impl TalonDatabase {
     pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self, DatabaseError> {
         let conn = Connection::open(db_path)?;
         let mut db = TalonDatabase { conn };
-        db.initialize_tables()?;
+        db.run_migrations()?;
         Ok(db)
     }
 
-    fn initialize_tables(&mut self) -> Result<(), DatabaseError> {
-        // Создаем таблицу пользователей
+    fn run_migrations(&mut self) -> Result<(), DatabaseError> {
+        // Создаем таблицу для отслеживания миграций
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                fio TEXT NOT NULL,
-                phone TEXT NOT NULL UNIQUE,
-                position TEXT NOT NULL,
-                password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                from_remote BOOLEAN NOT NULL DEFAULT FALSE
+            "CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                description TEXT NOT NULL,
+                applied_at TEXT NOT NULL
             )",
             [],
         )?;
 
-        // Создаем индексы
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)",
-            [],
-        )?;
+        // Получаем текущую версию схемы
+        let current_version = self.get_current_schema_version()?;
 
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_position ON users(position)",
-            [],
-        )?;
+        // Применяем все миграции, которые еще не были применены
+        for migration in MIGRATIONS {
+            if migration.version > current_version {
+                println!(
+                    "Applying migration {}: {}",
+                    migration.version, migration.description
+                );
+
+                // Выполняем SQL миграции
+                let statements: Vec<&str> = migration
+                    .up_sql
+                    .split(';')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+
+                for statement in statements {
+                    self.conn.execute(statement, [])?;
+                }
+
+                // Записываем информацию о применении миграции
+                self.conn.execute(
+                    "INSERT INTO schema_migrations (version, description, applied_at) VALUES (?1, ?2, ?3)",
+                    [
+                        &migration.version.to_string(),
+                        migration.description,
+                        &Utc::now().to_rfc3339(),
+                    ],
+                )?;
+            }
+        }
 
         Ok(())
+    }
+
+    fn get_current_schema_version(&self) -> Result<i32, DatabaseError> {
+        let result = self
+            .conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get::<_, Option<i32>>(0)
+            });
+
+        match result {
+            Ok(Some(version)) => Ok(version),
+            Ok(None) => Ok(0), // Нет примененных миграций
+            Err(rusqlite::Error::SqliteFailure(_, Some(msg))) if msg.contains("no such table") => {
+                Ok(0)
+            }
+            Err(e) => Err(DatabaseError::SqliteError(e)),
+        }
     }
 
     pub fn create_user(&mut self, request: CreateUserRequest) -> Result<String, DatabaseError> {
@@ -119,7 +212,7 @@ impl TalonDatabase {
                 &password_hash,
                 &now.to_rfc3339(),
                 &now.to_rfc3339(),
-                &"false".to_string(),
+                &"0".to_string(),
             ],
         )?;
 
@@ -162,7 +255,7 @@ impl TalonDatabase {
                     updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
                         .unwrap()
                         .with_timezone(&Utc),
-                    from_remote: row.get(7)?,
+                    from_remote: row.get::<_, i64>(7)? != 0,
                 })
             })
             .map_err(|e| match e {
@@ -193,7 +286,7 @@ impl TalonDatabase {
                     updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
                         .unwrap()
                         .with_timezone(&Utc),
-                    from_remote: row.get(7)?,
+                    from_remote: row.get::<_, i64>(7)? != 0,
                 })
             })
             .map_err(|e| match e {
@@ -223,7 +316,7 @@ impl TalonDatabase {
                 updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
                     .unwrap()
                     .with_timezone(&Utc),
-                from_remote: row.get(7)?,
+                from_remote: row.get::<_, i64>(7)? != 0,
             })
         })?;
 
@@ -309,6 +402,82 @@ impl TalonDatabase {
 
         if rows_affected == 0 {
             return Err(DatabaseError::UserNotFound);
+        }
+
+        Ok(())
+    }
+
+    // Migration utilities
+    pub fn get_applied_migrations(&self) -> Result<Vec<(i32, String, String)>, DatabaseError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT version, description, applied_at FROM schema_migrations ORDER BY version",
+        )?;
+
+        let migration_iter = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, i32>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?;
+
+        let mut migrations = Vec::new();
+        for migration in migration_iter {
+            migrations.push(migration?);
+        }
+
+        Ok(migrations)
+    }
+
+    pub fn get_pending_migrations(&self) -> Result<Vec<&Migration>, DatabaseError> {
+        let current_version = self.get_current_schema_version()?;
+        Ok(MIGRATIONS
+            .iter()
+            .filter(|m| m.version > current_version)
+            .collect())
+    }
+
+    pub fn rollback_migration(&mut self, target_version: i32) -> Result<(), DatabaseError> {
+        let current_version = self.get_current_schema_version()?;
+
+        if target_version >= current_version {
+            return Err(DatabaseError::MigrationError(
+                "Target version must be lower than current version".to_string(),
+            ));
+        }
+
+        // Откатываем миграции в обратном порядке
+        for migration in MIGRATIONS.iter().rev() {
+            if migration.version > target_version && migration.version <= current_version {
+                if let Some(down_sql) = migration.down_sql {
+                    println!(
+                        "Rolling back migration {}: {}",
+                        migration.version, migration.description
+                    );
+
+                    // Выполняем SQL отката
+                    let statements: Vec<&str> = down_sql
+                        .split(';')
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+
+                    for statement in statements {
+                        self.conn.execute(statement, [])?;
+                    }
+
+                    // Удаляем запись о миграции
+                    self.conn.execute(
+                        "DELETE FROM schema_migrations WHERE version = ?1",
+                        [&migration.version.to_string()],
+                    )?;
+                } else {
+                    return Err(DatabaseError::MigrationError(format!(
+                        "Migration {} does not have rollback SQL",
+                        migration.version
+                    )));
+                }
+            }
         }
 
         Ok(())

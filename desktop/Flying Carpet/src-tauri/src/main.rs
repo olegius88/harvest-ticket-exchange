@@ -213,6 +213,10 @@ async fn main() {
             validate_vesovschik_session,
             start_vesovschik_hotspot,
             stop_vesovschik_hotspot,
+            // Database migration commands
+            get_applied_migrations,
+            get_pending_migrations,
+            rollback_migration,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -429,3 +433,56 @@ fn get_wifi_interfaces() -> Vec<WiFiInterface> {
 //         println!("sent in user_bluetooth_pair");
 //     });
 // }
+
+// Database migration commands
+#[tauri::command]
+async fn get_applied_migrations(
+    db_state: State<'_, DatabaseState>,
+) -> Result<Vec<(i32, String, String)>, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_applied_migrations() {
+        Ok(migrations) => Ok(migrations),
+        Err(e) => Err(format!("Failed to get migrations: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_pending_migrations(
+    db_state: State<'_, DatabaseState>,
+) -> Result<Vec<(i32, String)>, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_pending_migrations() {
+        Ok(migrations) => Ok(migrations
+            .iter()
+            .map(|m| (m.version, m.description.to_string()))
+            .collect()),
+        Err(e) => Err(format!("Failed to get pending migrations: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn rollback_migration(
+    target_version: i32,
+    db_state: State<'_, DatabaseState>,
+) -> Result<String, String> {
+    let mut db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.rollback_migration(target_version) {
+        Ok(()) => Ok(format!(
+            "Successfully rolled back to version {}",
+            target_version
+        )),
+        Err(e) => Err(format!("Failed to rollback migration: {}", e)),
+    }
+}
