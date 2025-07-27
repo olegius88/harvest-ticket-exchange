@@ -20,6 +20,9 @@ use windows::Win32::System::Diagnostics::Debug::{
 use windows::Win32::UI::Shell::ShellExecuteA;
 use windows::Win32::UI::WindowsAndMessaging::{GetDesktopWindow, SW_HIDE};
 
+// Импорт нашего модуля для конфигурации 2.4 ГГц
+use crate::wifi_2_4ghz_config::{configure_wifi_adapter_for_2_4ghz, set_wifi_environment_variables};
+
 pub struct WindowsHotspot {
     _inner: WlanHostedNetworkHelper,
 }
@@ -55,8 +58,9 @@ pub async fn connect_to_peer<T: UI>(
             ui.output("Firewall rule already in place.");
         }
 
-        // start hotspot
-        let hosted_network = start_wifi_direct(&ssid, &password, ui)?;
+        // start hotspot using 2.4 GHz band for better legacy device compatibility
+        ui.output("Creating Wi-Fi hotspot optimized for 2.4 GHz...");
+        let hosted_network = start_wifi_direct_2_4ghz(&ssid, &password, ui)?;
         Ok(PeerResource::WindowsHotspot(hosted_network))
     } else {
         let guid =
@@ -88,11 +92,33 @@ pub async fn connect_to_peer<T: UI>(
     }
 }
 
-fn start_wifi_direct<T: UI>(ssid: &str, password: &str, ui: &T) -> Result<WindowsHotspot, FCError> {
-    // Make channels to receive messages from Windows Runtime
+/// Создает Wi-Fi Direct точку доступа с оптимизацией для работы на частоте 2.4 ГГц.
+/// Эта функция автоматически настраивает системные параметры для предпочтения 2.4 ГГц диапазона,
+/// что обеспечивает лучшую совместимость с устаревшими устройствами (WiFi 4).
+///
+/// # Параметры
+/// * `ssid` - имя сети (SSID)
+/// * `password` - пароль для подключения к сети
+/// * `ui` - интерфейс для вывода сообщений пользователю
+///
+/// # Возвращает
+/// `Result<WindowsHotspot, FCError>` - созданную точку доступа или ошибку
+fn start_wifi_direct_2_4ghz<T: UI>(ssid: &str, password: &str, ui: &T) -> Result<WindowsHotspot, FCError> {
+    // Настраиваем Wi-Fi адаптер для предпочтения 2.4 ГГц
+    ui.output("Configuring Wi-Fi adapter for 2.4 GHz...");
+    set_wifi_environment_variables();
+    
+    // Попытаемся настроить адаптер (может не сработать на всех системах)
+    if let Err(e) = configure_wifi_adapter_for_2_4ghz() {
+        ui.output(&format!("Warning: Could not configure adapter: {}", e.message));
+    } else {
+        ui.output("Wi-Fi adapter configured for 2.4 GHz preference");
+    }
+
+    // Создаем обычный Wi-Fi Direct, но с настройками для 2.4 ГГц
     let (message_tx, message_rx) = mpsc::channel::<String>();
     let (success_tx, success_rx) = mpsc::channel::<bool>();
-    // TODO: we should be able to use ? here, need to bump wifidirect-legacy-ap's windows-rs version?
+    
     let hosted_network = match WlanHostedNetworkHelper::new(ssid, password, message_tx, success_tx)
     {
         Ok(hn) => hn,
@@ -107,7 +133,6 @@ fn start_wifi_direct<T: UI>(ssid: &str, password: &str, ui: &T) -> Result<Window
         let msg = match message_rx.recv() {
             Ok(m) => m,
             Err(_e) => {
-                // thread_ui.output(&format!("WiFiDirect thread exiting: {}", _e));
                 break;
             }
         };
@@ -116,14 +141,14 @@ fn start_wifi_direct<T: UI>(ssid: &str, password: &str, ui: &T) -> Result<Window
 
     let started = success_rx
         .recv()
-        .expect("Could not receive whether WiFiDirect started");
+        .expect("Could not receive whether WiFi Direct started");
     if started {
         Ok(WindowsHotspot {
             _inner: hosted_network,
         })
     } else {
         Err(FCError {
-            message: "Failed to start WiFi Direct AP".to_string(),
+            message: "Failed to start WiFi Direct AP with 2.4GHz configuration".to_string(),
         })
     }
 }

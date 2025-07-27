@@ -6,6 +6,11 @@ pub mod network;
 #[cfg_attr(target_os = "windows", path = "windows/bluetooth.rs")]
 pub mod bluetooth;
 
+#[cfg(target_os = "windows")]
+pub mod wifi_2_4ghz_config {
+    include!("windows/wifi_2_4ghz_config.rs");
+}
+
 pub mod error;
 mod receiving;
 mod sending;
