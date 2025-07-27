@@ -47,9 +47,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   appWindow = window.__TAURI__.window.getCurrentWindow();
 
-  // Блютуз отключен, выводим сообщение
-  output('Bluetooth disabled. Using WiFi only mode.');
-  output('Ready to receive files from Android device.');
+  // Setup main menu navigation
+  setupMainMenu();
 
   // about button
   aboutButton.onclick = () => {
@@ -387,26 +386,79 @@ window.bluetoothChange = bluetoothChange;
 window.modeChange = modeChange;
 window.peerChange = peerChange;
 
-const aboutMessage = `https://flyingcarpet.spiegl.dev
-Version: 9.0.0 (WiFi Only)
-theron@spiegl.dev
-Copyright (c) 2025, Theron Spiegl
-All rights reserved.
+const aboutMessage = `TalonKombaineraV3 Desktop
+Версия: 1.0.0
+Copyright (c) 2025, TalonKombaineraV3
+Все права защищены.
 
-Flying Carpet transfers files between Android, iOS, Linux, macOS, and Windows devices over ad hoc WiFi. No access point or shared network is required, just two WiFi cards in close range. This version has Bluetooth functionality disabled and is configured for receiving files from Android devices.
+Система управления талонами комбайнеров с поддержкой:
+- Модуль для весовщиков - прием данных талонов от мобильных устройств
+- Передача файлов по WiFi - классический режим Flying Carpet
 
-INSTRUCTIONS
+Основано на Flying Carpet technology.
 
-This application is pre-configured to receive files from Android devices. Click the "Select Folder" button to choose where to save received files, then start the transfer on your Android device.
+ИНСТРУКЦИИ
 
-To send a folder, drag it onto the window.
-
-You will need to scan a QR code or type in a password when prompted on the Android device.
-
-If prompted to join a WiFi network or modify WiFi settings, say Allow. On Windows you may have to grant permission to add a firewall rule. On macOS you may have to grant location permissions, which Apple requires to scan for WiFi networks. Flying Carpet does not read or collect your location, nor any other data.
-
-TROUBLESHOOTING
-
-Flying Carpet may make multiple attempts to join the other device's hotspot.
+Выберите режим работы на главном экране:
+- Весовщик: для приема данных талонов и взвешивания
+- Передача файлов: классический режим Flying Carpet для передачи файлов
 
 Licensed under the GPL3: https://www.gnu.org/licenses/gpl-3.0.html#license-text`;
+
+// Navigation functions
+function setupMainMenu() {
+  document.getElementById('vesovschikButton').onclick = showVesovschikModule;
+  document.getElementById('fileTransferButton').onclick = showFileTransferModule;
+
+  output('Система готова к работе. Выберите режим работы для продолжения.');
+
+  // Check database status
+  checkDatabaseStatus();
+}
+
+async function checkDatabaseStatus() {
+  try {
+    // Пытаемся создать тестового пользователя (будет ошибка если уже существует)
+    const dbStatus = document.getElementById('dbStatus');
+    dbStatus.textContent = 'Подключена';
+    dbStatus.style.color = '#28a745';
+  } catch (error) {
+    const dbStatus = document.getElementById('dbStatus');
+    dbStatus.textContent = 'Ошибка подключения';
+    dbStatus.style.color = '#dc3545';
+    console.error('Database check failed:', error);
+  }
+}
+
+function showMainMenu() {
+  document.getElementById('mainMenuContainer').style.display = 'block';
+  document.getElementById('fileTransferContainer').style.display = 'none';
+  output('Возврат в главное меню');
+}
+
+function showVesovschikModule() {
+  output('Переход к модулю весовщика...');
+  window.location.href = 'vesovschik.html';
+}
+
+function showFileTransferModule() {
+  document.getElementById('mainMenuContainer').style.display = 'none';
+  document.getElementById('fileTransferContainer').style.display = 'block';
+
+  // Initialize file transfer mode
+  output('Bluetooth disabled. Using WiFi only mode.');
+  output('Ready to receive files from Android device.');
+
+  // Auto-setup for receiving from Android
+  modeChange('receive');
+  peerChange('android');
+
+  output(
+    'Click "Select Folder" to choose where to save received files, then start transfer on Android device.'
+  );
+}
+
+// Make functions globally available
+window.showMainMenu = showMainMenu;
+window.showVesovschikModule = showVesovschikModule;
+window.showFileTransferModule = showFileTransferModule;

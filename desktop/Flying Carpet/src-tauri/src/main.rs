@@ -10,8 +10,26 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{fs, sync::Mutex};
+use talon_db::{CreateUserRequest, DatabaseError, LoginRequest, TalonDatabase};
 use tauri::{Emitter, State, Window};
 use tokio::sync::mpsc;
+
+// Database state
+struct DatabaseState {
+    db: Arc<Mutex<TalonDatabase>>,
+}
+
+// Структуры для возврата данных без password_hash
+#[derive(serde::Serialize)]
+struct SafeUser {
+    id: String,
+    fio: String,
+    phone: String,
+    position: String,
+    created_at: String,
+    updated_at: String,
+    from_remote: bool,
+}
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -162,10 +180,26 @@ fn start_async(
 #[tokio::main]
 async fn main() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
+
+    // Инициализируем базу данных
+    let db_path = get_database_path();
+    let db = match TalonDatabase::new(&db_path) {
+        Ok(database) => database,
+        Err(e) => {
+            eprintln!("Failed to initialize database: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let db_state = DatabaseState {
+        db: Arc::new(Mutex::new(db)),
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .manage(Transfer::new())
+        .manage(db_state)
         .invoke_handler(tauri::generate_handler![
             start_async,
             cancel_transfer,
@@ -173,9 +207,145 @@ async fn main() {
             expand_files,
             generate_password,
             get_wifi_interfaces,
+            // Vesovschik commands
+            register_vesovschik,
+            login_vesovschik,
+            validate_vesovschik_session,
+            start_vesovschik_hotspot,
+            stop_vesovschik_hotspot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn get_database_path() -> PathBuf {
+    let app_data_dir = dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("TalonKombaineraV3");
+
+    // Создаем директорию если не существует
+    if !app_data_dir.exists() {
+        fs::create_dir_all(&app_data_dir).unwrap_or_else(|e| {
+            eprintln!("Failed to create app data directory: {}", e);
+        });
+    }
+
+    app_data_dir.join("talon_kombainera.db")
+}
+
+// Vesovschik commands
+#[tauri::command]
+async fn register_vesovschik(
+    request: CreateUserRequest,
+    db_state: State<'_, DatabaseState>,
+) -> Result<String, String> {
+    let mut db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    let mut vesovschik_request = request;
+    vesovschik_request.position = "vesovschik".to_string();
+
+    match db.create_user(vesovschik_request) {
+        Ok(user_id) => Ok(user_id),
+        Err(DatabaseError::UserAlreadyExists) => {
+            Err("Пользователь с таким номером телефона уже существует".to_string())
+        }
+        Err(DatabaseError::ValidationError(msg)) => Err(msg),
+        Err(e) => Err(format!("Ошибка регистрации: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn login_vesovschik(
+    request: LoginRequest,
+    db_state: State<'_, DatabaseState>,
+) -> Result<SafeUser, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.login_user(request) {
+        Ok(user) => {
+            if user.position != "vesovschik" {
+                return Err("Пользователь не является весовщиком".to_string());
+            }
+
+            Ok(SafeUser {
+                id: user.id,
+                fio: user.fio,
+                phone: user.phone,
+                position: user.position,
+                created_at: user.created_at.to_rfc3339(),
+                updated_at: user.updated_at.to_rfc3339(),
+                from_remote: user.from_remote,
+            })
+        }
+        Err(DatabaseError::UserNotFound) => {
+            Err("Пользователь с указанным номером телефона не найден".to_string())
+        }
+        Err(DatabaseError::InvalidCredentials) => Err("Неверный пароль".to_string()),
+        Err(e) => Err(format!("Ошибка входа: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn validate_vesovschik_session(
+    user_id: String,
+    db_state: State<'_, DatabaseState>,
+) -> Result<bool, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_user_by_id(&user_id) {
+        Ok(user) => Ok(user.position == "vesovschik"),
+        Err(_) => Ok(false),
+    }
+}
+
+#[derive(serde::Serialize)]
+struct HotspotInfo {
+    ssid: String,
+    password: String,
+}
+
+#[tauri::command]
+async fn start_vesovschik_hotspot(
+    user_id: String,
+    db_state: State<'_, DatabaseState>,
+) -> Result<HotspotInfo, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    // Проверяем, что пользователь существует и является весовщиком
+    let user = match db.get_user_by_id(&user_id) {
+        Ok(user) => user,
+        Err(_) => return Err("Пользователь не найден".to_string()),
+    };
+
+    if user.position != "vesovschik" {
+        return Err("Пользователь не является весовщиком".to_string());
+    }
+
+    // Генерируем SSID и пароль для hotspot
+    let ssid = format!("Vesovschik_{}", &user.fio.replace(" ", "_"));
+    let password = utils::generate_password();
+
+    // В будущем здесь будет создание реального hotspot
+    // Пока возвращаем информацию для тестирования
+    Ok(HotspotInfo { ssid, password })
+}
+
+#[tauri::command]
+async fn stop_vesovschik_hotspot() -> Result<String, String> {
+    // В будущем здесь будет остановка реального hotspot
+    Ok("Hotspot остановлен".to_string())
 }
 
 // Bluetooth functions removed - bluetooth is disabled
