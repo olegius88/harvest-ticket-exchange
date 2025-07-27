@@ -1,5 +1,5 @@
 // Модуль для конфигурации Wi-Fi адаптеров Windows для использования диапазона 2.4 ГГц.
-// 
+//
 // Этот модуль содержит функции для автоматической настройки системных параметров,
 // которые заставляют Wi-Fi адаптеры предпочитать работу на частоте 2.4 ГГц вместо 5 ГГц.
 // Это обеспечивает лучшую совместимость с устаревшими устройствами и большую дальность
@@ -13,11 +13,15 @@ use std::process::Command;
 pub fn configure_wifi_adapter_for_2_4ghz() -> Result<(), FCError> {
     // Попытаемся настроить предпочтительный диапазон через netsh
     // Это работает не на всех адаптерах, но стоит попытаться
-    
+
     let output = Command::new("netsh")
         .args(&[
-            "wlan", "set", "profileparameter", 
-            "name=*", "connectiontype=auto", "connectionmode=auto"
+            "wlan",
+            "set",
+            "profileparameter",
+            "name=*",
+            "connectiontype=auto",
+            "connectionmode=auto",
         ])
         .output();
 
@@ -63,7 +67,7 @@ pub fn configure_wifi_adapter_for_2_4ghz() -> Result<(), FCError> {
         Ok(result) => {
             let stdout = String::from_utf8_lossy(&result.stdout);
             let stderr = String::from_utf8_lossy(&result.stderr);
-            
+
             if !stdout.is_empty() {
                 println!("PowerShell output: {}", stdout);
             }
@@ -89,7 +93,8 @@ pub fn set_wifi_environment_variables() {
 /// Функция для создания профиля Wi-Fi с принудительным использованием 2.4 ГГц
 pub fn create_2_4ghz_profile(ssid: &str, password: &str) -> Result<(), FCError> {
     // Создаем XML профиль, который предпочитает 2.4 ГГц
-    let profile_xml = format!(r#"<?xml version="1.0"?>
+    let profile_xml = format!(
+        r#"<?xml version="1.0"?>
 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
     <name>{}</name>
     <SSIDConfig>
@@ -116,19 +121,23 @@ pub fn create_2_4ghz_profile(ssid: &str, password: &str) -> Result<(), FCError> 
     <MacRandomization xmlns="http://www.microsoft.com/networking/WLAN/profile/v3">
         <enableRandomization>false</enableRandomization>
     </MacRandomization>
-</WLANProfile>"#, ssid, ssid, password);
+</WLANProfile>"#,
+        ssid, ssid, password
+    );
 
     // Сохраняем профиль во временный файл
     let temp_dir = std::env::temp_dir();
     let profile_path = temp_dir.join(format!("{}_profile.xml", ssid));
-    
+
     match std::fs::write(&profile_path, profile_xml) {
         Ok(()) => {
             // Добавляем профиль через netsh
             let output = Command::new("netsh")
                 .args(&[
-                    "wlan", "add", "profile", 
-                    &format!("filename={}", profile_path.display())
+                    "wlan",
+                    "add",
+                    "profile",
+                    &format!("filename={}", profile_path.display()),
                 ])
                 .output();
 

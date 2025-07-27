@@ -107,7 +107,7 @@ fn start_wifi_direct_2_4ghz<T: UI>(ssid: &str, password: &str, ui: &T) -> Result
     // Настраиваем Wi-Fi адаптер для предпочтения 2.4 ГГц
     ui.output("Configuring Wi-Fi adapter for 2.4 GHz...");
     set_wifi_environment_variables();
-    
+
     // Попытаемся настроить адаптер (может не сработать на всех системах)
     if let Err(e) = configure_wifi_adapter_for_2_4ghz() {
         ui.output(&format!("Warning: Could not configure adapter: {}", e.message));
@@ -118,7 +118,7 @@ fn start_wifi_direct_2_4ghz<T: UI>(ssid: &str, password: &str, ui: &T) -> Result
     // Создаем обычный Wi-Fi Direct, но с настройками для 2.4 ГГц
     let (message_tx, message_rx) = mpsc::channel::<String>();
     let (success_tx, success_rx) = mpsc::channel::<bool>();
-    
+
     let hosted_network = match WlanHostedNetworkHelper::new(ssid, password, message_tx, success_tx)
     {
         Ok(hn) => hn,
