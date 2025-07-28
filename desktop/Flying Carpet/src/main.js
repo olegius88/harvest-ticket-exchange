@@ -393,7 +393,7 @@ Copyright (c) 2025, TalonKombaineraV3
 
 Система управления талонами комбайнеров с поддержкой:
 - Модуль для весовщиков - прием данных талонов от мобильных устройств
-- Передача файлов по WiFi - классический режим Flying Carpet
+- Управление базой данных и миграциями
 
 Основано на Flying Carpet technology.
 
@@ -401,14 +401,14 @@ Copyright (c) 2025, TalonKombaineraV3
 
 Выберите режим работы на главном экране:
 - Весовщик: для приема данных талонов и взвешивания
-- Передача файлов: классический режим Flying Carpet для передачи файлов
+- Миграции БД: управление схемой базы данных
 
 Licensed under the GPL3: https://www.gnu.org/licenses/gpl-3.0.html#license-text`;
 
 // Navigation functions
 function setupMainMenu() {
   document.getElementById('vesovschikButton').onclick = showVesovschikModule;
-  document.getElementById('fileTransferButton').onclick = showFileTransferModule;
+  // document.getElementById('fileTransferButton').onclick = showFileTransferModule; // Скрыто
   document.getElementById('migrationsButton').onclick = showMigrationsModule;
 
   output('Система готова к работе. Выберите режим работы для продолжения.');
@@ -468,4 +468,4 @@ function showFileTransferModule() {
 window.showMainMenu = showMainMenu;
 window.showVesovschikModule = showVesovschikModule;
 window.showMigrationsModule = showMigrationsModule;
-window.showFileTransferModule = showFileTransferModule;
+// window.showFileTransferModule = showFileTransferModule; // Скрыто

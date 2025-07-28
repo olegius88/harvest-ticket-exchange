@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="style.css" />
   </head>
 
-  <body style="height: 100%;">
-    <div class="verticalContainer" id="mainContainer" style="height: 100%;">
+  <body style="height: 100%; margin: 0; padding: 0;">
+    <div class="verticalContainer" id="mainContainer" style="height: 100vh; overflow: hidden;">
 
       <!-- top bar -->
-      <div class="horizontalContainer" style="flex-grow: 0; margin: 10px;">
+      <div class="horizontalContainer" style="flex-shrink: 0; margin: 10px; height: 120px;">
         <div>
           <h1 style="font-size: 40px; margin-bottom: 0px; padding-bottom: 0px;"><b>Весовщик</b></h1>
           <small style="margin-top: 0px; padding-top: 0px;">TalonKombaineraV3</small>
@@ -21,142 +21,173 @@
             О программе
           </small>
         </div>
-        <div id="logoContainer" style="width: 150px; height: 150px;">
-          <img src="assets/icon1024.png" style="width: 150px; height: 150px;">
+        <div id="logoContainer" style="width: 120px; height: 120px;">
+          <img src="assets/icon1024.png" style="width: 120px; height: 120px;">
         </div>
       </div>
 
-      <!-- main menu for unauthorized users -->
-      <div id="mainMenu" style="display: none;">
-        <div style="text-align: center; margin: 20px;">
-          <h2>Добро пожаловать</h2>
-          <p>Для работы с системой необходимо войти в систему</p>
+      <!-- Content area - only one screen visible at a time -->
+      <div id="contentArea" style="flex: 1; overflow: hidden; position: relative;">
 
-          <div style="margin: 20px;">
-            <button type="button" id="loginButton" class="btn btn-primary" style="margin: 10px; min-width: 200px;">
-              Вход в систему
-            </button>
-            <br>
-            <button type="button" id="registerButton" class="btn btn-outline-primary" style="margin: 10px; min-width: 200px;">
-              Регистрация
-            </button>
+        <!-- main menu for unauthorized users -->
+        <div id="mainMenu" class="screen" style="display: none;">
+          <div style="text-align: center; margin: 20px;">
+            <h2>Добро пожаловать</h2>
+            <p>Для работы с системой необходимо войти в систему</p>
+
+            <div style="margin: 20px;">
+              <button type="button" id="loginButton" class="btn btn-primary" style="margin: 10px; min-width: 200px;">
+                Вход в систему
+              </button>
+              <br>
+              <button type="button" id="registerButton" class="btn btn-outline-primary" style="margin: 10px; min-width: 200px;">
+                Регистрация
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- login form -->
-      <div id="loginForm" style="display: none;">
-        <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
-          <h2 style="text-align: center; margin-bottom: 20px;">Вход в систему</h2>
+        <!-- login form -->
+        <div id="loginForm" class="screen" style="display: none;">
+          <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
+            <h2 style="text-align: center; margin-bottom: 20px;">Вход в систему</h2>
 
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="loginPhone" style="display: block; margin-bottom: 5px;">Номер телефона:</label>
-            <input type="tel" id="loginPhone" class="form-control" placeholder="+7XXXXXXXXXX" autocomplete="tel">
-            <div id="loginPhoneError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+              <label for="loginPhone" style="display: block; margin-bottom: 5px;">Номер телефона:</label>
+              <input type="tel" id="loginPhone" class="form-control" placeholder="+7XXXXXXXXXX" autocomplete="tel">
+              <div id="loginPhoneError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
 
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label for="loginPassword" style="display: block; margin-bottom: 5px;">Пароль:</label>
-            <input type="password" id="loginPassword" class="form-control" placeholder="Введите пароль" autocomplete="current-password">
-            <div id="loginPasswordError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="loginPassword" style="display: block; margin-bottom: 5px;">Пароль:</label>
+              <input type="password" id="loginPassword" class="form-control" placeholder="Введите пароль" autocomplete="current-password">
+              <div id="loginPasswordError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
 
-          <div style="text-align: center;">
-            <button type="button" id="loginSubmitButton" class="btn btn-success" style="margin: 5px; min-width: 120px;">
-              Войти
-            </button>
-            <button type="button" id="loginCancelButton" class="btn btn-secondary" style="margin: 5px; min-width: 120px;">
-              Отмена
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- registration form -->
-      <div id="registrationForm" style="display: none;">
-        <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
-          <h2 style="text-align: center; margin-bottom: 20px;">Регистрация весовщика</h2>
-
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="regFio" style="display: block; margin-bottom: 5px;">ФИО:</label>
-            <input type="text" id="regFio" class="form-control" placeholder="Введите ФИО">
-            <div id="regFioError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="regPhone" style="display: block; margin-bottom: 5px;">Номер телефона:</label>
-            <input type="tel" id="regPhone" class="form-control" placeholder="+7XXXXXXXXXX">
-            <div id="regPhoneError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="regPassword" style="display: block; margin-bottom: 5px;">Пароль:</label>
-            <input type="password" id="regPassword" class="form-control" placeholder="Введите пароль">
-            <div id="regPasswordError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 20px;">
-            <label for="regPasswordConfirm" style="display: block; margin-bottom: 5px;">Подтверждение пароля:</label>
-            <input type="password" id="regPasswordConfirm" class="form-control" placeholder="Повторите пароль">
-            <div id="regPasswordConfirmError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
-          </div>
-
-          <div style="text-align: center;">
-            <button type="button" id="regSubmitButton" class="btn btn-success" style="margin: 5px; min-width: 120px;">
-              Зарегистрироваться
-            </button>
-            <button type="button" id="regCancelButton" class="btn btn-secondary" style="margin: 5px; min-width: 120px;">
-              Отмена
-            </button>
+            <div style="text-align: center;">
+              <button type="button" id="loginSubmitButton" class="btn btn-success" style="margin: 5px; min-width: 120px;">
+                Войти
+              </button>
+              <button type="button" id="loginCancelButton" class="btn btn-secondary" style="margin: 5px; min-width: 120px;">
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- authenticated user dashboard -->
-      <div id="dashboard" style="display: none;">
-        <div style="text-align: center; margin: 20px;">
-          <h2 id="welcomeMessage">Добро пожаловать, Весовщик!</h2>
-          <div id="userInfo" style="margin: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-            <p><strong>ФИО:</strong> <span id="userFio"></span></p>
-            <p><strong>Телефон:</strong> <span id="userPhone"></span></p>
+        <!-- registration form -->
+        <div id="registrationForm" class="screen" style="display: none;">
+          <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
+            <h2 style="text-align: center; margin-bottom: 20px;">Регистрация весовщика</h2>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+              <label for="regFio" style="display: block; margin-bottom: 5px;">ФИО:</label>
+              <input type="text" id="regFio" class="form-control" placeholder="Введите ФИО">
+              <div id="regFioError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+              <label for="regPhone" style="display: block; margin-bottom: 5px;">Номер телефона:</label>
+              <input type="tel" id="regPhone" class="form-control" placeholder="+7XXXXXXXXXX">
+              <div id="regPhoneError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+              <label for="regPassword" style="display: block; margin-bottom: 5px;">Пароль:</label>
+              <input type="password" id="regPassword" class="form-control" placeholder="Введите пароль">
+              <div id="regPasswordError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="regPasswordConfirm" style="display: block; margin-bottom: 5px;">Подтверждение пароля:</label>
+              <input type="password" id="regPasswordConfirm" class="form-control" placeholder="Повторите пароль">
+              <div id="regPasswordConfirmError" class="error-text" style="color: red; font-size: 14px; margin-top: 5px; display: none;"></div>
+            </div>
+
+            <div style="text-align: center;">
+              <button type="button" id="regSubmitButton" class="btn btn-success" style="margin: 5px; min-width: 120px;">
+                Зарегистрироваться
+              </button>
+              <button type="button" id="regCancelButton" class="btn btn-secondary" style="margin: 5px; min-width: 120px;">
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- authenticated user dashboard -->
+        <div id="dashboard" class="screen" style="display: none; flex-direction: column; height: 100%;">
+          <!-- User info header -->
+          <div style="flex-shrink: 0; text-align: center; margin: 10px 20px;">
+            <h2 id="welcomeMessage" style="margin-bottom: 10px;">Добро пожаловать, Весовщик!</h2>
+            <div id="userInfo" style="margin: 5px; padding: 8px; background-color: #f8f9fa; border-radius: 5px; font-size: 14px;">
+              <span><strong>ФИО:</strong> <span id="userFio"></span></span>
+              <span style="margin-left: 20px;"><strong>Телефон:</strong> <span id="userPhone"></span></span>
+            </div>
           </div>
 
-          <div style="margin: 20px;">
-            <button type="button" id="startHotspotButton" class="btn btn-primary" style="margin: 10px; min-width: 200px;">
+          <!-- Список принятых талонов - основная область -->
+          <div id="talonsSection" style="flex: 1; margin: 0 20px 10px; display: flex; flex-direction: column; min-height: 0;">
+            <h3 style="text-align: center; margin-bottom: 10px; flex-shrink: 0;">Принятые талоны</h3>
+            <div id="talonsList" style="flex: 1; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; background-color: #fff; min-height: 200px;">
+              <p style="text-align: center; color: #6c757d; margin: 20px 0;">Ожидание талонов от Android устройств...</p>
+            </div>
+            <div style="text-align: center; margin-top: 8px; flex-shrink: 0;">
+              <small style="color: #6c757d;">Всего принято: <span id="talonsCount">0</span></small>
+            </div>
+          </div>
+
+          <!-- Кнопки внизу экрана -->
+          <div style="flex-shrink: 0; text-align: center; margin: 10px 20px; padding: 15px 0; border-top: 1px solid #dee2e6; background-color: #f8f9fa;">
+            <button type="button" id="startHotspotButton" class="btn btn-primary" style="margin: 5px; min-width: 180px; display: none;">
               Создать точку доступа
             </button>
-            <br>
-            <button type="button" id="logoutButton" class="btn btn-outline-danger" style="margin: 10px; min-width: 200px;">
-              Выйти из системы
+            <button type="button" id="acceptTalonButton" class="btn btn-success" style="margin: 5px; min-width: 180px; font-size: 16px; padding: 10px;">
+              Принять талон
+            </button>
+            <button type="button" id="logoutButton" class="btn btn-outline-danger" style="margin: 5px; min-width: 180px; font-size: 16px; padding: 10px;">
+              Выход
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- hotspot information -->
-      <div id="hotspotInfo" style="display: none;">
-        <div style="text-align: center; margin: 20px;">
-          <h3>Точка доступа создана</h3>
-          <div style="margin: 20px; padding: 15px; background-color: #e7f3e7; border-radius: 5px;">
-            <p><strong>Название сети:</strong> <span id="ssidDisplay"></span></p>
-            <p><strong>Пароль:</strong> <span id="passwordDisplay"></span></p>
-          </div>
+        <!-- hotspot information (hidden) -->
+        <div id="hotspotInfo" class="screen" style="display: none;">
+          <div style="text-align: center; margin: 20px;">
+            <h3>TCP Сервер</h3>
+            <div style="margin: 20px; padding: 15px; background-color: #e7f3e7; border-radius: 5px;">
+              <p><strong>Статус:</strong> Активен</p>
+              <p><strong>Режим:</strong> Внутренняя WiFi сеть весовой</p>
+            </div>
 
-          <div id="qrcode" style="margin: 20px auto; width: 200px; height: 200px;">
-            <!-- QR код будет вставлен здесь -->
-          </div>
+            <div id="qrcode" style="margin: 20px auto; width: 200px; height: 200px;">
+              <!-- QR код будет вставлен здесь -->
+            </div>
 
-          <div style="margin: 20px;">
-            <button type="button" id="stopHotspotButton" class="btn btn-danger" style="margin: 10px; min-width: 200px;">
-              Остановить точку доступа
-            </button>
+            <div style="margin: 20px;">
+              <button type="button" id="stopHotspotButton" class="btn btn-danger" style="margin: 10px; min-width: 200px; display: none;">
+                Остановить точку доступа
+              </button>
+            </div>
           </div>
         </div>
+
       </div>
 
       <!-- output box -->
-      <div id="outputBox" class="horizontalContainer" style="flex-grow: 9; flex-shrink: 9; overflow-y: auto; padding: 5px; margin-top: 5px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
-        Система готова к работе
+      <div id="outputSection" style="flex-shrink: 0; background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+        <!-- Toggle button for output box -->
+        <div id="outputToggle" style="background-color: #e9ecef; padding: 8px 15px; cursor: pointer; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: #495057;">Журнал событий</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="clearLogButton" style="background: none; border: none; color: #6c757d; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 3px;" title="Очистить журнал">🗑️</button>
+            <span id="outputToggleIcon" style="font-size: 14px; color: #6c757d;">▼</span>
+          </div>
+        </div>
+        <!-- Collapsible output box -->
+        <div id="outputBox" style="height: 150px; overflow-y: auto; padding: 10px; background-color: #fff; border: none; border-radius: 0; margin: 0; transition: height 0.3s ease;">
+          Система готова к работе
+        </div>
       </div>
 
       <!-- loading overlay -->

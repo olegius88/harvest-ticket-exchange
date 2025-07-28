@@ -18,11 +18,13 @@ let regFio, regPhone, regPassword, regPasswordConfirm;
 let currentUser = null;
 let isAuthenticated = false;
 let hotspotActive = false;
+let acceptedTalons = [];
 
 // Initialize application
 window.addEventListener('DOMContentLoaded', async () => {
   initializeElements();
   setupEventListeners();
+  initializeOutputBoxState();
   await initializeApp();
 });
 
@@ -45,6 +47,16 @@ function initializeElements() {
   regPhone = document.getElementById('regPhone');
   regPassword = document.getElementById('regPassword');
   regPasswordConfirm = document.getElementById('regPasswordConfirm');
+
+  // Проверяем наличие ключевых элементов
+  const requiredElements = [mainMenu, loginForm, registrationForm, dashboard, outputBox];
+  const missingElements = requiredElements.filter((el) => !el);
+
+  if (missingElements.length > 0) {
+    console.error('Отсутствуют необходимые элементы DOM:', missingElements);
+  } else {
+    console.log('Все элементы DOM найдены успешно');
+  }
 }
 
 function setupEventListeners() {
@@ -64,11 +76,21 @@ function setupEventListeners() {
   document.getElementById('regCancelButton').onclick = showMainMenu;
 
   // Dashboard buttons
-  document.getElementById('startHotspotButton').onclick = startHotspot;
+  // document.getElementById('startHotspotButton').onclick = startHotspot; // Скрыто
+  document.getElementById('acceptTalonButton').onclick = acceptTalon;
   document.getElementById('logoutButton').onclick = handleLogout;
 
+  // Output toggle button
+  document.getElementById('outputToggle').onclick = toggleOutputBox;
+
+  // Clear log button
+  document.getElementById('clearLogButton').onclick = (e) => {
+    e.stopPropagation(); // Prevent triggering toggle
+    clearLog();
+  };
+
   // Hotspot controls
-  document.getElementById('stopHotspotButton').onclick = stopHotspot;
+  // document.getElementById('stopHotspotButton').onclick = stopHotspot; // Скрыто
 
   // Enter key handlers
   document.addEventListener('keyup', (event) => {
@@ -83,7 +105,11 @@ function setupEventListeners() {
 }
 
 async function initializeApp() {
-  output('Инициализация системы весовщика...');
+  // Сначала скрываем все экраны
+  hideAllScreens();
+
+  output('Инициализация системы весовщика...', 'info');
+  output('TCP сервер запущен и готов к подключениям', 'success');
 
   // Initialize Tauri API
   try {
@@ -92,7 +118,8 @@ async function initializeApp() {
       throw new Error('Tauri API не доступен');
     }
   } catch (error) {
-    output('Ошибка инициализации: ' + error.message);
+    output('Ошибка инициализации: ' + error.message, 'error');
+    showMainMenu();
     return;
   }
 
@@ -114,49 +141,71 @@ async function initializeApp() {
     localStorage.removeItem('vesovschik_user');
   }
 
+  // Показываем главное меню по умолчанию
   showMainMenu();
 }
 
 function showMainMenu() {
-  hideAllScreens();
-  mainMenu.style.display = 'block';
-  output('Выберите действие для входа в систему');
+  showScreen('mainMenu');
+  output('Выберите действие для входа в систему', 'info');
 }
 
 function showLoginForm() {
-  hideAllScreens();
-  loginForm.style.display = 'block';
+  showScreen('loginForm');
   clearErrors();
   loginPhone.focus();
-  output('Введите данные для входа в систему');
+  output('Введите данные для входа в систему', 'info');
 }
 
 function showRegistrationForm() {
-  hideAllScreens();
-  registrationForm.style.display = 'block';
+  showScreen('registrationForm');
   clearErrors();
   regFio.focus();
-  output('Заполните данные для регистрации');
+  output('Заполните данные для регистрации', 'info');
 }
 
 function showDashboard() {
-  hideAllScreens();
-  dashboard.style.display = 'block';
+  showScreen('dashboard');
 
   if (currentUser) {
     document.getElementById('userFio').textContent = currentUser.fio;
     document.getElementById('userPhone').textContent = currentUser.phone;
+    document.getElementById('welcomeMessage').textContent = `Добро пожаловать, ${currentUser.fio}!`;
   }
 
-  output(`Добро пожаловать, ${currentUser?.fio || 'Весовщик'}!`);
+  output(`Добро пожаловать, ${currentUser?.fio || 'Весовщик'}!`, 'success');
+  output('TCP сервер активен', 'info');
+  output('Устройства могут подключаться через внутреннюю WiFi сеть весовой', 'info');
+  output('IP адрес для подключения будет отображен в QR-коде', 'info');
+
+  // Загружаем сохраненные талоны
+  loadAcceptedTalons();
 }
 
 function hideAllScreens() {
-  mainMenu.style.display = 'none';
-  loginForm.style.display = 'none';
-  registrationForm.style.display = 'none';
-  dashboard.style.display = 'none';
-  hotspotInfo.style.display = 'none';
+  // Убираем все классы active и скрываем все экраны
+  const screens = document.querySelectorAll('.screen');
+  screens.forEach((screen) => {
+    screen.classList.remove('active');
+    screen.style.display = 'none';
+  });
+}
+
+function showScreen(screenId) {
+  console.log(`Показываем экран: ${screenId}`);
+  hideAllScreens();
+  const screen = document.getElementById(screenId);
+  if (screen) {
+    screen.classList.add('active');
+    if (screenId === 'dashboard') {
+      screen.style.display = 'flex';
+    } else {
+      screen.style.display = 'block';
+    }
+    console.log(`Экран ${screenId} отображен`);
+  } else {
+    console.error(`Экран ${screenId} не найден`);
+  }
 }
 
 function clearErrors() {
@@ -351,72 +400,42 @@ function handleLogout() {
 }
 
 async function startHotspot() {
+  // Функция скрыта - hotspot создание отключено
+  // Вместо этого показываем информацию о TCP сервере
   if (!isAuthenticated) {
     output('Необходимо войти в систему');
     return;
   }
 
-  showLoading();
+  output('TCP сервер всегда активен для приема подключений');
+  output('Устройства могут подключаться через внутреннюю WiFi сеть весовой');
 
-  try {
-    output('Создание точки доступа...');
+  // Генерируем QR-код с IP адресом для подключения
+  makeQRCode(
+    JSON.stringify({
+      mode: 'tcp_server',
+      vesovschik: currentUser.fio,
+      info: 'Подключение через внутреннюю сеть',
+    })
+  );
 
-    const result = await tauri.core.invoke('start_vesovschik_hotspot', currentUser.id);
-
-    if (result && result.ssid && result.password) {
-      hotspotActive = true;
-
-      // Update UI
-      document.getElementById('ssidDisplay').textContent = result.ssid;
-      document.getElementById('passwordDisplay').textContent = result.password;
-
-      // Generate QR code
-      makeQRCode(
-        JSON.stringify({
-          ssid: result.ssid,
-          password: result.password,
-          vesovschik: currentUser.fio,
-        })
-      );
-
-      dashboard.style.display = 'none';
-      hotspotInfo.style.display = 'block';
-
-      output(`Точка доступа создана: ${result.ssid}`);
-      output('Мобильные устройства могут подключиться к сети и отправить данные талонов');
-    } else {
-      throw new Error('Не удалось создать точку доступа');
-    }
-  } catch (error) {
-    output('Ошибка создания точки доступа: ' + error.message);
-  } finally {
-    hideLoading();
-  }
+  // Показываем информацию о TCP сервере
+  dashboard.style.display = 'none';
+  hotspotInfo.style.display = 'block';
 }
 
 async function stopHotspot() {
-  showLoading();
+  // Функция скрыта - hotspot остановка отключена
+  // TCP сервер остается активным
+  output('TCP сервер остается активным');
 
-  try {
-    output('Остановка точки доступа...');
+  // Скрываем информацию
+  hotspotInfo.style.display = 'none';
+  dashboard.style.display = 'block';
 
-    await tauri.core.invoke('stop_vesovschik_hotspot');
-
-    hotspotActive = false;
-
-    // Clear QR code
-    document.getElementById('qrcode').innerHTML =
-      '<img src="assets/icon1024.png" style="width: 200px; height: 200px;">';
-
-    hotspotInfo.style.display = 'none';
-    dashboard.style.display = 'block';
-
-    output('Точка доступа остановлена');
-  } catch (error) {
-    output('Ошибка остановки точки доступа: ' + error.message);
-  } finally {
-    hideLoading();
-  }
+  // Возвращаем обычный логотип
+  document.getElementById('qrcode').innerHTML =
+    '<img src="assets/icon1024.png" style="width: 200px; height: 200px;">';
 }
 
 function makeQRCode(str) {
@@ -436,9 +455,119 @@ function hideLoading() {
   loadingOverlay.style.display = 'none';
 }
 
-function output(msg) {
+// Функции для работы с талонами
+async function acceptTalon() {
+  if (!isAuthenticated) {
+    output('Необходимо войти в систему для приема талонов');
+    return;
+  }
+
+  try {
+    // Генерируем тестовый талон (в реальности данные будут приходить от мобильного устройства)
+    const talon = {
+      id: Date.now().toString(),
+      talonNumber: `T${Date.now().toString().slice(-6)}`,
+      kombainerFio: 'Тестовый Комбайнер',
+      voditelFio: 'Тестовый Водитель',
+      culture: 'Пшеница',
+      weight: Math.floor(Math.random() * 5000) + 1000, // Случайный вес от 1000 до 6000 кг
+      moisture: (Math.random() * 10 + 10).toFixed(1), // Влажность от 10 до 20%
+      receivedAt: new Date().toLocaleString(),
+      vesovschikId: currentUser.id,
+      vesovschikFio: currentUser.fio,
+    };
+
+    acceptedTalons.push(talon);
+    updateTalonsList();
+
+    output(`Принят талон №${talon.talonNumber} от ${talon.kombainerFio}`);
+    output(`Вес: ${talon.weight} кг, Влажность: ${talon.moisture}%`);
+
+    // Сохраняем в localStorage для постоянства
+    localStorage.setItem('acceptedTalons', JSON.stringify(acceptedTalons));
+  } catch (error) {
+    output('Ошибка при приеме талона: ' + error.message);
+  }
+}
+
+function updateTalonsList() {
+  const talonsList = document.getElementById('talonsList');
+  const talonsCount = document.getElementById('talonsCount');
+
+  if (acceptedTalons.length === 0) {
+    talonsList.innerHTML =
+      '<p style="text-align: center; color: #6c757d; margin: 20px 0;">Ожидание талонов от Android устройств...</p>';
+  } else {
+    talonsList.innerHTML = acceptedTalons
+      .map(
+        (talon, index) => `
+      <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 10px; background-color: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="color: #007bff; font-size: 16px;">Талон №${talon.talonNumber || index + 1}</strong>
+          <small style="color: #6c757d; background: #fff; padding: 2px 8px; border-radius: 12px;">${talon.receivedAt}</small>
+        </div>
+        <div style="font-size: 14px; line-height: 1.4;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <p style="margin: 0; padding: 4px 0;"><strong>Комбайнер:</strong> ${talon.kombainerFio || 'Не указано'}</p>
+            <p style="margin: 0; padding: 4px 0;"><strong>Водитель:</strong> ${talon.voditelFio || 'Не указано'}</p>
+            <p style="margin: 0; padding: 4px 0;"><strong>Культура:</strong> ${talon.culture || 'Не указано'}</p>
+            <p style="margin: 0; padding: 4px 0;"><strong>Вес:</strong> ${talon.weight ? talon.weight + ' кг' : 'Не указано'}</p>
+            <p style="margin: 0; padding: 4px 0;"><strong>Влажность:</strong> ${talon.moisture ? talon.moisture + '%' : 'Не указано'}</p>
+            <p style="margin: 0; padding: 4px 0;"><strong>Статус:</strong> <span style="color: #28a745; font-weight: bold;">Принято</span></p>
+          </div>
+        </div>
+      </div>
+    `
+      )
+      .reverse() // Показываем новые талоны сверху
+      .join('');
+  }
+
+  talonsCount.textContent = acceptedTalons.length;
+}
+
+function loadAcceptedTalons() {
+  try {
+    const saved = localStorage.getItem('acceptedTalons');
+    if (saved) {
+      acceptedTalons = JSON.parse(saved);
+      updateTalonsList();
+      output(`Загружено ${acceptedTalons.length} сохраненных талонов`);
+    }
+  } catch (error) {
+    output('Ошибка загрузки сохраненных талонов: ' + error.message);
+    acceptedTalons = [];
+  }
+}
+
+function output(msg, type = 'info') {
   const timestamp = new Date().toLocaleTimeString();
-  outputBox.innerHTML += `<br>[${timestamp}] ${msg}`;
+  let colorClass = '';
+  let icon = '';
+
+  switch (type) {
+    case 'error':
+      colorClass = 'color: #dc3545;';
+      icon = '❌';
+      break;
+    case 'success':
+      colorClass = 'color: #28a745;';
+      icon = '✅';
+      break;
+    case 'warning':
+      colorClass = 'color: #ffc107;';
+      icon = '⚠️';
+      break;
+    default:
+      colorClass = 'color: #495057;';
+      icon = 'ℹ️';
+  }
+
+  outputBox.innerHTML += `<div style="margin: 2px 0; padding: 2px; ${colorClass}">
+    <span style="color: #6c757d; font-size: 12px;">[${timestamp}]</span>
+    <span style="margin: 0 5px;">${icon}</span>
+    ${msg}
+  </div>`;
   outputBox.scrollTop = outputBox.scrollHeight;
 }
 
@@ -460,10 +589,52 @@ Copyright (c) 2025, TalonKombaineraV3
   alert(aboutMessage);
 }
 
+// Toggle output box visibility
+function toggleOutputBox() {
+  const outputBox = document.getElementById('outputBox');
+  const outputIcon = document.getElementById('outputToggleIcon');
+
+  if (outputBox.classList.contains('collapsed')) {
+    // Expand
+    outputBox.classList.remove('collapsed');
+    outputIcon.classList.remove('collapsed');
+    outputIcon.textContent = '▼';
+    localStorage.setItem('outputBoxCollapsed', 'false');
+  } else {
+    // Collapse
+    outputBox.classList.add('collapsed');
+    outputIcon.classList.add('collapsed');
+    outputIcon.textContent = '▶';
+    localStorage.setItem('outputBoxCollapsed', 'true');
+  }
+}
+
+// Clear log function
+function clearLog() {
+  outputBox.innerHTML =
+    '<div style="color: #6c757d; font-style: italic; text-align: center; padding: 10px;">Журнал очищен</div>';
+  output('Система готова к работе', 'success');
+}
+
+// Initialize output box state from localStorage
+function initializeOutputBoxState() {
+  const isCollapsed = localStorage.getItem('outputBoxCollapsed') === 'true';
+  if (isCollapsed) {
+    const outputBox = document.getElementById('outputBox');
+    const outputIcon = document.getElementById('outputToggleIcon');
+    outputBox.classList.add('collapsed');
+    outputIcon.classList.add('collapsed');
+    outputIcon.textContent = '▶';
+  }
+}
+
 // Export functions for global access
 window.handleLogin = handleLogin;
 window.handleRegistration = handleRegistration;
 window.handleLogout = handleLogout;
-window.startHotspot = startHotspot;
-window.stopHotspot = stopHotspot;
+window.acceptTalon = acceptTalon;
+window.toggleOutputBox = toggleOutputBox;
+window.clearLog = clearLog;
+// window.startHotspot = startHotspot; // Скрыто
+// window.stopHotspot = stopHotspot; // Скрыто
 window.showAbout = showAbout;
