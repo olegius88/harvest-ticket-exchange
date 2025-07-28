@@ -31,10 +31,10 @@
       }
     }
   },
-  "productName": "FlyingCarpet",
-  "mainBinaryName": "FlyingCarpet",
-  "version": "9.0.0",
-  "identifier": "dev.spiegl",
+  "productName": "TalonKombaineraV3 Desktop",
+  "mainBinaryName": "TalonKombaineraV3",
+  "version": "1.0.0",
+  "identifier": "pic.llc",
   "plugins": {},
   "app": {
     "withGlobalTauri": true,
@@ -43,7 +43,7 @@
         "fullscreen": false,
         "height": 800,
         "resizable": true,
-        "title": "Flying Carpet",
+        "title": "TalonKombaineraV3 Desktop",
         "width": 600,
         "useHttpsScheme": true
       }

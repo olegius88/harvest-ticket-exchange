@@ -205,14 +205,14 @@ async fn main() {
             cancel_transfer,
             is_dir,
             expand_files,
-            generate_password,
-            get_wifi_interfaces,
+            // generate_password, // Скрыто
+            // get_wifi_interfaces, // Скрыто
             // Vesovschik commands
             register_vesovschik,
             login_vesovschik,
             validate_vesovschik_session,
-            start_vesovschik_hotspot,
-            stop_vesovschik_hotspot,
+            // start_vesovschik_hotspot, // Скрыто
+            // stop_vesovschik_hotspot, // Скрыто
             // Database migration commands
             get_applied_migrations,
             get_pending_migrations,
@@ -311,6 +311,7 @@ async fn validate_vesovschik_session(
     }
 }
 
+/*
 #[derive(serde::Serialize)]
 struct HotspotInfo {
     ssid: String,
@@ -351,6 +352,9 @@ async fn stop_vesovschik_hotspot() -> Result<String, String> {
     // В будущем здесь будет остановка реального hotspot
     Ok("Hotspot остановлен".to_string())
 }
+*/
+
+// Hotspot функции скрыты - используется внутренняя WiFi сеть весовой
 
 // Bluetooth functions removed - bluetooth is disabled
 
