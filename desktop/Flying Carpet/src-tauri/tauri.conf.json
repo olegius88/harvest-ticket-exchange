@@ -34,7 +34,7 @@
   },
   "productName": "TalonKombaineraV3 Desktop",
   "mainBinaryName": "TalonKombaineraV3",
-  "version": "1.0.0",
+  "version": "0.0.5",
   "identifier": "pic.llc",
   "plugins": {},
   "app": {
