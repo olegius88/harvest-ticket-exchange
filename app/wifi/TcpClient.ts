@@ -273,7 +273,7 @@ export const sendTcpRequest = (
       // Проверяем, есть ли полное сообщение (с символом новой строки или без)
       let completeResponse = '';
       const newlineIndex = responseBuffer.indexOf('\n');
-      
+
       if (newlineIndex !== -1) {
         // Есть символ новой строки - извлекаем сообщение до него
         completeResponse = responseBuffer.substring(0, newlineIndex);
@@ -320,10 +320,13 @@ export const sendTcpRequest = (
       if (isRequestCompleted) return;
 
       console.log('TCP клиент|Соединение закрыто во время ожидания ответа');
-      
+
       // Проверяем, есть ли полные данные в буфере перед закрытием
       if (responseBuffer.trim().length > 0) {
-        console.log('TCP клиент|Пытаемся обработать данные из буфера перед закрытием:', responseBuffer.trim());
+        console.log(
+          'TCP клиент|Пытаемся обработать данные из буфера перед закрытием:',
+          responseBuffer.trim()
+        );
         try {
           const response = JSON.parse(responseBuffer.trim());
           console.log('TCP клиент|Успешно обработали данные из буфера:', response);
@@ -335,7 +338,7 @@ export const sendTcpRequest = (
           console.error('TCP клиент|Ошибка парсинга данных из буфера:', error);
         }
       }
-      
+
       isRequestCompleted = true;
       cleanupHandlers();
       reject(new Error('Соединение закрыто до получения ответа'));

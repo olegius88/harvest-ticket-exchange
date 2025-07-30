@@ -36,7 +36,7 @@ class TcpClientDesktopWrapper {
    */
   async sendWeighingData(request: WeighingDataRequest): Promise<WeighingDataResponse> {
     console.log('TcpClientWrapper: sendWeighingData начал выполнение');
-    
+
     if (!this.isConnected) {
       console.log('TcpClientWrapper: Клиент не подключен');
       throw new Error('TCP клиент не подключен');
