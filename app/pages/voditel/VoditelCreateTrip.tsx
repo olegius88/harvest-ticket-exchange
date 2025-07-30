@@ -82,7 +82,7 @@ const VoditelCreateTrip: React.FC = () => {
 
         <TouchableOpacity
           style={[styles.linkButton, { marginTop: 8 }]}
-          onPress={() => navigation.navigate('VoditelTalonsExportScreen')}
+          onPress={() => navigation.navigate('VoditelTalonsRegistry')}
         >
           <Text style={styles.linkText}>Реестр талонов</Text>
         </TouchableOpacity>

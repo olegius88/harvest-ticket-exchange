@@ -273,6 +273,39 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       };
     }
 
+    case 'weighing_auth': {
+      console.log('onTcpMessage|weighing_auth|message=', message);
+      const { auth_code, timestamp } = message;
+
+      // Здесь можно добавить проверку auth_code
+      // В реальном приложении auth_code проверяется на десктопе
+
+      return {
+        status: 'ok',
+        message: 'Авторизация прошла успешно',
+        timestamp: Date.now(),
+      };
+    }
+
+    case 'weighing_talon_data': {
+      console.log('onTcpMessage|weighing_talon_data|message=', message);
+      const { talon, timestamp } = message;
+
+      // Уведомляем приложение о получении данных талона для взвешивания
+      setTimeout(() => {
+        DeviceEventEmitter.emit('weighingTalonDataReceived', {
+          talon,
+          timestamp,
+        });
+      });
+
+      return {
+        status: 'ok',
+        message: 'Данные талона получены для взвешивания',
+        timestamp: Date.now(),
+      };
+    }
+
     case 'tcp_disconnect_request': {
       console.log('onTcpMessage|tcp_disconnect_request|message=', message);
 

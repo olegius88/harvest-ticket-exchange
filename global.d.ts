@@ -407,6 +407,28 @@ export interface ISendTcpSendSetTalonOfKombainer {
   talonData: ICreateTalonsParams;
 }
 
+export interface ISendTcpWeighingAuth {
+  type: 'weighing_auth';
+  auth_code: string;
+  timestamp: number;
+}
+
+export interface ISendTcpWeighingTalonData {
+  type: 'weighing_talon_data';
+  talon: {
+    id: string;
+    talonNumber?: string;
+    kombainerData?: ICreateKombainerParams | null;
+    kombainerUserData?: ICreateUserParams | null;
+    voditelData?: ICreateVoditelParams | null;
+    voditelUserData?: ICreateUserParams | null;
+    status: string;
+    weight?: number;
+    created_at: number;
+  };
+  timestamp: number;
+}
+
 export interface ISendTcpAcceptVoditelConnect {
   type: 'accept_voditel_connect';
   talonId: string;
@@ -430,6 +452,17 @@ export interface ITcpResponseKombainerData {
   kombainerUserData: ICreateUsersParams;
   kombainerData: ICreateKombainerParams;
   talonData: ICreateTalonsParams;
+}
+
+export interface ITcpResponseWeighingAuth {
+  status: 'ok' | 'error';
+  message?: string;
+}
+
+export interface ITcpResponseWeighingTalonData {
+  status: 'ok' | 'error';
+  message?: string;
+  weight?: number;
 }
 
 // Интерфейсы для проверки и подтверждения веса комбайнера
@@ -457,12 +490,16 @@ export type ISendTcpRequestData =
   | ISendTcpConfirmKombainerTicket
   | ISendTcpConfirmKombainerTicketWithWeight
   | ISendTcpSendSetTalonOfKombainer
-  | ISendTcpAcceptVoditelConnect;
+  | ISendTcpAcceptVoditelConnect
+  | ISendTcpWeighingAuth
+  | ISendTcpWeighingTalonData;
 
 export type ISendTcpResponseData =
   | ITcpResponseConnectEstablishedOk
   | ITcpResponseKombainerData
-  | ITcpResponseConfirmKombainerTicket;
+  | ITcpResponseConfirmKombainerTicket
+  | ITcpResponseWeighingAuth
+  | ITcpResponseWeighingTalonData;
 
 /**
  * Объединённый тип запросов.
@@ -993,6 +1030,9 @@ export type RootStackParamList = {
   };
   VoditelTicketCreatedSuccessScreen: undefined;
   VoditelTalonsExportScreen: undefined;
+  VoditelTalonsRegistry: undefined;
+  VoditelTalonDetailScreen: { talon: any }; // ICreateTalonsParams from db/talons_of_combainers
+  VoditelWeighingQrScannerScreen: { talon: any }; // ICreateTalonsParams from db/talons_of_combainers
   CodeScannerPageScreen: undefined;
 };
 

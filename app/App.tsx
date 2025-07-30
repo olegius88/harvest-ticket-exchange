@@ -23,6 +23,9 @@ import KombainerTicketDetailAfterVoditelConfirm from './pages/kombainer/Kombaine
 import KombainerTicketCreatedSuccess from './pages/kombainer/KombainerTicketCreatedSuccess';
 import KombainerTalonsExport from './pages/kombainer/KombainerTalonsExport';
 import VoditelTalonsExport from './pages/voditel/VoditelTalonsExport';
+import VoditelTalonsRegistry from './pages/voditel/VoditelTalonsRegistry';
+import VoditelTalonDetailScreen from './pages/voditel/VoditelTalonDetailScreen';
+import VoditelWeighingQrScannerScreen from './pages/voditel/VoditelWeighingQrScannerScreen';
 import AdminPanel from './pages/admin/AdminPanel';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -94,6 +97,12 @@ export default function App(): React.ReactElement {
           <Stack.Screen name="VoditelRegistrationScreen" component={VoditelRegistration} />
           <Stack.Screen name="VoditelCreateTripScreen" component={VoditelCreateTrip} />
           <Stack.Screen name="VoditelTalonsExportScreen" component={VoditelTalonsExport} />
+          <Stack.Screen name="VoditelTalonsRegistry" component={VoditelTalonsRegistry} />
+          <Stack.Screen name="VoditelTalonDetailScreen" component={VoditelTalonDetailScreen} />
+          <Stack.Screen
+            name="VoditelWeighingQrScannerScreen"
+            component={VoditelWeighingQrScannerScreen}
+          />
           <Stack.Screen
             name="VoditelTicketDetailAfterSetWeightScreen"
             component={VoditelTicketDetailAfterSetWeight}
