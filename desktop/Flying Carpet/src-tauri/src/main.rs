@@ -9,8 +9,14 @@ use flying_carpet_core::{
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{fs, sync::Mutex};
-use talon_db::{CreateUserRequest, DatabaseError, LoginRequest, TalonDatabase};
+use std::{
+    fs,
+    sync::Mutex,
+};
+use talon_db::{
+    CreateUserRequest, DatabaseError, LoginRequest,
+    TalonDatabase,
+};
 use tauri::{Emitter, State, Window};
 use tokio::sync::mpsc;
 
@@ -213,6 +219,8 @@ async fn main() {
             validate_vesovschik_session,
             // start_vesovschik_hotspot, // Скрыто
             // stop_vesovschik_hotspot, // Скрыто
+            // Database talon commands
+            get_all_talons,
             // Database migration commands
             get_applied_migrations,
             get_pending_migrations,
@@ -437,6 +445,49 @@ fn get_wifi_interfaces() -> Vec<WiFiInterface> {
 //         println!("sent in user_bluetooth_pair");
 //     });
 // }
+
+// Database talon commands
+#[tauri::command]
+async fn get_all_talons(
+    db_state: State<'_, DatabaseState>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_all_talons() {
+        Ok(talons) => {
+            // Преобразуем в JSON для фронтенда
+            let json_talons: Vec<serde_json::Value> = talons
+                .into_iter()
+                .map(|talon| {
+                    serde_json::json!({
+                        "id": talon.id,
+                        "talon_number": talon.talon_number,
+                        "kombainer_id": talon.kombainer_id,
+                        "kombainer_data": talon.kombainer_data,
+                        "kombainer_user_data": talon.kombainer_user_data,
+                        "voditel_id": talon.voditel_id,
+                        "voditel_user_id": talon.voditel_user_id,
+                        "voditel_data": talon.voditel_data,
+                        "voditel_user_data": talon.voditel_user_data,
+                        "status": talon.status,
+                        "start_time": talon.start_time,
+                        "end_time": talon.end_time,
+                        "weight": talon.weight,
+                        "comment": talon.comment,
+                        "cancellation_reason": talon.cancellation_reason,
+                        "created_at": talon.created_at.to_rfc3339(),
+                        "updated_at": talon.updated_at.to_rfc3339()
+                    })
+                })
+                .collect();
+            Ok(json_talons)
+        }
+        Err(e) => Err(format!("Failed to get talons: {}", e)),
+    }
+}
 
 // Database migration commands
 #[tauri::command]

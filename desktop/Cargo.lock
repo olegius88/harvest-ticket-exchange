@@ -1219,6 +1219,7 @@ dependencies = [
  "regex",
  "serde",
  "sha2",
+ "talon-db",
  "tokio",
  "wifidirect-legacy-ap",
  "windows 0.58.0",
@@ -3952,6 +3953,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
  "uuid",
 ]

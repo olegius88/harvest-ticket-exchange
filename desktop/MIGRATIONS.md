@@ -89,6 +89,63 @@ Applying migration 2: Create indexes for users table
 ### Android
 Проверьте логи React Native для информации о применении миграций.
 
+## Список миграций
+
+### Версия 1: Создание таблицы users
+- **Описание**: Базовая таблица пользователей
+- **Таблицы**: `users`
+- **Поля**: id, fio, phone, position, password_hash, created_at, updated_at, from_remote
+
+### Версия 2: Индексы для таблицы users
+- **Описание**: Создание индексов для оптимизации запросов
+- **Индексы**: `idx_users_phone`, `idx_users_position`
+
+### Версия 3: Создание таблицы kombainers
+- **Описание**: Таблица комбайнеров
+- **Таблицы**: `kombainers`
+- **Поля**: id, user_id, combine, brigade, culture, field, created_at, updated_at
+- **Связи**: FOREIGN KEY (user_id) REFERENCES users(id)
+
+### Версия 4: Создание таблицы voditeli
+- **Описание**: Таблица водителей
+- **Таблицы**: `voditeli`
+- **Поля**: id, user_id, transport, created_at, updated_at, from_remote
+- **Связи**: FOREIGN KEY (user_id) REFERENCES users(id)
+
+### Версия 5: Создание таблицы talons_of_combainers
+- **Описание**: Основная таблица талонов комбайнеров
+- **Таблицы**: `talons_of_combainers`
+- **Поля**:
+  - id, kombainer_id, kombainer_data, kombainer_user_data
+  - voditel_id, voditel_user_id, voditel_data, voditel_user_data
+  - status, start_time, end_time, weight, comment, talon_number
+  - cancellation_reason, created_at, updated_at
+- **Связи**:
+  - FOREIGN KEY (kombainer_id) REFERENCES kombainers(id)
+  - FOREIGN KEY (voditel_id) REFERENCES voditeli(id)
+
+### Версия 6: Индексы для связанных таблиц
+- **Описание**: Создание индексов для оптимизации запросов
+- **Индексы**:
+  - `idx_kombainers_user_id`
+  - `idx_voditeli_user_id`
+  - `idx_talons_kombainer_id`
+  - `idx_talons_voditel_id`
+  - `idx_talons_status`
+  - `idx_talons_talon_number`
+  - `idx_talons_created_at`
+
+## Соответствие с Android версиями
+
+| Desktop | Android | Описание |
+|---------|---------|----------|
+| v1 | v8+ | Таблица users с временными метками |
+| v3 | v9 | Таблица kombainers |
+| v4 | v10 | Таблица voditeli |
+| v5 | v11-18 | Таблица talons_of_combainers (постепенное добавление полей) |
+
+**Примечание**: Android версии 11-18 постепенно добавляли поля в таблицу талонов. Desktop версия 5 создает всю таблицу сразу со всеми необходимыми полями.
+
 ## Структура схемы
 
 ### Таблица schema_migrations
