@@ -16,21 +16,7 @@
         "isDefault": false
       }
     },
-    {
-      "label": "react dev",
-      "type": "npm",
-      "script": "dev",
-      "path": "front/",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      }
-    },
+
     {
       "label": "npx-react-native-start-reset-cache",
       "type": "npm",
@@ -72,18 +58,6 @@
         "env": {
           "REACT_NATIVE_HIDE_DEBUGGER_MESSAGES": "1"
         }
-      },
-      "group": "build"
-    },
-    {
-      "label": "build react",
-      "type": "npm",
-      "script": "build",
-      "path": "front/",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
       },
       "group": "build"
     },
