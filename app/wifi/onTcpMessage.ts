@@ -273,35 +273,42 @@ export const onTcpMessage = async (message: ISendTcpRequestData) => {
       };
     }
 
-    case 'weighing_auth': {
-      console.log('onTcpMessage|weighing_auth|message=', message);
-      const { auth_code, timestamp } = message;
+    case 'weighingData': {
+      console.log('onTcpMessage|weighingData|message=', message);
+      const { auth_code, talon_data } = message;
 
-      // Здесь можно добавить проверку auth_code
-      // В реальном приложении auth_code проверяется на десктопе
-
-      return {
-        status: 'ok',
-        message: 'Авторизация прошла успешно',
-        timestamp: Date.now(),
-      };
-    }
-
-    case 'weighing_talon_data': {
-      console.log('onTcpMessage|weighing_talon_data|message=', message);
-      const { talon, timestamp } = message;
-
-      // Уведомляем приложение о получении данных талона для взвешивания
+      // Уведомляем приложение о получении запроса на взвешивание от Desktop
       setTimeout(() => {
-        DeviceEventEmitter.emit('weighingTalonDataReceived', {
-          talon,
-          timestamp,
+        DeviceEventEmitter.emit('weighingDataRequest', {
+          auth_code,
+          talon_data,
+          timestamp: Date.now(),
         });
       });
 
       return {
         status: 'ok',
-        message: 'Данные талона получены для взвешивания',
+        message: 'Weighing data request received',
+        timestamp: Date.now(),
+      };
+    }
+
+    case 'weighingDataResponse': {
+      console.log('onTcpMessage|weighingDataResponse|message=', message);
+      const { status, received_data } = message;
+
+      // Уведомляем приложение об ответе на запрос взвешивания
+      setTimeout(() => {
+        DeviceEventEmitter.emit('weighingDataResponse', {
+          status,
+          received_data,
+          timestamp: Date.now(),
+        });
+      });
+
+      return {
+        status: 'ok',
+        message: 'Weighing data response processed',
         timestamp: Date.now(),
       };
     }

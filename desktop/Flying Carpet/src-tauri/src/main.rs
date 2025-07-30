@@ -749,47 +749,131 @@ async fn handle_android_connection(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    // Простой протокол: ожидаем JSON с auth_code и данными талона
-    let mut buffer = [0; 4096];
+    println!("Handling Android connection...");
+
+    // Буфер для чтения данных
+    let mut buffer = [0; 8192]; // Увеличиваем буфер для больших JSON
     let n = stream.read(&mut buffer).await?;
 
     if n == 0 {
-        return Err("Connection closed by client".into());
+        return Err("Connection closed by Android client".into());
     }
 
     let received_data = String::from_utf8_lossy(&buffer[..n]);
-    println!("Received from Android: {}", received_data);
+    println!("Received from Android (raw): {}", received_data);
+
+    // Убираем лишние символы и пробелы
+    let cleaned_data = received_data
+        .trim()
+        .trim_end_matches('\n')
+        .trim_end_matches('\0');
+    println!("Cleaned data: {}", cleaned_data);
 
     // Парсим JSON
-    let request: serde_json::Value = serde_json::from_str(&received_data)?;
+    let request: serde_json::Value = match serde_json::from_str(cleaned_data) {
+        Ok(json) => json,
+        Err(e) => {
+            let error_response = serde_json::json!({
+                "status": "error",
+                "message": format!("Invalid JSON format: {}", e)
+            });
+            stream
+                .write_all(error_response.to_string().as_bytes())
+                .await?;
+            return Err(format!("JSON parsing error: {}", e).into());
+        }
+    };
+
+    println!("Parsed JSON: {}", serde_json::to_string_pretty(&request)?);
+
+    // Проверяем структуру запроса
+    let request_type = request
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    if request_type != "weighingData" {
+        let error_response = serde_json::json!({
+            "status": "error",
+            "message": format!("Unsupported request type: {}", request_type)
+        });
+        stream
+            .write_all(error_response.to_string().as_bytes())
+            .await?;
+        return Err(format!("Unsupported request type: {}", request_type).into());
+    }
 
     // Проверяем код авторизации
     let auth_code = request
         .get("auth_code")
         .and_then(|v| v.as_str())
-        .ok_or("Missing auth_code")?;
+        .ok_or("Missing auth_code in request")?;
 
     if auth_code != expected_auth_code {
-        let response = serde_json::json!({
+        println!(
+            "Auth code mismatch. Expected: {}, Got: {}",
+            expected_auth_code, auth_code
+        );
+        let error_response = serde_json::json!({
             "status": "error",
             "message": "Invalid auth code"
         });
-        stream.write_all(response.to_string().as_bytes()).await?;
+        stream
+            .write_all(error_response.to_string().as_bytes())
+            .await?;
         return Err("Invalid auth code".into());
     }
 
-    // Здесь будет обработка данных талона
-    let talon_data = request.get("talon_data").ok_or("Missing talon_data")?;
+    // Извлекаем данные талона
+    let talon_data = request
+        .get("talon_data")
+        .ok_or("Missing talon_data in request")?;
 
-    println!("Processing talon data: {}", talon_data);
+    println!(
+        "Processing talon data: {}",
+        serde_json::to_string_pretty(talon_data)?
+    );
 
-    // Отправляем подтверждение
+    // Здесь можно добавить логику сохранения данных талона в базу данных
+    // Пока что просто логируем успешное получение
+
+    let talon_id = talon_data
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    let talon_number = talon_data
+        .get("talonNumber")
+        .and_then(|v| v.as_str())
+        .unwrap_or("не указан");
+
+    println!("Received talon: ID={}, Number={}", talon_id, talon_number);
+
+    // Отправляем успешный ответ
     let response = serde_json::json!({
         "status": "success",
-        "message": "Talon received successfully"
+        "message": "Talon data received successfully",
+        "received_data": {
+            "talon_id": talon_id,
+            "auth_verified": true,
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        }
     });
 
-    stream.write_all(response.to_string().as_bytes()).await?;
+    let response_str = response.to_string();
+    println!("Sending response to Android: {}", response_str);
 
+    // Добавляем символ новой строки для завершения сообщения согласно протоколу Android клиента
+    let response_with_newline = format!("{}\n", response_str);
+    stream.write_all(response_with_newline.as_bytes()).await?;
+    stream.flush().await?;
+    
+    // Даем время Android клиенту получить полный ответ перед закрытием соединения
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    println!("Android connection handled successfully");
     Ok(())
 }

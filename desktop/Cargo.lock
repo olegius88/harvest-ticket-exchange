@@ -1200,6 +1200,7 @@ dependencies = [
 name = "flying-carpet"
 version = "9.0.0"
 dependencies = [
+ "chrono",
  "dirs 5.0.1",
  "flying-carpet-core",
  "local-ip-address",

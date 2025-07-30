@@ -88,55 +88,63 @@ const VoditelWeighingQrScannerScreen: React.FC = () => {
     try {
       console.log('Подключаемся к desktop приложению:', connectionData);
 
-      // Создаем TCP клиент
+      // Создаем TCP клиент с новым адаптером
       const tcpClient = new TcpClient();
 
       // Подключаемся к серверу
+      console.log(`Подключение к ${connectionData.ip}:${connectionData.port}`);
       await tcpClient.connect(connectionData.ip, connectionData.port);
 
-      // Отправляем данные авторизации и талона
+      // Подготавливаем данные для отправки в формате, ожидаемом Desktop приложением
       const weighingRequest: WeighingDataRequest = {
         type: 'weighingData',
         auth_code: connectionData.auth_code,
         talon_data: {
           id: talon.id,
           talonNumber: talon.talonNumber,
-          kombainerUserData: talon.kombainerUserData,
           kombainerData: talon.kombainerData,
+          kombainerUserData: talon.kombainerUserData,
           voditelData: talon.voditelData,
+          voditelUserData: talon.voditelUserData,
+          status: talon.status,
           weight: talon.weight,
           moisture: talon.moisture,
           impurity: talon.impurity,
-          status: talon.status,
           created_at: talon.created_at,
           notes: talon.notes,
         },
       };
 
-      await tcpClient.send(JSON.stringify(weighingRequest));
+      console.log('Отправляем данные талона:', weighingRequest);
 
-      // Ждем подтверждения от сервера
-      const response = await tcpClient.waitForResponse(10000); // 10 секунд таймаут
+      // Отправляем данные с помощью нового адаптера
+      console.log('Вызываем tcpClient.sendWeighingData...');
+      const response = await tcpClient.sendWeighingData(weighingRequest);
+      console.log('sendWeighingData завершился успешно');
 
-      console.log('Ответ от desktop приложения:', response);
+      console.log('Получен ответ от Desktop:', response);
 
       // Закрываем соединение
-      tcpClient.disconnect();
+      await tcpClient.disconnect();
 
-      // Показываем успешное сообщение
-      Alert.alert(
-        'Успешно',
-        'Данные талона переданы на весовую. Можете приступать к взвешиванию.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Возвращаемся к реестру талонов
-              navigation.navigate('VoditelTalonsRegistry');
+      // Проверяем результат
+      if (response.status === 'ok') {
+        Alert.alert(
+          'Успешно',
+          'Данные талона переданы на весовую. Можете приступать к взвешиванию.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Возвращаемся к реестру талонов
+                navigation.navigate('VoditelTalonsRegistry');
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      } else {
+        throw new Error(response.message || 'Неизвестная ошибка при обработке данных');
+      }
     } catch (error) {
       console.error('Ошибка подключения к desktop:', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';

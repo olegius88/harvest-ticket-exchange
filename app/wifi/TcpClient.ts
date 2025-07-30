@@ -270,26 +270,38 @@ export const sendTcpRequest = (
       // Добавляем новые данные к буферу
       responseBuffer += dataString;
 
-      // Проверяем, есть ли полное сообщение
+      // Проверяем, есть ли полное сообщение (с символом новой строки или без)
+      let completeResponse = '';
       const newlineIndex = responseBuffer.indexOf('\n');
+      
       if (newlineIndex !== -1) {
-        const completeResponse = responseBuffer.substring(0, newlineIndex);
-
-        console.log('TCP клиент|Получен полный ответ:', completeResponse);
-
+        // Есть символ новой строки - извлекаем сообщение до него
+        completeResponse = responseBuffer.substring(0, newlineIndex);
+      } else {
+        // Нет символа новой строки - проверяем, является ли буфер валидным JSON
         try {
-          const response = JSON.parse(completeResponse);
-          isRequestCompleted = true;
-          cleanupHandlers();
-          resolve(response);
-        } catch (error) {
-          console.error('TCP клиент|Ошибка при парсинге ответа:', error);
-          // DEV LOGS
-          // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
-          isRequestCompleted = true;
-          cleanupHandlers();
-          reject(error);
+          JSON.parse(responseBuffer.trim());
+          completeResponse = responseBuffer.trim();
+        } catch {
+          // JSON пока неполный, ждем еще данных
+          return;
         }
+      }
+
+      console.log('TCP клиент|Получен полный ответ:', completeResponse);
+
+      try {
+        const response = JSON.parse(completeResponse);
+        isRequestCompleted = true;
+        cleanupHandlers();
+        resolve(response);
+      } catch (error) {
+        console.error('TCP клиент|Ошибка при парсинге ответа:', error);
+        // DEV LOGS
+        // ToastAndroid.show(`TCP клиент|Ошибка парсинга ответа`, ToastAndroid.SHORT);
+        isRequestCompleted = true;
+        cleanupHandlers();
+        reject(error);
       }
     };
 
@@ -308,6 +320,22 @@ export const sendTcpRequest = (
       if (isRequestCompleted) return;
 
       console.log('TCP клиент|Соединение закрыто во время ожидания ответа');
+      
+      // Проверяем, есть ли полные данные в буфере перед закрытием
+      if (responseBuffer.trim().length > 0) {
+        console.log('TCP клиент|Пытаемся обработать данные из буфера перед закрытием:', responseBuffer.trim());
+        try {
+          const response = JSON.parse(responseBuffer.trim());
+          console.log('TCP клиент|Успешно обработали данные из буфера:', response);
+          isRequestCompleted = true;
+          cleanupHandlers();
+          resolve(response);
+          return;
+        } catch (error) {
+          console.error('TCP клиент|Ошибка парсинга данных из буфера:', error);
+        }
+      }
+      
       isRequestCompleted = true;
       cleanupHandlers();
       reject(new Error('Соединение закрыто до получения ответа'));
