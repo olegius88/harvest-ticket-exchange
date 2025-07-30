@@ -1,9 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  interface Props {
+    currentUser: string;
+    onAcceptTalon?: () => void;
+    onLogout?: () => void;
+    onToggleLogs?: () => void;
+  }
 
-  export let currentUser: string;
-
-  const dispatch = createEventDispatcher();
+  let { currentUser, onAcceptTalon, onLogout, onToggleLogs }: Props = $props();
 
   let talons = [
     { id: '001', number: 'T-12345', status: 'pending', timestamp: '14:30:15' },
@@ -12,15 +15,15 @@
   ];
 
   function handleAcceptTalon() {
-    dispatch('acceptTalon');
+    onAcceptTalon?.();
   }
 
   function handleLogout() {
-    dispatch('logout');
+    onLogout?.();
   }
 
   function toggleLogs() {
-    dispatch('toggleLogs');
+    onToggleLogs?.();
   }
 
   function getStatusColor(status: string) {
@@ -58,7 +61,7 @@
       <p class="text-sm text-gray-600">Пользователь: {currentUser}</p>
     </div>
     <button
-      on:click={toggleLogs}
+      onclick={toggleLogs}
       class="btn btn-outline text-sm"
       title="Открыть/закрыть журнал событий"
     >
@@ -123,7 +126,7 @@
                     </div>
 
                     {#if talon.status === 'pending'}
-                      <button on:click={handleAcceptTalon} class="btn btn-success text-sm">
+                      <button onclick={handleAcceptTalon} class="btn btn-success text-sm">
                         Принять
                       </button>
                     {/if}
@@ -140,7 +143,7 @@
   <!-- Нижние кнопки -->
   <div class="bg-white border-t border-gray-200 p-4">
     <div class="flex space-x-4">
-      <button on:click={handleAcceptTalon} class="btn btn-success flex-1">
+      <button onclick={handleAcceptTalon} class="btn btn-success flex-1">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
@@ -152,7 +155,7 @@
         Принять талон
       </button>
 
-      <button on:click={handleLogout} class="btn btn-outline-danger">
+      <button onclick={handleLogout} class="btn btn-outline-danger">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"

@@ -1,26 +1,102 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  interface LoginData {
+    phoneNumber: string;
+    password: string;
+  }
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    onLogin?: (data: LoginData) => void;
+    onShowRegistration?: () => void;
+  }
 
-  let username = '';
-  let password = '';
-  let isLoading = false;
+  let { onLogin, onShowRegistration }: Props = $props();
 
-  function handleSubmit() {
-    if (!username || !password) return;
+  let phoneNumber = $state('');
+  let password = $state('');
+  let isLoading = $state(false);
+  let errors = $state({
+    phoneNumber: '',
+    password: ''
+  });
+
+  function handleSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    
+    // Очищаем предыдущие ошибки
+    errors = {
+      phoneNumber: '',
+      password: ''
+    };
+    
+    let hasErrors = false;
+    
+    // Валидация номера телефона
+    if (!phoneNumber.trim()) {
+      errors.phoneNumber = 'Введите номер телефона';
+      hasErrors = true;
+    } else if (phoneNumber.trim().length < 10) {
+      errors.phoneNumber = 'Номер телефона слишком короткий';
+      hasErrors = true;
+    }
+    
+    // Валидация пароля
+    if (!password.trim()) {
+      errors.password = 'Введите пароль';
+      hasErrors = true;
+    } else if (password.trim().length < 4) {
+      errors.password = 'Пароль должен содержать минимум 4 символа';
+      hasErrors = true;
+    }
+
+    // Если есть ошибки, не отправляем форму
+    if (hasErrors) {
+      return;
+    }
 
     isLoading = true;
 
     // Имитация задержки загрузки
     setTimeout(() => {
-      dispatch('login', { username, password });
+      onLogin?.({ phoneNumber: phoneNumber.trim(), password: password.trim() });
       isLoading = false;
     }, 500);
   }
 
   function showRegistration() {
-    dispatch('showRegistration');
+    onShowRegistration?.();
+  }
+
+  // Очищаем ошибки при изменении полей
+  function clearError(fieldName: 'phoneNumber' | 'password') {
+    if (errors[fieldName]) {
+      errors[fieldName] = '';
+    }
+  }
+
+  // Вычисляем состояния полей для стилизации
+  let phoneNumberStatus = $derived(() => {
+    if (errors.phoneNumber) return 'error';
+    if (phoneNumber.trim() && phoneNumber.trim().length >= 10) return 'valid';
+    return 'default';
+  });
+
+  let passwordStatus = $derived(() => {
+    if (errors.password) return 'error';
+    if (password.trim() && password.trim().length >= 4) return 'valid';
+    return 'default';
+  });
+
+  // Функция для получения CSS классов поля
+  function getFieldClasses(status: string) {
+    const baseClasses = 'form-input transition-colors';
+    switch (status) {
+      case 'error':
+        return `${baseClasses} border-red-300 focus:border-red-500 focus:ring-red-500`;
+      case 'valid':
+        return `${baseClasses} border-green-300 focus:border-green-500 focus:ring-green-500`;
+      default:
+        return baseClasses;
+    }
   }
 </script>
 
@@ -31,40 +107,56 @@
       <p class="text-gray-600 mt-2">Модуль "Весовщик"</p>
     </div>
 
-    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <form onsubmit={handleSubmit} novalidate class="space-y-4">
       <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-          Имя пользователя
+        <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1">
+          Номер телефона
         </label>
         <input
-          id="username"
-          type="text"
-          bind:value={username}
-          class="form-input"
-          placeholder="Введите имя пользователя"
+          id="phoneNumber"
+          type="tel"
+          bind:value={phoneNumber}
+          oninput={() => clearError('phoneNumber')}
+          class={getFieldClasses(phoneNumberStatus)}
+          placeholder="+7 (999) 123-45-67"
           disabled={isLoading}
-          required
         />
+        {#if errors.phoneNumber}
+          <p class="text-red-600 text-xs mt-1 flex items-center">
+            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            {errors.phoneNumber}
+          </p>
+        {/if}
       </div>
 
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1"> Пароль </label>
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
         <input
           id="password"
           type="password"
           bind:value={password}
-          class="form-input"
+          oninput={() => clearError('password')}
+          class={getFieldClasses(passwordStatus)}
           placeholder="Введите пароль"
           disabled={isLoading}
-          required
         />
+        {#if errors.password}
+          <p class="text-red-600 text-xs mt-1 flex items-center">
+            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            {errors.password}
+          </p>
+        {/if}
       </div>
 
       <div class="space-y-3">
         <button
           type="submit"
           class="btn btn-primary w-full"
-          disabled={isLoading || !username || !password}
+          disabled={isLoading}
         >
           {#if isLoading}
             <span class="inline-flex items-center">
@@ -97,7 +189,7 @@
 
         <button
           type="button"
-          on:click={showRegistration}
+          onclick={showRegistration}
           class="btn btn-outline w-full"
           disabled={isLoading}
         >

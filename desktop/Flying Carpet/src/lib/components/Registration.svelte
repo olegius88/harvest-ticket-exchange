@@ -1,29 +1,39 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  interface RegistrationData {
+    phoneNumber: string;
+    password: string;
+    confirmPassword: string;
+  }
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    onRegister?: (data: RegistrationData) => void;
+    onShowLogin?: () => void;
+  }
 
-  let username = '';
-  let password = '';
-  let confirmPassword = '';
-  let isLoading = false;
+  let { onRegister, onShowLogin }: Props = $props();
 
-  function handleSubmit() {
-    if (!username || !password || !confirmPassword) return;
+  let phoneNumber = $state('');
+  let password = $state('');
+  let confirmPassword = $state('');
+  let isLoading = $state(false);
+
+  function handleSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    if (!phoneNumber || !password || !confirmPassword) return;
 
     isLoading = true;
 
     setTimeout(() => {
-      dispatch('register', { username, password, confirmPassword });
+      onRegister?.({ phoneNumber, password, confirmPassword });
       isLoading = false;
     }, 500);
   }
 
   function showLogin() {
-    dispatch('showLogin');
+    onShowLogin?.();
   }
 
-  $: passwordsMatch = password === confirmPassword;
+  let passwordsMatch = $derived(password === confirmPassword);
 </script>
 
 <div class="h-full flex items-center justify-center p-4">
@@ -33,17 +43,17 @@
       <p class="text-gray-600 mt-2">Создание нового пользователя</p>
     </div>
 
-    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <form onsubmit={handleSubmit} class="space-y-4">
       <div>
-        <label for="reg-username" class="block text-sm font-medium text-gray-700 mb-1">
-          Имя пользователя
+        <label for="reg-phoneNumber" class="block text-sm font-medium text-gray-700 mb-1">
+          Номер телефона
         </label>
         <input
-          id="reg-username"
-          type="text"
-          bind:value={username}
+          id="reg-phoneNumber"
+          type="tel"
+          bind:value={phoneNumber}
           class="form-input"
-          placeholder="Введите имя пользователя"
+          placeholder="+7 (999) 123-45-67"
           disabled={isLoading}
           required
         />
@@ -88,7 +98,7 @@
         <button
           type="submit"
           class="btn btn-primary w-full"
-          disabled={isLoading || !username || !password || !confirmPassword || !passwordsMatch}
+          disabled={isLoading || !phoneNumber || !password || !confirmPassword || !passwordsMatch}
         >
           {#if isLoading}
             <span class="inline-flex items-center">
@@ -121,7 +131,7 @@
 
         <button
           type="button"
-          on:click={showLogin}
+          onclick={showLogin}
           class="btn btn-outline w-full"
           disabled={isLoading}
         >

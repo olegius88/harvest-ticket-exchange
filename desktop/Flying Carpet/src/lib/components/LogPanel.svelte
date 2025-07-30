@@ -1,23 +1,26 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
-  export let logs: Array<{
+  interface LogEntry {
     id: string;
     timestamp: string;
     level: 'info' | 'success' | 'warning' | 'error';
     message: string;
-  }> = [];
+  }
 
-  export let isLogPanelVisible: boolean = false;
+  interface Props {
+    logs?: LogEntry[];
+    isLogPanelVisible?: boolean;
+    onToggle?: () => void;
+    onClear?: () => void;
+  }
 
-  const dispatch = createEventDispatcher();
+  let { logs = [], isLogPanelVisible = false, onToggle, onClear }: Props = $props();
 
   function toggle() {
-    dispatch('toggle');
+    onToggle?.();
   }
 
   function clear() {
-    dispatch('clear');
+    onClear?.();
   }
 
   function getLogClass(level: string) {
@@ -69,7 +72,7 @@
 
     <div class="flex items-center space-x-2">
       <button
-        on:click={clear}
+        onclick={clear}
         class="text-gray-300 hover:text-white text-sm px-2 py-1 rounded hover:bg-gray-600 transition-colors"
         title="Очистить журнал"
         aria-label="Очистить журнал"
@@ -85,7 +88,7 @@
       </button>
 
       <button
-        on:click={toggle}
+        onclick={toggle}
         class="text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors"
         title={isLogPanelVisible ? 'Скрыть журнал' : 'Показать журнал'}
         aria-label={isLogPanelVisible ? 'Скрыть журнал' : 'Показать журнал'}
@@ -133,7 +136,7 @@
 <!-- Кнопка-переключатель внизу экрана когда панель скрыта -->
 {#if !isLogPanelVisible}
   <button
-    on:click={toggle}
+    onclick={toggle}
     class="fixed bottom-4 right-4 bg-gray-700 hover:bg-gray-600 text-white p-3 rounded-full shadow-lg transition-colors z-10"
     title="Показать журнал событий"
     aria-label="Показать журнал событий"

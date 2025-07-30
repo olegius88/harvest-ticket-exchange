@@ -29,7 +29,7 @@
       id: Date.now().toString(),
       timestamp: new Date().toLocaleTimeString(),
       level,
-      message
+      message,
     };
     logs = [logEntry, ...logs];
 
@@ -64,30 +64,34 @@
   }
 
   // Функции аутентификации
-  function handleLogin(event: CustomEvent) {
-    const { username, password } = event.detail;
+  function handleLogin(data: { phoneNumber: string; password: string }) {
+    const { phoneNumber, password } = data;
 
     // Простая проверка
-    if (username && password) {
-      currentUser = username;
+    if (phoneNumber && password) {
+      currentUser = phoneNumber;
       isAuthenticated = true;
       showDashboard();
-      addLog(`Успешный вход пользователя: ${username}`, 'success');
+      addLog(`Успешный вход пользователя: ${phoneNumber}`, 'success');
     } else {
       addLog('Ошибка входа: неверные учетные данные', 'error');
     }
   }
 
-  function handleRegistration(event: CustomEvent) {
-    const { username, password, confirmPassword } = event.detail;
+  function handleRegistration(data: {
+    phoneNumber: string;
+    password: string;
+    confirmPassword: string;
+  }) {
+    const { phoneNumber, password, confirmPassword } = data;
 
     if (password !== confirmPassword) {
       addLog('Ошибка регистрации: пароли не совпадают', 'error');
       return;
     }
 
-    if (username && password) {
-      addLog(`Пользователь ${username} зарегистрирован`, 'success');
+    if (phoneNumber && password) {
+      addLog(`Пользователь ${phoneNumber} зарегистрирован`, 'success');
       showLogin();
     } else {
       addLog('Ошибка регистрации: заполните все поля', 'error');
@@ -131,32 +135,21 @@
   <!-- Основная область контента -->
   <div class="flex-1 relative overflow-hidden">
     {#if currentScreen === 'login'}
-      <Login
-        on:login={handleLogin}
-        on:showRegistration={showRegistration}
-      />
+      <Login onLogin={handleLogin} onShowRegistration={showRegistration} />
     {:else if currentScreen === 'registration'}
-      <Registration
-        on:register={handleRegistration}
-        on:showLogin={showLogin}
-      />
+      <Registration onRegister={handleRegistration} onShowLogin={showLogin} />
     {:else if currentScreen === 'dashboard'}
       <Dashboard
         {currentUser}
-        on:logout={handleLogout}
-        on:acceptTalon={handleAcceptTalon}
-        on:toggleLogs={toggleLogPanel}
+        onLogout={handleLogout}
+        onAcceptTalon={handleAcceptTalon}
+        onToggleLogs={toggleLogPanel}
       />
     {/if}
   </div>
 
   <!-- Панель логов -->
-  <LogPanel
-    {logs}
-    {isLogPanelVisible}
-    on:toggle={toggleLogPanel}
-    on:clear={clearLogs}
-  />
+  <LogPanel {logs} {isLogPanelVisible} onToggle={toggleLogPanel} onClear={clearLogs} />
 </div>
 
 <style>
