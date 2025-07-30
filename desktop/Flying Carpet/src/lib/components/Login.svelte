@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { invoke } from '@tauri-apps/api/core';
+
   interface LoginData {
     phoneNumber: string;
     password: string;
   }
 
   interface Props {
-    onLogin?: (data: LoginData) => void;
+    onLogin?: (data: LoginData) => Promise<void>;
     onShowRegistration?: () => void;
   }
 
@@ -14,19 +16,23 @@
   let phoneNumber = $state('');
   let password = $state('');
   let isLoading = $state(false);
+  let loginError = $state('');
   let errors = $state({
     phoneNumber: '',
     password: '',
   });
 
-  function handleSubmit(event: SubmitEvent) {
+  async function handleSubmit(event: SubmitEvent) {
     event.preventDefault();
+
+    console.log('Login form submitted');
 
     // Очищаем предыдущие ошибки
     errors = {
       phoneNumber: '',
       password: '',
     };
+    loginError = '';
 
     let hasErrors = false;
 
@@ -50,16 +56,22 @@
 
     // Если есть ошибки, не отправляем форму
     if (hasErrors) {
+      console.log('Validation errors:', errors);
       return;
     }
 
     isLoading = true;
+    console.log('Calling login with:', { phoneNumber: phoneNumber.trim(), password: '***' });
 
-    // Имитация задержки загрузки
-    setTimeout(() => {
-      onLogin?.({ phoneNumber: phoneNumber.trim(), password: password.trim() });
+    try {
+      await onLogin?.({ phoneNumber: phoneNumber.trim(), password: password.trim() });
+      console.log('Login successful');
+    } catch (error) {
+      console.error('Login error:', error);
+      loginError = error instanceof Error ? error.message : 'Неизвестная ошибка';
+    } finally {
       isLoading = false;
-    }, 500);
+    }
   }
 
   function showRegistration() {
@@ -70,6 +82,9 @@
   function clearError(fieldName: 'phoneNumber' | 'password') {
     if (errors[fieldName]) {
       errors[fieldName] = '';
+    }
+    if (loginError) {
+      loginError = '';
     }
   }
 
@@ -117,7 +132,7 @@
           type="tel"
           bind:value={phoneNumber}
           oninput={() => clearError('phoneNumber')}
-          class={getFieldClasses(phoneNumberStatus)}
+          class={getFieldClasses(phoneNumberStatus())}
           placeholder="+7 (999) 123-45-67"
           disabled={isLoading}
         />
@@ -142,7 +157,7 @@
           type="password"
           bind:value={password}
           oninput={() => clearError('password')}
-          class={getFieldClasses(passwordStatus)}
+          class={getFieldClasses(passwordStatus())}
           placeholder="Введите пароль"
           disabled={isLoading}
         />
@@ -159,6 +174,21 @@
           </p>
         {/if}
       </div>
+
+      {#if loginError}
+        <div class="bg-red-50 border border-red-200 rounded-md p-3">
+          <div class="flex">
+            <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <p class="text-sm text-red-700">{loginError}</p>
+          </div>
+        </div>
+      {/if}
 
       <div class="space-y-3">
         <button type="submit" class="btn btn-primary w-full" disabled={isLoading}>

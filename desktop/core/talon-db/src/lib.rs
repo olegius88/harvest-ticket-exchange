@@ -280,7 +280,20 @@ const MIGRATIONS: &[Migration] = &[
 ];
 
 impl TalonDatabase {
-    pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self, DatabaseError> {
+    // Функция для нормализации номера телефона
+    fn normalize_phone(&self, phone: &str) -> String {
+        // Убираем все символы кроме цифр
+        let digits_only: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+
+        // Если номер начинается с 8, заменяем на 7
+        if digits_only.starts_with('8') && digits_only.len() == 11 {
+            format!("7{}", &digits_only[1..])
+        } else {
+            digits_only
+        }
+    }
+
+    pub fn new(db_path: &str) -> Result<Self, DatabaseError> {
         let conn = Connection::open(db_path)?;
         let mut db = TalonDatabase { conn };
         db.run_migrations()?;
@@ -367,42 +380,74 @@ impl TalonDatabase {
     }
 
     pub fn create_user(&mut self, request: CreateUserRequest) -> Result<String, DatabaseError> {
+        println!("TalonDB: Starting create_user for phone: {}", request.phone);
+
         // Валидация
         self.validate_user_data(&request)?;
+        println!("TalonDB: User data validation passed");
+
+        // Нормализуем номер телефона
+        let normalized_phone = self.normalize_phone(&request.phone);
+        println!("TalonDB: Normalized phone: {}", normalized_phone);
 
         // Проверяем, что пользователь с таким телефоном не существует
-        if self.get_user_by_phone(&request.phone).is_ok() {
+        if self.get_user_by_phone(&normalized_phone).is_ok() {
+            println!(
+                "TalonDB: User already exists with normalized phone: {}",
+                normalized_phone
+            );
             return Err(DatabaseError::UserAlreadyExists);
         }
+        println!("TalonDB: No existing user found, proceeding with creation");
 
         // Хешируем пароль
         let password_hash = bcrypt::hash(&request.password, bcrypt::DEFAULT_COST).map_err(|e| {
+            println!("TalonDB: Password hashing failed: {}", e);
             DatabaseError::ValidationError(format!("Password hashing failed: {}", e))
         })?;
+        println!("TalonDB: Password hashed successfully");
 
         let user_id = Uuid::new_v4().to_string();
         let now = Utc::now();
+        println!("TalonDB: Generated user_id: {}", user_id);
 
-        self.conn.execute(
+        let result = self.conn.execute(
             "INSERT INTO users (id, fio, phone, position, password_hash, created_at, updated_at, from_remote)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             [
                 &user_id,
                 &request.fio,
-                &request.phone,
+                &normalized_phone, // Сохраняем нормализованный номер
                 &request.position,
                 &password_hash,
                 &now.to_rfc3339(),
                 &now.to_rfc3339(),
                 &"0".to_string(),
             ],
-        )?;
+        );
 
-        Ok(user_id)
+        match result {
+            Ok(rows_affected) => {
+                println!(
+                    "TalonDB: User inserted successfully, rows affected: {}",
+                    rows_affected
+                );
+                println!(
+                    "TalonDB: User created with ID: {}, FIO: {}, position: {}",
+                    user_id, request.fio, request.position
+                );
+                Ok(user_id)
+            }
+            Err(e) => {
+                println!("TalonDB: Database insert failed: {}", e);
+                Err(DatabaseError::from(e))
+            }
+        }
     }
 
     pub fn login_user(&self, request: LoginRequest) -> Result<User, DatabaseError> {
-        let user = self.get_user_by_phone(&request.phone)?;
+        let normalized_phone = self.normalize_phone(&request.phone);
+        let user = self.get_user_by_phone_normalized(&normalized_phone)?;
 
         // Проверяем пароль
         let password_valid =
@@ -449,14 +494,64 @@ impl TalonDatabase {
     }
 
     pub fn get_user_by_phone(&self, phone: &str) -> Result<User, DatabaseError> {
+        println!("TalonDB: get_user_by_phone called with: {}", phone);
+        let normalized_phone = self.normalize_phone(phone);
+        println!("TalonDB: Normalized to: {}", normalized_phone);
+        let result = self.get_user_by_phone_normalized(&normalized_phone);
+        match &result {
+            Ok(user) => println!("TalonDB: Found user: {} ({})", user.fio, user.id),
+            Err(e) => println!("TalonDB: User not found: {:?}", e),
+        }
+        result
+    }
+
+    fn get_user_by_phone_normalized(&self, normalized_phone: &str) -> Result<User, DatabaseError> {
+        println!(
+            "TalonDB: get_user_by_phone_normalized called with: {}",
+            normalized_phone
+        );
+
+        // Сначала ищем по точному совпадению
         let mut stmt = self.conn.prepare(
             "SELECT id, fio, phone, position, password_hash, created_at, updated_at, from_remote
              FROM users WHERE phone = ?1",
         )?;
 
-        let user = stmt
-            .query_row([phone], |row| {
-                Ok(User {
+        let result = stmt.query_row([normalized_phone], |row| {
+            Ok(User {
+                id: row.get(0)?,
+                fio: row.get(1)?,
+                phone: row.get(2)?,
+                position: row.get(3)?,
+                password_hash: row.get(4)?,
+                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
+                    .unwrap()
+                    .with_timezone(&Utc),
+                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
+                    .unwrap()
+                    .with_timezone(&Utc),
+                from_remote: row.get::<_, i64>(7)? != 0,
+            })
+        });
+
+        match result {
+            Ok(user) => return Ok(user),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                // Продолжаем поиск с нормализацией
+            }
+            Err(e) => return Err(DatabaseError::SqliteError(e)),
+        }
+
+        // Если не найден, ищем с нормализацией существующих номеров
+        let mut stmt = self.conn.prepare(
+            "SELECT id, fio, phone, position, password_hash, created_at, updated_at, from_remote
+             FROM users",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(2)?, // phone
+                User {
                     id: row.get(0)?,
                     fio: row.get(1)?,
                     phone: row.get(2)?,
@@ -469,17 +564,50 @@ impl TalonDatabase {
                         .unwrap()
                         .with_timezone(&Utc),
                     from_remote: row.get::<_, i64>(7)? != 0,
-                })
-            })
-            .map_err(|e| match e {
-                rusqlite::Error::QueryReturnedNoRows => DatabaseError::UserNotFound,
-                _ => DatabaseError::SqliteError(e),
-            })?;
+                },
+            ))
+        })?;
 
-        Ok(user)
+        for row in rows {
+            let (stored_phone, user) = row?;
+            if self.normalize_phone(&stored_phone) == normalized_phone {
+                return Ok(user);
+            }
+        }
+
+        Err(DatabaseError::UserNotFound)
+    }
+
+    pub fn get_all_users_debug(&self) -> Result<Vec<String>, DatabaseError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, fio, phone, position, created_at, updated_at, from_remote FROM users",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok(format!(
+                "ID: {}, FIO: {}, Phone: {}, Position: {}, Created: {}, FromRemote: {}",
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, i64>(6)?
+            ))
+        })?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
     }
 
     pub fn get_users_by_position(&self, position: &str) -> Result<Vec<User>, DatabaseError> {
+        println!(
+            "TalonDB: get_users_by_position called for position: {}",
+            position
+        );
+
         let mut stmt = self.conn.prepare(
             "SELECT id, fio, phone, position, password_hash, created_at, updated_at, from_remote
              FROM users WHERE position = ?1 ORDER BY created_at DESC",
@@ -505,6 +633,18 @@ impl TalonDatabase {
         let mut users = Vec::new();
         for user in user_iter {
             users.push(user?);
+        }
+
+        println!(
+            "TalonDB: Found {} users with position {}",
+            users.len(),
+            position
+        );
+        for user in &users {
+            println!(
+                "TalonDB: User: {} ({}), phone: {}",
+                user.fio, user.id, user.phone
+            );
         }
 
         Ok(users)
@@ -1211,7 +1351,7 @@ mod tests {
     fn setup_test_db() -> TalonDatabase {
         let temp_dir = tempdir().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        TalonDatabase::new(db_path).unwrap()
+        TalonDatabase::new(db_path.to_str().unwrap()).unwrap()
     }
 
     #[test]

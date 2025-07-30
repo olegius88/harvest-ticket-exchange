@@ -6,7 +6,7 @@
   }
 
   interface Props {
-    onRegister?: (data: RegistrationData) => void;
+    onRegister?: (data: RegistrationData) => Promise<void>;
     onShowLogin?: () => void;
   }
 
@@ -16,17 +16,25 @@
   let password = $state('');
   let confirmPassword = $state('');
   let isLoading = $state(false);
+  let registrationError = $state('');
 
-  function handleSubmit(event: SubmitEvent) {
+  async function handleSubmit(event: SubmitEvent) {
     event.preventDefault();
     if (!phoneNumber || !password || !confirmPassword) return;
+    if (password !== confirmPassword) return;
 
     isLoading = true;
+    registrationError = '';
 
-    setTimeout(() => {
-      onRegister?.({ phoneNumber, password, confirmPassword });
+    try {
+      await onRegister?.({ phoneNumber, password, confirmPassword });
+      console.log('Registration successful');
+    } catch (error) {
+      console.error('Registration error:', error);
+      registrationError = error instanceof Error ? error.message : 'Неизвестная ошибка';
+    } finally {
       isLoading = false;
-    }, 500);
+    }
   }
 
   function showLogin() {
@@ -93,6 +101,21 @@
           <p class="text-red-600 text-xs mt-1">Пароли не совпадают</p>
         {/if}
       </div>
+
+      {#if registrationError}
+        <div class="bg-red-50 border border-red-200 rounded-md p-3">
+          <div class="flex">
+            <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <p class="text-sm text-red-700">{registrationError}</p>
+          </div>
+        </div>
+      {/if}
 
       <div class="space-y-3">
         <button

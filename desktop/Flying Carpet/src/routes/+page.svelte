@@ -20,6 +20,7 @@
   let currentScreen: Screen = 'login';
   let isAuthenticated = false;
   let currentUser = '';
+  let currentUserId = '';
   let logs: LogEntry[] = [];
   let isLogPanelVisible = false;
 
@@ -64,21 +65,43 @@
   }
 
   // Функции аутентификации
-  function handleLogin(data: { phoneNumber: string; password: string }) {
+  async function handleLogin(data: { phoneNumber: string; password: string }) {
     const { phoneNumber, password } = data;
 
-    // Простая проверка
-    if (phoneNumber && password) {
-      currentUser = phoneNumber;
+    console.log('Attempting login for:', phoneNumber);
+
+    try {
+      const result = await invoke<{
+        id: string;
+        fio: string;
+        phone: string;
+        position: string;
+        created_at: string;
+        updated_at: string;
+        from_remote: boolean;
+      }>('login_vesovschik', {
+        request: {
+          phone: phoneNumber,
+          password: password,
+        },
+      });
+
+      console.log('Login result:', result);
+
+      currentUser = result.fio;
+      currentUserId = result.id;
       isAuthenticated = true;
       showDashboard();
-      addLog(`Успешный вход пользователя: ${phoneNumber}`, 'success');
-    } else {
-      addLog('Ошибка входа: неверные учетные данные', 'error');
+      addLog(`Успешный вход пользователя: ${result.fio} (${result.phone})`, 'success');
+    } catch (error) {
+      console.error('Login failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`Ошибка входа: ${errorMessage}`, 'error');
+      throw error; // Пробрасываем ошибку обратно в Login компонент
     }
   }
 
-  function handleRegistration(data: {
+  async function handleRegistration(data: {
     phoneNumber: string;
     password: string;
     confirmPassword: string;
@@ -90,16 +113,38 @@
       return;
     }
 
-    if (phoneNumber && password) {
-      addLog(`Пользователь ${phoneNumber} зарегистрирован`, 'success');
-      showLogin();
-    } else {
+    if (!phoneNumber || !password) {
       addLog('Ошибка регистрации: заполните все поля', 'error');
+      return;
+    }
+
+    console.log('Attempting registration for:', phoneNumber);
+    addLog(`Попытка регистрации пользователя: ${phoneNumber}`, 'info');
+
+    try {
+      const result = await invoke<string>('register_vesovschik', {
+        request: {
+          fio: `Пользователь ${phoneNumber}`, // Временно используем номер телефона как ФИО
+          phone: phoneNumber,
+          password: password,
+          position: 'весовщик',
+        },
+      });
+
+      console.log('Registration result:', result);
+      addLog(`Пользователь ${phoneNumber} успешно зарегистрирован (ID: ${result})`, 'success');
+      showLogin();
+    } catch (error) {
+      console.error('Registration failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`Ошибка регистрации: ${errorMessage}`, 'error');
+      throw error; // Пробрасываем ошибку, если нужно
     }
   }
 
   function handleLogout() {
     currentUser = '';
+    currentUserId = '';
     isAuthenticated = false;
     showLogin();
     addLog('Выход из системы', 'info');
@@ -110,24 +155,48 @@
   }
 
   // Инициализация при монтировании
-  onMount(() => {
+  onMount(async () => {
     addLog('Приложение Весовщик запущено', 'info');
 
     // Проверяем сохраненное состояние
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      currentUser = savedUser;
-      isAuthenticated = true;
-      showDashboard();
-      addLog(`Автовход пользователя: ${savedUser}`, 'info');
+    const savedUserId = localStorage.getItem('currentUserId');
+    const savedUserName = localStorage.getItem('currentUserName');
+
+    if (savedUserId && savedUserName) {
+      try {
+        // Проверяем валидность сессии
+        const isValid = await invoke<boolean>('validate_vesovschik_session', {
+          userId: savedUserId,
+        });
+
+        if (isValid) {
+          currentUserId = savedUserId;
+          currentUser = savedUserName;
+          isAuthenticated = true;
+          showDashboard();
+          addLog(`Автовход пользователя: ${savedUserName}`, 'info');
+        } else {
+          // Сессия недействительна, очищаем данные
+          localStorage.removeItem('currentUserId');
+          localStorage.removeItem('currentUserName');
+          addLog('Сессия истекла, требуется повторный вход', 'warning');
+        }
+      } catch (error) {
+        // Ошибка проверки сессии, очищаем данные
+        localStorage.removeItem('currentUserId');
+        localStorage.removeItem('currentUserName');
+        addLog('Ошибка проверки сессии, требуется повторный вход', 'warning');
+      }
     }
   });
 
   // Сохраняем состояние пользователя
-  $: if (currentUser) {
-    localStorage.setItem('currentUser', currentUser);
+  $: if (currentUserId && currentUser) {
+    localStorage.setItem('currentUserId', currentUserId);
+    localStorage.setItem('currentUserName', currentUser);
   } else {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentUserId');
+    localStorage.removeItem('currentUserName');
   }
 </script>
 

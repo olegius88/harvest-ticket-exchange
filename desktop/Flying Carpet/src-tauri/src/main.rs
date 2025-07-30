@@ -9,14 +9,8 @@ use flying_carpet_core::{
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{
-    fs,
-    sync::Mutex,
-};
-use talon_db::{
-    CreateUserRequest, DatabaseError, LoginRequest,
-    TalonDatabase,
-};
+use std::{fs, sync::Mutex};
+use talon_db::{CreateUserRequest, DatabaseError, LoginRequest, TalonDatabase};
 use tauri::{Emitter, State, Window};
 use tokio::sync::mpsc;
 
@@ -189,7 +183,8 @@ async fn main() {
 
     // Инициализируем базу данных
     let db_path = get_database_path();
-    let db = match TalonDatabase::new(&db_path) {
+    let db_path_str = db_path.to_string_lossy();
+    let db = match TalonDatabase::new(&db_path_str) {
         Ok(database) => database,
         Err(e) => {
             eprintln!("Failed to initialize database: {}", e);
@@ -225,6 +220,8 @@ async fn main() {
             get_applied_migrations,
             get_pending_migrations,
             rollback_migration,
+            // Debug command to check users
+            debug_get_all_users_any_position,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -251,21 +248,44 @@ async fn register_vesovschik(
     request: CreateUserRequest,
     db_state: State<'_, DatabaseState>,
 ) -> Result<String, String> {
-    let mut db = db_state
-        .db
-        .lock()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+    println!(
+        "Starting registration for user: {} ({})",
+        request.fio, request.phone
+    );
+
+    let mut db = db_state.db.lock().map_err(|e| {
+        let error = format!("Database lock error: {}", e);
+        println!("Registration failed: {}", error);
+        error
+    })?;
 
     let mut vesovschik_request = request;
     vesovschik_request.position = "vesovschik".to_string();
 
+    println!(
+        "Registration request prepared: FIO={}, Phone={}, Position={}",
+        vesovschik_request.fio, vesovschik_request.phone, vesovschik_request.position
+    );
+
     match db.create_user(vesovschik_request) {
-        Ok(user_id) => Ok(user_id),
-        Err(DatabaseError::UserAlreadyExists) => {
-            Err("Пользователь с таким номером телефона уже существует".to_string())
+        Ok(user_id) => {
+            println!("User successfully created with ID: {}", user_id);
+            Ok(user_id)
         }
-        Err(DatabaseError::ValidationError(msg)) => Err(msg),
-        Err(e) => Err(format!("Ошибка регистрации: {}", e)),
+        Err(DatabaseError::UserAlreadyExists) => {
+            let error = "Пользователь с таким номером телефона уже существует".to_string();
+            println!("Registration failed: {}", error);
+            Err(error)
+        }
+        Err(DatabaseError::ValidationError(msg)) => {
+            println!("Registration validation error: {}", msg);
+            Err(msg)
+        }
+        Err(e) => {
+            let error = format!("Ошибка регистрации: {}", e);
+            println!("Registration failed with error: {}", error);
+            Err(error)
+        }
     }
 }
 
@@ -278,6 +298,19 @@ async fn login_vesovschik(
         .db
         .lock()
         .map_err(|e| format!("Database lock error: {}", e))?;
+
+    println!("Attempting login for phone: {}", request.phone);
+
+    // Сначала попробуем найти всех пользователей-весовщиков для отладки
+    match db.get_users_by_position("vesovschik") {
+        Ok(users) => {
+            println!("Available vesovschik users:");
+            for user in &users {
+                println!("  - Phone: {}, FIO: {}", user.phone, user.fio);
+            }
+        }
+        Err(e) => println!("Error getting users: {}", e),
+    }
 
     match db.login_user(request) {
         Ok(user) => {
@@ -316,6 +349,56 @@ async fn validate_vesovschik_session(
     match db.get_user_by_id(&user_id) {
         Ok(user) => Ok(user.position == "vesovschik"),
         Err(_) => Ok(false),
+    }
+}
+
+#[tauri::command]
+async fn debug_get_all_users(db_state: State<'_, DatabaseState>) -> Result<Vec<SafeUser>, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_users_by_position("vesovschik") {
+        Ok(users) => {
+            let safe_users: Vec<SafeUser> = users
+                .into_iter()
+                .map(|user| SafeUser {
+                    id: user.id,
+                    fio: user.fio,
+                    phone: user.phone,
+                    position: user.position,
+                    created_at: user.created_at.to_rfc3339(),
+                    updated_at: user.updated_at.to_rfc3339(),
+                    from_remote: user.from_remote,
+                })
+                .collect();
+            Ok(safe_users)
+        }
+        Err(e) => Err(format!("Failed to get users: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn debug_get_all_users_any_position(
+    db_state: State<'_, DatabaseState>,
+) -> Result<String, String> {
+    let db = db_state
+        .db
+        .lock()
+        .map_err(|e| format!("Database lock error: {}", e))?;
+
+    match db.get_all_users_debug() {
+        Ok(users) => {
+            let mut result = String::from("All users in database:\n");
+            let count = users.len();
+            for user in users {
+                result.push_str(&format!("  {}\n", user));
+            }
+            result.push_str(&format!("Total users found: {}", count));
+            Ok(result)
+        }
+        Err(e) => Err(format!("Failed to get users: {}", e)),
     }
 }
 
@@ -413,18 +496,18 @@ fn expand_files(paths: Vec<&str>) -> Vec<String> {
     files
 }
 
-#[tauri::command]
-fn generate_password() -> String {
-    utils::generate_password()
-}
+// #[tauri::command]
+// fn generate_password() -> String {
+//     utils::generate_password()
+// }
 
-#[tauri::command]
-fn get_wifi_interfaces() -> Vec<WiFiInterface> {
-    match network::get_wifi_interfaces() {
-        Ok(interfaces) => interfaces,
-        Err(_e) => vec![], // if there was an error, just return empty list of interfaces and let javascript detect "no wifi card found"
-    }
-}
+// #[tauri::command]
+// fn get_wifi_interfaces() -> Vec<WiFiInterface> {
+//     match network::get_wifi_interfaces() {
+//         Ok(interfaces) => interfaces,
+//         Err(_e) => vec![], // if there was an error, just return empty list of interfaces and let javascript detect "no wifi card found"
+//     }
+// }
 
 // Bluetooth pair function removed - bluetooth is disabled
 // #[tauri::command]

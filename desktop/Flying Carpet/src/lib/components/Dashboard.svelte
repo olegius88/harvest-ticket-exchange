@@ -38,7 +38,28 @@
   // Загрузка талонов при монтировании компонента
   onMount(async () => {
     await loadTalons();
+    await checkUsers(); // Добавлено для отладки
   });
+
+  async function checkUsers() {
+    try {
+      const users = await invoke<any[]>('debug_get_all_users');
+      console.log('Available vesovschik users:', users);
+    } catch (error) {
+      console.error('Error checking users:', error);
+    }
+  }
+
+  async function checkAllUsers() {
+    try {
+      const result = await invoke<string>('debug_get_all_users_any_position');
+      console.log('All users in database:');
+      console.log(result);
+      alert('Проверьте консоль браузера для списка всех пользователей');
+    } catch (error) {
+      console.error('Error checking all users:', error);
+    }
+  }
 
   async function loadTalons() {
     try {
@@ -151,6 +172,15 @@
       </svg>
       Журнал
     </button>
+
+    <!-- Временная кнопка для отладки -->
+    <button
+      onclick={checkAllUsers}
+      class="btn btn-secondary text-sm ml-2"
+      title="Показать всех пользователей в базе данных"
+    >
+      Проверить БД
+    </button>
   </div>
 
   <!-- Основная область - список талонов -->
@@ -220,7 +250,9 @@
                 />
               </svg>
               <p class="mt-2 text-gray-500">Нет талонов для обработки</p>
-              <p class="mt-1 text-sm text-gray-400">Талоны появятся при подключении Android устройств</p>
+              <p class="mt-1 text-sm text-gray-400">
+                Талоны появятся при подключении Android устройств
+              </p>
             </div>
           {:else}
             <div class="space-y-3">
