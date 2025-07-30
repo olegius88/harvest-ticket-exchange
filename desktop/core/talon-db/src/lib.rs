@@ -463,6 +463,8 @@ impl TalonDatabase {
     }
 
     pub fn get_user_by_id(&self, user_id: &str) -> Result<User, DatabaseError> {
+        println!("TalonDB: get_user_by_id called with: {}", user_id);
+
         let mut stmt = self.conn.prepare(
             "SELECT id, fio, phone, position, password_hash, created_at, updated_at, from_remote
              FROM users WHERE id = ?1",
@@ -486,10 +488,20 @@ impl TalonDatabase {
                 })
             })
             .map_err(|e| match e {
-                rusqlite::Error::QueryReturnedNoRows => DatabaseError::UserNotFound,
-                _ => DatabaseError::SqliteError(e),
+                rusqlite::Error::QueryReturnedNoRows => {
+                    println!("TalonDB: User not found by ID: {}", user_id);
+                    DatabaseError::UserNotFound
+                }
+                _ => {
+                    println!("TalonDB: Database error in get_user_by_id: {}", e);
+                    DatabaseError::SqliteError(e)
+                }
             })?;
 
+        println!(
+            "TalonDB: User found by ID: {} ({}), position: {}",
+            user.fio, user.id, user.position
+        );
         Ok(user)
     }
 

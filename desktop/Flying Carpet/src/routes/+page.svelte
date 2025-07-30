@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { Store } from '@tauri-apps/plugin-store';
   import Login from '$lib/components/Login.svelte';
   import Registration from '$lib/components/Registration.svelte';
   import Dashboard from '$lib/components/Dashboard.svelte';
@@ -23,6 +24,20 @@
   let currentUserId = '';
   let logs: LogEntry[] = [];
   let isLogPanelVisible = false;
+
+  // Создаем экземпляр store для сохранения сессии
+  let store: Store | null = null;
+
+  // Инициализируем store
+  async function initStore() {
+    try {
+      store = new Store('session.json');
+      console.log('Store initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize store:', error);
+      addLog('Ошибка инициализации хранилища данных', 'error');
+    }
+  }
 
   // Функции для работы с логами
   function addLog(message: string, level: LogLevel = 'info') {
@@ -158,45 +173,96 @@
   onMount(async () => {
     addLog('Приложение Весовщик запущено', 'info');
 
+    // Инициализируем store
+    await initStore();
+
+    if (!store) {
+      addLog('Не удалось инициализировать хранилище данных', 'error');
+      return;
+    }
+
     // Проверяем сохраненное состояние
-    const savedUserId = localStorage.getItem('currentUserId');
-    const savedUserName = localStorage.getItem('currentUserName');
+    try {
+      const savedUserId = await store.get<string>('currentUserId');
+      const savedUserName = await store.get<string>('currentUserName');
 
-    if (savedUserId && savedUserName) {
-      try {
-        // Проверяем валидность сессии
-        const isValid = await invoke<boolean>('validate_vesovschik_session', {
-          userId: savedUserId,
-        });
+      console.log('onMount: Checking store for session data');
+      console.log('savedUserId:', savedUserId);
+      console.log('savedUserName:', savedUserName);
+      addLog(`Проверка хранилища: userId=${savedUserId}, userName=${savedUserName}`, 'info');
 
-        if (isValid) {
-          currentUserId = savedUserId;
-          currentUser = savedUserName;
-          isAuthenticated = true;
-          showDashboard();
-          addLog(`Автовход пользователя: ${savedUserName}`, 'info');
-        } else {
-          // Сессия недействительна, очищаем данные
-          localStorage.removeItem('currentUserId');
-          localStorage.removeItem('currentUserName');
-          addLog('Сессия истекла, требуется повторный вход', 'warning');
+      if (savedUserId && savedUserName) {
+        try {
+          console.log(
+            'Checking saved session for userId:',
+            savedUserId,
+            'userName:',
+            savedUserName
+          );
+          addLog(`Проверка сохраненной сессии для пользователя: ${savedUserName}`, 'info');
+
+          // Проверяем валидность сессии
+          const isValid = await invoke<boolean>('validate_vesovschik_session', {
+            userId: savedUserId,
+          });
+
+          console.log('Session validation result:', isValid);
+
+          if (isValid) {
+            currentUserId = savedUserId;
+            currentUser = savedUserName;
+            isAuthenticated = true;
+            showDashboard();
+            addLog(`Автовход пользователя: ${savedUserName}`, 'success');
+          } else {
+            // Сессия недействительна, очищаем данные
+            await store.delete('currentUserId');
+            await store.delete('currentUserName');
+            await store.save();
+            addLog('Сессия истекла, требуется повторный вход', 'warning');
+          }
+        } catch (error) {
+          // Ошибка проверки сессии, очищаем данные
+          await store.delete('currentUserId');
+          await store.delete('currentUserName');
+          await store.save();
+          addLog('Ошибка проверки сессии, требуется повторный вход', 'warning');
         }
-      } catch (error) {
-        // Ошибка проверки сессии, очищаем данные
-        localStorage.removeItem('currentUserId');
-        localStorage.removeItem('currentUserName');
-        addLog('Ошибка проверки сессии, требуется повторный вход', 'warning');
+      } else {
+        console.log('No saved session data found in store');
+        addLog('Сохраненная сессия не найдена', 'info');
       }
+    } catch (error) {
+      console.error('Error reading from store:', error);
+      addLog('Ошибка чтения данных сессии', 'error');
     }
   });
 
   // Сохраняем состояние пользователя
-  $: if (currentUserId && currentUser) {
-    localStorage.setItem('currentUserId', currentUserId);
-    localStorage.setItem('currentUserName', currentUser);
-  } else {
-    localStorage.removeItem('currentUserId');
-    localStorage.removeItem('currentUserName');
+  $: if (store && currentUserId && currentUser) {
+    (async () => {
+      try {
+        console.log('Saving session to store:', { userId: currentUserId, userName: currentUser });
+        await store.set('currentUserId', currentUserId);
+        await store.set('currentUserName', currentUser);
+        await store.save();
+        addLog(`Сессия сохранена для пользователя: ${currentUser}`, 'info');
+      } catch (error) {
+        console.error('Error saving session to store:', error);
+        addLog('Ошибка сохранения сессии', 'error');
+      }
+    })();
+  } else if (store && (!currentUserId || !currentUser)) {
+    (async () => {
+      try {
+        console.log('Clearing session from store');
+        await store.delete('currentUserId');
+        await store.delete('currentUserName');
+        await store.save();
+      } catch (error) {
+        console.error('Error clearing session from store:', error);
+      }
+    })();
   }
 </script>
 

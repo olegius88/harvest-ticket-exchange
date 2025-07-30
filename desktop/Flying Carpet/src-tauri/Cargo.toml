@@ -19,6 +19,7 @@ flying-carpet-core = { path = "../../core" }
 talon-db = { path = "../../core/talon-db" }
 tauri-plugin-os = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-store = "2"
 dirs = "5.0"
 
 [features]

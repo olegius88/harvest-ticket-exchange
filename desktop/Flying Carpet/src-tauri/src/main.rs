@@ -199,6 +199,7 @@ async fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_store::Builder::new().build())
         .manage(Transfer::new())
         .manage(db_state)
         .invoke_handler(tauri::generate_handler![
@@ -341,14 +342,27 @@ async fn validate_vesovschik_session(
     user_id: String,
     db_state: State<'_, DatabaseState>,
 ) -> Result<bool, String> {
-    let db = db_state
-        .db
-        .lock()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+    println!("Validating session for user_id: {}", user_id);
+
+    let db = db_state.db.lock().map_err(|e| {
+        println!("Database lock error during session validation: {}", e);
+        format!("Database lock error: {}", e)
+    })?;
 
     match db.get_user_by_id(&user_id) {
-        Ok(user) => Ok(user.position == "vesovschik"),
-        Err(_) => Ok(false),
+        Ok(user) => {
+            println!(
+                "User found: {} ({}), position: {}",
+                user.fio, user.id, user.position
+            );
+            let is_valid = user.position == "vesovschik";
+            println!("Session validation result: {}", is_valid);
+            Ok(is_valid)
+        }
+        Err(e) => {
+            println!("User not found during session validation: {:?}", e);
+            Ok(false)
+        }
     }
 }
 
