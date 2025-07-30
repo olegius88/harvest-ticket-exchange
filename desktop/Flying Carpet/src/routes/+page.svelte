@@ -24,20 +24,7 @@
   let currentUserId = '';
   let logs: LogEntry[] = [];
   let isLogPanelVisible = false;
-
-  // Создаем экземпляр store для сохранения сессии
   let store: Store | null = null;
-
-  // Инициализируем store
-  async function initStore() {
-    try {
-      store = new Store('session.json');
-      console.log('Store initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize store:', error);
-      addLog('Ошибка инициализации хранилища данных', 'error');
-    }
-  }
 
   // Функции для работы с логами
   function addLog(message: string, level: LogLevel = 'info') {
@@ -158,38 +145,150 @@
   }
 
   function handleLogout() {
-    currentUser = '';
-    currentUserId = '';
-    isAuthenticated = false;
-    showLogin();
-    addLog('Выход из системы', 'info');
+    try {
+      console.log('Logging out user:', currentUser);
+      
+      currentUser = '';
+      currentUserId = '';
+      isAuthenticated = false;
+      
+      // Очищаем сессию
+      clearSession();
+      
+      showLogin();
+      addLog('Выход из системы', 'info');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      addLog('Ошибка при выходе из системы', 'error');
+    }
   }
 
   function handleAcceptTalon() {
     addLog('Талон принят', 'success');
   }
 
+  // Инициализация Store
+  async function initStore() {
+    try {
+      console.log('Initializing Tauri Store...');
+      store = await Store.load('session.json');
+      console.log('Store initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize store:', error);
+      addLog('Ошибка инициализации хранилища', 'error');
+      return false;
+    }
+  }
+
+  // Сохранение сессии в Store
+  async function saveSession(userId: string, userName: string) {
+    if (!store) {
+      console.warn('Store not initialized, trying localStorage fallback');
+      try {
+        localStorage.setItem('currentUserId', userId);
+        localStorage.setItem('currentUserName', userName);
+        console.log('Saved to localStorage as fallback');
+        return;
+      } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+        return;
+      }
+    }
+
+    try {
+      await store.set('currentUserId', userId);
+      await store.set('currentUserName', userName);
+      await store.save();
+      console.log('Session saved to Store:', userId, userName);
+    } catch (error) {
+      console.error('Error saving to Store:', error);
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('currentUserId', userId);
+        localStorage.setItem('currentUserName', userName);
+        console.log('Saved to localStorage as fallback');
+      } catch (fallbackError) {
+        console.error('Failed to save to localStorage fallback:', fallbackError);
+      }
+    }
+  }
+
+  // Загрузка сессии из Store
+  async function loadSession(): Promise<{ userId: string | null; userName: string | null }> {
+    if (!store) {
+      console.warn('Store not initialized, trying localStorage fallback');
+      try {
+        const userId = localStorage.getItem('currentUserId');
+        const userName = localStorage.getItem('currentUserName');
+        console.log('Loaded from localStorage as fallback:', userId, userName);
+        return { userId, userName };
+      } catch (error) {
+        console.error('Failed to load from localStorage:', error);
+        return { userId: null, userName: null };
+      }
+    }
+
+    try {
+      const userId = await store.get<string>('currentUserId');
+      const userName = await store.get<string>('currentUserName');
+      console.log('Session loaded from Store:', userId, userName);
+      return { userId: userId || null, userName: userName || null };
+    } catch (error) {
+      console.error('Error loading from Store:', error);
+      // Fallback to localStorage
+      try {
+        const userId = localStorage.getItem('currentUserId');
+        const userName = localStorage.getItem('currentUserName');
+        console.log('Loaded from localStorage as fallback:', userId, userName);
+        return { userId, userName };
+      } catch (fallbackError) {
+        console.error('Failed to load from localStorage fallback:', fallbackError);
+        return { userId: null, userName: null };
+      }
+    }
+  }
+
+  // Очистка сессии
+  async function clearSession() {
+    if (store) {
+      try {
+        await store.delete('currentUserId');
+        await store.delete('currentUserName');
+        await store.save();
+        console.log('Session cleared from Store');
+      } catch (error) {
+        console.error('Error clearing Store:', error);
+      }
+    }
+
+    try {
+      localStorage.removeItem('currentUserId');
+      localStorage.removeItem('currentUserName');
+      console.log('Session cleared from localStorage');
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+  }
+
   // Инициализация при монтировании
   onMount(async () => {
+    console.log('onMount called - starting app initialization');
     addLog('Приложение Весовщик запущено', 'info');
 
     // Инициализируем store
-    await initStore();
-
-    if (!store) {
-      addLog('Не удалось инициализировать хранилище данных', 'error');
-      return;
-    }
-
+    const storeInitialized = await initStore();
+    
     // Проверяем сохраненное состояние
     try {
-      const savedUserId = await store.get<string>('currentUserId');
-      const savedUserName = await store.get<string>('currentUserName');
+      console.log('Loading session data...');
+      
+      const { userId: savedUserId, userName: savedUserName } = await loadSession();
 
-      console.log('onMount: Checking store for session data');
+      console.log('onMount: Checking session data');
       console.log('savedUserId:', savedUserId);
       console.log('savedUserName:', savedUserName);
-      addLog(`Проверка хранилища: userId=${savedUserId}, userName=${savedUserName}`, 'info');
+      addLog(`Проверка сессии: userId=${savedUserId}, userName=${savedUserName}`, 'info');
 
       if (savedUserId && savedUserName) {
         try {
@@ -216,53 +315,35 @@
             addLog(`Автовход пользователя: ${savedUserName}`, 'success');
           } else {
             // Сессия недействительна, очищаем данные
-            await store.delete('currentUserId');
-            await store.delete('currentUserName');
-            await store.save();
+            await clearSession();
             addLog('Сессия истекла, требуется повторный вход', 'warning');
           }
         } catch (error) {
+          console.error('Error validating session:', error);
           // Ошибка проверки сессии, очищаем данные
-          await store.delete('currentUserId');
-          await store.delete('currentUserName');
-          await store.save();
+          await clearSession();
           addLog('Ошибка проверки сессии, требуется повторный вход', 'warning');
         }
       } else {
-        console.log('No saved session data found in store');
+        console.log('No saved session data found');
         addLog('Сохраненная сессия не найдена', 'info');
       }
     } catch (error) {
-      console.error('Error reading from store:', error);
+      console.error('Error reading session data:', error);
       addLog('Ошибка чтения данных сессии', 'error');
     }
   });
 
   // Сохраняем состояние пользователя
-  $: if (store && currentUserId && currentUser) {
-    (async () => {
-      try {
-        console.log('Saving session to store:', { userId: currentUserId, userName: currentUser });
-        await store.set('currentUserId', currentUserId);
-        await store.set('currentUserName', currentUser);
-        await store.save();
-        addLog(`Сессия сохранена для пользователя: ${currentUser}`, 'info');
-      } catch (error) {
-        console.error('Error saving session to store:', error);
-        addLog('Ошибка сохранения сессии', 'error');
-      }
-    })();
-  } else if (store && (!currentUserId || !currentUser)) {
-    (async () => {
-      try {
-        console.log('Clearing session from store');
-        await store.delete('currentUserId');
-        await store.delete('currentUserName');
-        await store.save();
-      } catch (error) {
-        console.error('Error clearing session from store:', error);
-      }
-    })();
+    // Реактивное сохранение состояния при изменении
+  $: if (currentUserId && currentUser) {
+    console.log('Reactive: Saving session for:', currentUserId, currentUser);
+    saveSession(currentUserId, currentUser);
+    addLog(`Сессия сохранена для пользователя: ${currentUser}`, 'info');
+  } else if (currentUserId === '' && currentUser === '') {
+    console.log('Reactive: Clearing session');
+    clearSession();
+    addLog('Сессия очищена', 'info');
   }
 </script>
 
