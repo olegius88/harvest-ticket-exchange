@@ -45,12 +45,55 @@
   let showQrCode = $state(false);
   let qrCodeContainer: HTMLDivElement | null = $state(null);
   let tcpServerInfo: TcpServerInfo | null = $state(null);
+  let autoRefreshInterval: NodeJS.Timeout | null = $state(null);
+  let isAutoRefreshEnabled = $state(true);
+  let lastUpdateTime = $state('');
 
   // Загрузка талонов при монтировании компонента
   onMount(async () => {
     await loadTalons();
     await checkUsers(); // Добавлено для отладки
+
+    // Запускаем автообновление каждые 5 секунд
+    if (isAutoRefreshEnabled) {
+      startAutoRefresh();
+    }
+
+    // Очищаем interval при размонтировании
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
   });
+
+  function startAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(async () => {
+      if (!loading) {
+        // Не обновляем, если уже идет загрузка
+        await loadTalons();
+      }
+    }, 5000); // Обновляем каждые 5 секунд
+  }
+
+  function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  }
+
+  function toggleAutoRefresh() {
+    isAutoRefreshEnabled = !isAutoRefreshEnabled;
+    if (isAutoRefreshEnabled) {
+      startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
+  }
 
   async function checkUsers() {
     try {
@@ -78,6 +121,8 @@
       error = '';
       const result = await invoke<Talon[]>('get_all_talons');
       talons = result;
+      lastUpdateTime = new Date().toLocaleTimeString('ru-RU');
+      console.log(`Loaded ${result.length} talons at ${lastUpdateTime}`);
     } catch (err) {
       console.error('Error loading talons:', err);
       error = err instanceof Error ? err.message : 'Ошибка загрузки талонов';
@@ -238,30 +283,74 @@
       <h1 class="text-xl font-semibold text-gray-900">Весовщик</h1>
       <p class="text-sm text-gray-600">Пользователь: {currentUser}</p>
     </div>
-    <button
-      onclick={toggleLogs}
-      class="btn btn-outline text-sm"
-      title="Открыть/закрыть журнал событий"
-    >
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        />
-      </svg>
-      Журнал
-    </button>
 
-    <!-- Временная кнопка для отладки -->
-    <button
-      onclick={checkAllUsers}
-      class="btn btn-secondary text-sm ml-2"
-      title="Показать всех пользователей в базе данных"
-    >
-      Проверить БД
-    </button>
+    <div class="flex items-center space-x-2">
+      <!-- Кнопка ручного обновления -->
+      <button
+        onclick={loadTalons}
+        class="btn btn-outline text-sm"
+        disabled={loading}
+        title="Обновить список талонов"
+      >
+        <svg
+          class="w-4 h-4 mr-2 {loading ? 'animate-spin' : ''}"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+        {loading ? 'Загрузка...' : 'Обновить'}
+      </button>
+
+      <!-- Переключатель автообновления -->
+      <button
+        onclick={toggleAutoRefresh}
+        class="btn {isAutoRefreshEnabled ? 'btn-success' : 'btn-outline'} text-sm"
+        title="{isAutoRefreshEnabled ? 'Отключить' : 'Включить'} автообновление"
+      >
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        {isAutoRefreshEnabled ? 'Авто' : 'Вкл авто'}
+      </button>
+
+      <!-- Журнал -->
+      <button
+        onclick={toggleLogs}
+        class="btn btn-outline text-sm"
+        title="Открыть/закрыть журнал событий"
+      >
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        Журнал
+      </button>
+
+      <!-- Временная кнопка для отладки -->
+      <button
+        onclick={checkAllUsers}
+        class="btn btn-secondary text-sm"
+        title="Показать всех пользователей в базе данных"
+      >
+        Проверить БД
+      </button>
+    </div>
   </div>
 
   <!-- Основная область - список талонов -->
@@ -269,8 +358,27 @@
     <div class="h-full p-4">
       <div class="card h-full">
         <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-900">Список талонов</h2>
-          <p class="text-sm text-gray-600">Всего талонов: {talons.length}</p>
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-lg font-medium text-gray-900">Список талонов</h2>
+              <p class="text-sm text-gray-600">Всего талонов: {talons.length}</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              {#if isAutoRefreshEnabled}
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                >
+                  <svg class="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="6" />
+                  </svg>
+                  Автообновление
+                </span>
+              {/if}
+              <span class="text-xs text-gray-500">
+                Последнее обновление: {lastUpdateTime || 'загрузка...'}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4">

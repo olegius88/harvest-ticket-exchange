@@ -11,7 +11,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{fs, sync::Mutex};
-use talon_db::{CreateUserRequest, DatabaseError, LoginRequest, TalonDatabase};
+use talon_db::{
+    CreateKombainerRequest, CreateTalonRequest, CreateUserRequest, CreateVoditelRequest,
+    DatabaseError, LoginRequest, TalonDatabase,
+};
 use tauri::{Emitter, State, Window};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -743,6 +746,261 @@ async fn handle_talon_tcp_connections(listener: TcpListener, auth_code: String) 
     }
 }
 
+/// Сохраняет полученный талон в базу данных Desktop приложения
+async fn save_talon_to_database(
+    talon_data: &serde_json::Value,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    // Получаем путь к базе данных
+    let db_path = get_database_path();
+    let db_path_str = db_path.to_string_lossy();
+    let mut db = TalonDatabase::new(&db_path_str)?;
+
+    // Извлекаем основные данные талона
+    let original_talon_id = talon_data
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing talon ID")?;
+
+    let talon_number = talon_data
+        .get("talonNumber")
+        .and_then(|v| v.as_str())
+        .unwrap_or("1");
+
+    let status = talon_data
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("voditel_signed");
+
+    let weight = talon_data.get("weight").and_then(|v| v.as_f64());
+
+    let created_at = talon_data
+        .get("created_at")
+        .and_then(|v| v.as_i64())
+        .unwrap_or_else(|| {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as i64
+        });
+
+    // Извлекаем данные комбайнера
+    let kombainer_data = talon_data.get("kombainerData");
+    let kombainer_user_data = talon_data.get("kombainerUserData");
+
+    // Извлекаем данные водителя
+    let voditel_data = talon_data.get("voditelData");
+    let voditel_user_data = talon_data.get("voditelUserData");
+
+    // Создаем или получаем пользователя комбайнера
+    let kombainer_user_id = if let Some(user_data) = kombainer_user_data {
+        let fio = user_data
+            .get("fio")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный комбайнер");
+        let phone = user_data
+            .get("phone")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный телефон");
+        let position = user_data
+            .get("position")
+            .and_then(|v| v.as_str())
+            .unwrap_or("kombainer");
+
+        // Ищем пользователя по телефону
+        match db.get_user_by_phone(phone) {
+            Ok(existing_user) => {
+                println!(
+                    "Found existing kombainer user: {} ({})",
+                    existing_user.fio, existing_user.id
+                );
+                existing_user.id
+            }
+            Err(_) => {
+                // Создаем нового пользователя комбайнера
+                let create_user_request = CreateUserRequest {
+                    fio: fio.to_string(),
+                    phone: phone.to_string(),
+                    password: "temp123".to_string(), // Временный пароль
+                    position: position.to_string(),
+                };
+
+                let new_user_id = db.create_user(create_user_request)?;
+                println!(
+                    "Created new kombainer user: {} with ID: {}",
+                    fio, new_user_id
+                );
+                new_user_id
+            }
+        }
+    } else {
+        return Err("Missing kombainer user data".into());
+    };
+
+    // Создаем или получаем комбайнера
+    let kombainer_id = if let Some(komb_data) = kombainer_data {
+        let combine = komb_data
+            .get("combine")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный комбайн");
+        let brigade = komb_data
+            .get("brigade")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестная бригада");
+        let culture = komb_data
+            .get("culture")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестная культура");
+        let field = komb_data
+            .get("field")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестное поле");
+
+        // Ищем комбайнера по пользователю
+        match db.get_kombainer_by_user_id(&kombainer_user_id) {
+            Ok(existing_kombainer) => {
+                println!(
+                    "Found existing kombainer: {} with ID: {}",
+                    existing_kombainer.combine, existing_kombainer.id
+                );
+                existing_kombainer.id
+            }
+            Err(_) => {
+                // Создаем нового комбайнера
+                let create_kombainer_request = CreateKombainerRequest {
+                    user_id: kombainer_user_id.clone(),
+                    combine: combine.to_string(),
+                    brigade: brigade.to_string(),
+                    culture: culture.to_string(),
+                    field: field.to_string(),
+                };
+
+                let new_kombainer_id = db.create_kombainer(create_kombainer_request)?;
+                println!(
+                    "Created new kombainer: {} with ID: {}",
+                    combine, new_kombainer_id
+                );
+                new_kombainer_id
+            }
+        }
+    } else {
+        return Err("Missing kombainer data".into());
+    };
+
+    // Создаем или получаем пользователя водителя (если есть)
+    let voditel_user_id = if let Some(user_data) = voditel_user_data {
+        let fio = user_data
+            .get("fio")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный водитель");
+        let phone = user_data
+            .get("phone")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный телефон");
+        let position = user_data
+            .get("position")
+            .and_then(|v| v.as_str())
+            .unwrap_or("voditel");
+
+        // Ищем пользователя по телефону
+        match db.get_user_by_phone(phone) {
+            Ok(existing_user) => {
+                println!(
+                    "Found existing voditel user: {} ({})",
+                    existing_user.fio, existing_user.id
+                );
+                Some(existing_user.id)
+            }
+            Err(_) => {
+                // Создаем нового пользователя водителя
+                let create_user_request = CreateUserRequest {
+                    fio: fio.to_string(),
+                    phone: phone.to_string(),
+                    password: "temp123".to_string(), // Временный пароль
+                    position: position.to_string(),
+                };
+
+                let new_user_id = db.create_user(create_user_request)?;
+                println!("Created new voditel user: {} with ID: {}", fio, new_user_id);
+                Some(new_user_id)
+            }
+        }
+    } else {
+        None
+    };
+
+    // Создаем или получаем водителя (если есть)
+    let voditel_id = if let (Some(vod_data), Some(user_id)) = (voditel_data, &voditel_user_id) {
+        let transport = vod_data
+            .get("transport")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Неизвестный транспорт");
+
+        // Для простоты создаем нового водителя (можно улучшить поиском существующего)
+        let create_voditel_request = CreateVoditelRequest {
+            user_id: user_id.clone(),
+            transport: transport.to_string(),
+            from_remote: true, // Помечаем как пришедший с удаленного устройства
+        };
+
+        match db.create_voditel(create_voditel_request) {
+            Ok(new_voditel_id) => {
+                println!(
+                    "Created new voditel: {} with ID: {}",
+                    transport, new_voditel_id
+                );
+                Some(new_voditel_id)
+            }
+            Err(e) => {
+                println!("Warning: Could not create voditel: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Проверяем, существует ли уже талон с таким номером и статусом
+    // (используем номер талона вместо ID для проверки дубликатов)
+    let existing_talons = db.get_all_talons()?;
+    for existing_talon in existing_talons {
+        if existing_talon.talon_number == talon_number
+            && existing_talon.kombainer_id == kombainer_id
+        {
+            println!("Talon with number {} for kombainer {} already exists with ID {}, skipping creation",
+                    talon_number, kombainer_id, existing_talon.id);
+            return Ok(existing_talon.id);
+        }
+    }
+
+    // Подготавливаем данные для сохранения талона
+    let create_request = CreateTalonRequest {
+        kombainer_id: kombainer_id.clone(),
+        kombainer_data: kombainer_data.map(|v| serde_json::to_string(v).unwrap()),
+        kombainer_user_data: kombainer_user_data.map(|v| serde_json::to_string(v).unwrap()),
+        voditel_id: voditel_id.clone(),
+        voditel_user_id: voditel_user_id.clone(),
+        voditel_data: voditel_data.map(|v| serde_json::to_string(v).unwrap()),
+        voditel_user_data: voditel_user_data.map(|v| serde_json::to_string(v).unwrap()),
+        status: status.to_string(),
+        start_time: created_at,
+        end_time: None,
+        weight,
+        comment: None,
+        talon_number: Some(talon_number.to_string()),
+    };
+
+    println!(
+        "Saving new talon to database: Original ID={}, Number={}, Status={}, Kombainer ID={}",
+        original_talon_id, talon_number, status, kombainer_id
+    );
+
+    // Сохраняем талон в базу данных (база сгенерирует новый UUID)
+    let saved_talon_id = db.create_talon(create_request)?;
+    println!("Talon saved successfully with new ID: {}", saved_talon_id);
+
+    Ok(saved_talon_id)
+}
+
 async fn handle_android_connection(
     stream: &mut tokio::net::TcpStream,
     expected_auth_code: String,
@@ -834,27 +1092,39 @@ async fn handle_android_connection(
         serde_json::to_string_pretty(talon_data)?
     );
 
-    // Здесь можно добавить логику сохранения данных талона в базу данных
-    // Пока что просто логируем успешное получение
-
-    let talon_id = talon_data
-        .get("id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    // Сохраняем данные талона в базу данных Desktop приложения
+    let saved_talon_id = match save_talon_to_database(talon_data).await {
+        Ok(id) => {
+            println!("Talon successfully saved to database with ID: {}", id);
+            id
+        }
+        Err(e) => {
+            println!("Error saving talon to database: {}", e);
+            // Продолжаем выполнение, но логируем ошибку
+            talon_data
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string()
+        }
+    };
 
     let talon_number = talon_data
         .get("talonNumber")
         .and_then(|v| v.as_str())
         .unwrap_or("не указан");
 
-    println!("Received talon: ID={}, Number={}", talon_id, talon_number);
+    println!(
+        "Processed talon: ID={}, Number={}",
+        saved_talon_id, talon_number
+    );
 
     // Отправляем успешный ответ
     let response = serde_json::json!({
         "status": "success",
         "message": "Talon data received successfully",
         "received_data": {
-            "talon_id": talon_id,
+            "talon_id": saved_talon_id,
             "auth_verified": true,
             "timestamp": std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -870,7 +1140,7 @@ async fn handle_android_connection(
     let response_with_newline = format!("{}\n", response_str);
     stream.write_all(response_with_newline.as_bytes()).await?;
     stream.flush().await?;
-    
+
     // Даем время Android клиенту получить полный ответ перед закрытием соединения
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
