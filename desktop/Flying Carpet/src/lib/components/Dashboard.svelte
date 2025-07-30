@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
   import { onMount } from 'svelte';
+  import QRCode from 'qrcode';
 
   interface Props {
     currentUser: string;
@@ -31,9 +32,19 @@
     updated_at: string;
   }
 
+  interface TcpServerInfo {
+    ip: string;
+    port: number;
+    auth_code: string;
+    qr_data: string;
+  }
+
   let talons: Talon[] = $state([]);
   let loading = $state(true);
   let error = $state('');
+  let showQrCode = $state(false);
+  let qrCodeContainer: HTMLDivElement | null = $state(null);
+  let tcpServerInfo: TcpServerInfo | null = $state(null);
 
   // Загрузка талонов при монтировании компонента
   onMount(async () => {
@@ -75,7 +86,77 @@
     }
   }
 
-  function handleAcceptTalon() {
+  async function startTcpServer() {
+    try {
+      console.log('Starting TCP server...');
+      const serverInfo = await invoke<TcpServerInfo>('start_talon_tcp_server');
+      tcpServerInfo = serverInfo;
+      console.log('TCP server started:', serverInfo);
+
+      // Показываем QR код
+      showQrCode = true;
+
+      // Ждем, пока контейнер появится в DOM
+      setTimeout(() => {
+        if (qrCodeContainer) {
+          generateQrCode(serverInfo.qr_data);
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Error starting TCP server:', err);
+      error = err instanceof Error ? err.message : 'Ошибка запуска TCP сервера';
+    }
+  }
+
+  async function stopTcpServer() {
+    try {
+      await invoke<string>('stop_talon_tcp_server');
+      tcpServerInfo = null;
+      showQrCode = false;
+      // Очищаем QR код контейнер
+      if (qrCodeContainer) {
+        qrCodeContainer.innerHTML = '';
+      }
+      console.log('TCP server stopped');
+    } catch (err) {
+      console.error('Error stopping TCP server:', err);
+      error = err instanceof Error ? err.message : 'Ошибка остановки TCP сервера';
+    }
+  }
+
+  function generateQrCode(data: string) {
+    if (qrCodeContainer) {
+      // Очищаем предыдущий QR код
+      qrCodeContainer.innerHTML = '';
+
+      // Создаем новый QR код с современным API
+      QRCode.toCanvas(data, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((canvas: HTMLCanvasElement) => {
+          if (qrCodeContainer) {
+            qrCodeContainer.appendChild(canvas);
+          }
+        })
+        .catch((err: any) => {
+          console.error('QR Code generation failed:', err);
+        });
+    }
+  }
+
+  function closeQrCode() {
+    showQrCode = false;
+    stopTcpServer();
+  }
+
+  async function handleAcceptTalon() {
+    // Запускаем TCP сервер и показываем QR код
+    await startTcpServer();
     onAcceptTalon?.();
   }
 
@@ -326,3 +407,45 @@
     </div>
   </div>
 </div>
+
+<!-- QR Code Modal -->
+{#if showQrCode && tcpServerInfo}
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+      <div class="text-center">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">
+          Сканируйте QR-код для передачи талона
+        </h2>
+
+        <div class="mb-6 p-4 border-2 border-gray-200 rounded-lg bg-gray-50">
+          <div bind:this={qrCodeContainer} class="flex justify-center"></div>
+        </div>
+
+        <div class="text-sm text-gray-600 mb-6 space-y-2">
+          <p><strong>IP адрес:</strong> {tcpServerInfo.ip}</p>
+          <p><strong>Порт:</strong> {tcpServerInfo.port}</p>
+          <p><strong>Код авторизации:</strong> {tcpServerInfo.auth_code}</p>
+        </div>
+
+        <div class="text-xs text-gray-500 mb-6">
+          <p>Водитель должен:</p>
+          <ol class="list-decimal list-inside space-y-1 mt-2">
+            <li>Подключиться к WiFi сети весовой</li>
+            <li>Открыть приложение TalonKombainera</li>
+            <li>Сканировать этот QR-код</li>
+            <li>Передать данные талона</li>
+          </ol>
+        </div>
+
+        <div class="flex space-x-4">
+          <button
+            onclick={closeQrCode}
+            class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}

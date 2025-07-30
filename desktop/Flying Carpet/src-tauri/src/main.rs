@@ -6,17 +6,33 @@
 use flying_carpet_core::{
     clean_up_transfer, network, start_transfer, utils, Transfer, WiFiInterface, UI,
 };
+use local_ip_address::local_ip;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{fs, sync::Mutex};
 use talon_db::{CreateUserRequest, DatabaseError, LoginRequest, TalonDatabase};
 use tauri::{Emitter, State, Window};
+use tokio::net::TcpListener;
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 // Database state
 struct DatabaseState {
     db: Arc<Mutex<TalonDatabase>>,
+}
+
+// TCP Server state for talon acceptance
+struct TcpServerState {
+    server_info: Arc<Mutex<Option<TalonTcpServerInfo>>>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct TalonTcpServerInfo {
+    ip: String,
+    port: u16,
+    auth_code: String,
+    qr_data: String,
 }
 
 // Структуры для возврата данных без password_hash
@@ -196,12 +212,17 @@ async fn main() {
         db: Arc::new(Mutex::new(db)),
     };
 
+    let tcp_server_state = TcpServerState {
+        server_info: Arc::new(Mutex::new(None)),
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .manage(Transfer::new())
         .manage(db_state)
+        .manage(tcp_server_state)
         .invoke_handler(tauri::generate_handler![
             start_async,
             cancel_transfer,
@@ -221,6 +242,10 @@ async fn main() {
             get_applied_migrations,
             get_pending_migrations,
             rollback_migration,
+            // TCP server commands for talon acceptance
+            start_talon_tcp_server,
+            stop_talon_tcp_server,
+            get_talon_tcp_server_info,
             // Debug command to check users
             debug_get_all_users_any_position,
         ])
@@ -363,33 +388,6 @@ async fn validate_vesovschik_session(
             println!("User not found during session validation: {:?}", e);
             Ok(false)
         }
-    }
-}
-
-#[tauri::command]
-async fn debug_get_all_users(db_state: State<'_, DatabaseState>) -> Result<Vec<SafeUser>, String> {
-    let db = db_state
-        .db
-        .lock()
-        .map_err(|e| format!("Database lock error: {}", e))?;
-
-    match db.get_users_by_position("vesovschik") {
-        Ok(users) => {
-            let safe_users: Vec<SafeUser> = users
-                .into_iter()
-                .map(|user| SafeUser {
-                    id: user.id,
-                    fio: user.fio,
-                    phone: user.phone,
-                    position: user.position,
-                    created_at: user.created_at.to_rfc3339(),
-                    updated_at: user.updated_at.to_rfc3339(),
-                    from_remote: user.from_remote,
-                })
-                .collect();
-            Ok(safe_users)
-        }
-        Err(e) => Err(format!("Failed to get users: {}", e)),
     }
 }
 
@@ -637,4 +635,161 @@ async fn rollback_migration(
         )),
         Err(e) => Err(format!("Failed to rollback migration: {}", e)),
     }
+}
+
+// TCP Server commands for talon acceptance
+#[tauri::command]
+async fn start_talon_tcp_server(
+    tcp_state: State<'_, TcpServerState>,
+) -> Result<TalonTcpServerInfo, String> {
+    println!("Starting talon TCP server...");
+
+    // Генерируем уникальный код авторизации
+    let auth_code = Uuid::new_v4().to_string()[..8].to_string();
+
+    // Получаем локальный IP адрес
+    let local_ip = local_ip().map_err(|e| format!("Failed to get local IP: {}", e))?;
+    let ip_str = local_ip.to_string();
+
+    // Пытаемся найти свободный порт
+    let listener = TcpListener::bind("0.0.0.0:0")
+        .await
+        .map_err(|e| format!("Failed to bind to port: {}", e))?;
+
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("Failed to get local address: {}", e))?
+        .port();
+
+    // Создаем данные для QR кода
+    let qr_data = serde_json::json!({
+        "ip": ip_str,
+        "port": port,
+        "auth_code": auth_code
+    })
+    .to_string();
+
+    let server_info = TalonTcpServerInfo {
+        ip: ip_str.clone(),
+        port,
+        auth_code: auth_code.clone(),
+        qr_data: qr_data.clone(),
+    };
+
+    // Сохраняем информацию о сервере в состоянии
+    {
+        let mut state = tcp_state
+            .server_info
+            .lock()
+            .map_err(|e| format!("Failed to lock server state: {}", e))?;
+        *state = Some(server_info.clone());
+    }
+
+    // Запускаем TCP сервер в фоновом режиме
+    let auth_code_clone = auth_code.clone();
+    tokio::spawn(async move {
+        handle_talon_tcp_connections(listener, auth_code_clone).await;
+    });
+
+    println!(
+        "TCP server started on {}:{} with auth code: {}",
+        ip_str, port, auth_code
+    );
+    Ok(server_info)
+}
+
+#[tauri::command]
+async fn stop_talon_tcp_server(tcp_state: State<'_, TcpServerState>) -> Result<String, String> {
+    let mut state = tcp_state
+        .server_info
+        .lock()
+        .map_err(|e| format!("Failed to lock server state: {}", e))?;
+
+    if state.is_some() {
+        *state = None;
+        Ok("TCP server stopped".to_string())
+    } else {
+        Err("TCP server is not running".to_string())
+    }
+}
+
+#[tauri::command]
+async fn get_talon_tcp_server_info(
+    tcp_state: State<'_, TcpServerState>,
+) -> Result<Option<TalonTcpServerInfo>, String> {
+    let state = tcp_state
+        .server_info
+        .lock()
+        .map_err(|e| format!("Failed to lock server state: {}", e))?;
+
+    Ok(state.clone())
+}
+
+async fn handle_talon_tcp_connections(listener: TcpListener, auth_code: String) {
+    println!("TCP server listening for talon connections...");
+
+    while let Ok((mut stream, addr)) = listener.accept().await {
+        println!("New connection from: {}", addr);
+
+        let auth_code_clone = auth_code.clone();
+        tokio::spawn(async move {
+            // Здесь будет логика обработки подключения Android устройства
+            // Пока что просто логируем подключение
+            match handle_android_connection(&mut stream, auth_code_clone).await {
+                Ok(_) => println!("Android connection handled successfully"),
+                Err(e) => println!("Error handling Android connection: {}", e),
+            }
+        });
+    }
+}
+
+async fn handle_android_connection(
+    stream: &mut tokio::net::TcpStream,
+    expected_auth_code: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // Простой протокол: ожидаем JSON с auth_code и данными талона
+    let mut buffer = [0; 4096];
+    let n = stream.read(&mut buffer).await?;
+
+    if n == 0 {
+        return Err("Connection closed by client".into());
+    }
+
+    let received_data = String::from_utf8_lossy(&buffer[..n]);
+    println!("Received from Android: {}", received_data);
+
+    // Парсим JSON
+    let request: serde_json::Value = serde_json::from_str(&received_data)?;
+
+    // Проверяем код авторизации
+    let auth_code = request
+        .get("auth_code")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing auth_code")?;
+
+    if auth_code != expected_auth_code {
+        let response = serde_json::json!({
+            "status": "error",
+            "message": "Invalid auth code"
+        });
+        stream.write_all(response.to_string().as_bytes()).await?;
+        return Err("Invalid auth code".into());
+    }
+
+    // Здесь будет обработка данных талона
+    let talon_data = request.get("talon_data").ok_or("Missing talon_data")?;
+
+    println!("Processing talon data: {}", talon_data);
+
+    // Отправляем подтверждение
+    let response = serde_json::json!({
+        "status": "success",
+        "message": "Talon received successfully"
+    });
+
+    stream.write_all(response.to_string().as_bytes()).await?;
+
+    Ok(())
 }

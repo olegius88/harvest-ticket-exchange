@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use thiserror::Error;
 use uuid::Uuid;
 

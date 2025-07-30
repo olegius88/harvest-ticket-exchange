@@ -147,14 +147,14 @@
   function handleLogout() {
     try {
       console.log('Logging out user:', currentUser);
-      
+
       currentUser = '';
       currentUserId = '';
       isAuthenticated = false;
-      
+
       // Очищаем сессию
       clearSession();
-      
+
       showLogin();
       addLog('Выход из системы', 'info');
     } catch (error) {
@@ -278,11 +278,11 @@
 
     // Инициализируем store
     const storeInitialized = await initStore();
-    
+
     // Проверяем сохраненное состояние
     try {
       console.log('Loading session data...');
-      
+
       const { userId: savedUserId, userName: savedUserName } = await loadSession();
 
       console.log('onMount: Checking session data');
@@ -335,7 +335,7 @@
   });
 
   // Сохраняем состояние пользователя
-    // Реактивное сохранение состояния при изменении
+  // Реактивное сохранение состояния при изменении
   $: if (currentUserId && currentUser) {
     console.log('Reactive: Saving session for:', currentUserId, currentUser);
     saveSession(currentUserId, currentUser);
