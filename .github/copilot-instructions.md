@@ -199,8 +199,6 @@ Desktop часть проекта находится в стадии актив�
 ### Доступные задачи
 
 - `npm: start:env.dev` - запуск dev сервера
-- `npm: react dev` - запуск React в режиме разработки
-- `npm: build react` - сборка React приложения
 - `npm: android` - запуск на Android
 - `npm: build:android:win` - сборка для Android на Windows
 

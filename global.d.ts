@@ -708,7 +708,7 @@ export interface IRegistrationForm extends ICreateUserParams {
   confirmPassword: string;
 }
 
-export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist' | 'vesovschik' | 'admin';
+export type PositionOptionValue = 'kombainer' | 'voditel' | 'bunkerist' | 'admin';
 
 export interface IOption {
   value: PositionOptionValue;
