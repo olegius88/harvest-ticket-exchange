@@ -4,8 +4,6 @@
   "private": true,
   "scripts": {
     "android": "npx react-native run-android",
-    "start:dev:nout": "npx env-cmd -f .env.dev.nout react-native start --reset-cache",
-    "start:dev": "npx env-cmd -f .env.dev react-native start --reset-cache",
     "npx-react-native-start": "npx react-native start",
     "npx-react-native-start-with-typecheck": "npm run typecheck",
     "npx-react-native-start-reset-cache": "npx react-native start --reset-cache",

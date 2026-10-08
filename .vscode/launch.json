@@ -67,12 +67,12 @@
       "internalConsoleOptions": "neverOpen"
     },
     {
-      "name": "start:env.dev",
+      "name": "start",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:dev"],
+      "runtimeArgs": ["run", "start"],
       "console": "integratedTerminal",
       "outputCapture": "console",
       "internalConsoleOptions": "neverOpen"

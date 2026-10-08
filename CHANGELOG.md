@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## 2026-10-08 (3)
+
+### Fixed
+
+- Кнопка «Просмотреть» после взвешивания в
+  [VoditelTicketDetailAfterSetWeight.tsx](app/pages/voditel/VoditelTicketDetailAfterSetWeight.tsx) вела на
+  несуществующий экран `VoditelTicketDetailAfterWeighingScreen`; теперь остаётся на экране талона с
+  обновлёнными данными. Регрессионный тест:
+  [navigationRoutes.test.ts](app/__tests__/navigationRoutes.test.ts) — все цели `navigate()` должны быть
+  зарегистрированы в `App.tsx`.
+
+### Removed
+
+- Скрипты `start:dev` / `start:dev:nout` (требовали локальных `.env.dev*`) и тип `API_URL`;
+  задачи VS Code, [Documentation.md](app/docs/Documentation.md) и
+  [copilot-instructions.md](.github/copilot-instructions.md) переведены на `npm start`.
+
 ## 2026-10-08 (2)
 
 ### Changed

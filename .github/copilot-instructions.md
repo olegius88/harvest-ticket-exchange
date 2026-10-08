@@ -198,7 +198,7 @@ Desktop часть проекта находится в стадии актив�
 
 ### Доступные задачи
 
-- `npm: start:env.dev` - запуск dev сервера
+- `npm: start` - запуск Metro (dev сервер)
 - `npm: android` - запуск на Android
 - `npm: build:android:win` - сборка для Android на Windows
 

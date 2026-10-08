@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "start:env.dev",
+      "label": "start",
       "type": "npm",
-      "script": "start:dev",
+      "script": "start",
       "path": "app/",
       "problemMatcher": [],
       "presentation": {
