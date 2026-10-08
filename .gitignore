@@ -8,3 +8,15 @@ yarn-error.log
 /app/_t/
 /_t/
 desktop/Flying Carpet/.svelte-kit
+
+# IDE, local env and scratch files
+.idea/
+.env*
+!.env.example
+*.exe
+
+# build output
+app/android/app/build/
+app/android/build/
+desktop/target/
+*.map
