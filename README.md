@@ -1,7 +1,8 @@
 # Harvest Ticket Exchange
 
 Offline exchange of harvest tickets ("талон комбайнера") between smartphones in the field —
-no mobile network or shared Wi-Fi required.
+no mobile network or shared Wi-Fi required between the phones; at the weighing station the
+driver's phone joins the station's local Wi-Fi.
 
 During harvest every truckload of grain gets a paper ticket: the combine operator fills it in,
 the truck driver carries it to the weighing station, the weigher records the weight. This project
@@ -29,6 +30,7 @@ Wi-Fi hotspot**, and a desktop app at the weighing station receives it.
 - **No infrastructure.** The combine operator's phone starts an Android
   `LocalOnlyHotspot`; the driver's phone joins it via `WifiNetworkSpecifier`
   (native Kotlin bridge in [`app/android/.../talonkombainera`](app/android/app/src/main/java/com/talonkombainera)).
+  More details: [`app/README.md`](app/README.md), [`desktop/docs/README.md`](desktop/docs/README.md).
 - **Transport.** Plain TCP sockets ([`react-native-tcp-socket`](https://github.com/Rapsssito/react-native-tcp-socket))
   with a small JSON request/response protocol and message framing
   ([`app/wifi`](app/wifi), [`app/services/MessageHandler.ts`](app/services/MessageHandler.ts)).

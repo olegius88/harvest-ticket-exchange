@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## 2026-10-08 (2)
+
+### Changed
+
+- [app/README.md](app/README.md) — вместо шаблона React Native: структура приложения, схема передачи
+  талона между телефонами, запуск и проверки.
+- [desktop/docs/README.md](desktop/docs/README.md) — вместо копии README Flying Carpet: описание
+  desktop-приложения весовой, приём талонов по TCP/QR, структура и запуск.
+- [README.md](README.md) — уточнено, что на весовой телефон подключается к её локальной Wi-Fi сети.
+
+### Removed
+
+- Закомментированная функция `joinHotspo22222t` в
+  [MainWifi.kt](app/android/app/src/main/java/com/talonkombainera/MainWifi.kt) (дубль `joinHotspot`).
+- Неиспользуемая переменная `url` в [App.tsx](app/App.tsx): указывала на удалённый веб-бандл
+  `assets/web/index.html` и только писалась в лог.
+
 ## 2026-10-08
 
 ### Added
