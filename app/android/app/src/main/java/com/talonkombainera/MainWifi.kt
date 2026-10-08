@@ -452,48 +452,6 @@ class MainWifi(private val context: Context) {
     }
 
     /**
-     * Метод для подключения к существующему хотспоту по заданным SSID и паролю.
-     * Сеть запрашивается без доступа к интернету.
-     */
-    fun joinHotspo22222t(ssid: String, password: String) {
-//        Log.d("joinHotspot", "ssid="+ssid)
-//        Log.d("joinHotspot", "password="+password)
-//        val specifier = WifiNetworkSpecifier.Builder()
-//            .setSsid(ssid)
-//            .setWpa2Passphrase(password)
-//            .build()
-//        val request = NetworkRequest.Builder()
-//            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-////            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-//            .setNetworkSpecifier(specifier)
-//            .build()
-//        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-//        connectivityManager.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {
-//            override fun onAvailable(network: Network) {
-//                super.onAvailable(network)
-//                Log.d("joinHotspot", "onAvailable")
-//                // Получаем IP-адрес после успешного подключения
-//                val linkProperties = connectivityManager.getLinkProperties(network)
-//                val ipAddress = linkProperties?.linkAddresses
-//                    ?.map { it.address }
-//                    ?.filterIsInstance<Inet4Address>()
-//                    ?.firstOrNull()
-//                    ?.hostAddress ?: "N/A"
-//                Log.d("joinHotspot", "ipAddress="+ipAddress)
-//                callback?.onHotspotJoined(ipAddress)
-//                connectivityManager.unregisterNetworkCallback(this)
-//            }
-//            override fun onLost(network: Network) {
-//                super.onLost(network)
-//                Log.d("joinHotspot", "onLost")
-//                callback?.onJoinFailed("Соединение потеряно")
-//            }
-//        }, handler)
-    }
-
-
-
-    /**
      * Метод для остановки TCP-сервера.
      * Закрывает клиентский сокет и ServerSocket, если они инициализированы.
      */
