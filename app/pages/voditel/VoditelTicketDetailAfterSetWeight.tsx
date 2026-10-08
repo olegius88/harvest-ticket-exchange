@@ -325,9 +325,20 @@ class VoditelTicketDetailAfterSetWeight extends Component<
             {
               text: 'Просмотреть',
               onPress: () => {
-                // Переходим на экран с результатами взвешивания
-                this.props.navigation.navigate('VoditelTicketDetailAfterWeighingScreen', {
-                  talonId: talonId,
+                // Обновляем текущий экран данными взвешенного талона.
+                // Баг: раньше здесь был переход на несуществующий VoditelTicketDetailAfterWeighingScreen,
+                // см. регрессионный тест __tests__/navigationRoutes.test.ts
+                const { kombainerData, kombainerUserData } = this.state;
+                if (!kombainerData || !kombainerUserData) {
+                  console.error(
+                    'handleTalonWeighed|Просмотреть: отсутствуют kombainerData/kombainerUserData в состоянии'
+                  );
+                  return;
+                }
+                this.props.navigation.navigate('VoditelTicketDetailAfterSetWeightScreen', {
+                  talonId,
+                  kombainerData,
+                  kombainerUserData,
                 });
               },
             },
